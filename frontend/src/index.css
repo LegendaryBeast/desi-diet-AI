@@ -12,12 +12,6 @@
     overflow-x: hidden;
   }
 
-  @media (min-width: 1024px) {
-    body {
-      @apply cursor-none;
-    }
-  }
-
   /* Custom selection color */
   ::selection {
     @apply bg-accent text-cream;

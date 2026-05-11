@@ -9,7 +9,6 @@ import { MealPlan } from './pages/MealPlan';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
-import { CustomCursor } from './components/ui/CustomCursor';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -37,7 +36,6 @@ function App() {
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <CustomCursor />
       <AnimatePresence mode="wait">
         {loading && <PageLoader />}
       </AnimatePresence>

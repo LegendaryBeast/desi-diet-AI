@@ -1,4 +1,4 @@
-# Khadok-Bangla AI
+# DesiDiet AI
 
 Personalized AI Nutrition Companion for Bangladeshi People. This system uses a GraphRAG architecture based on the National Dietary Guidelines for Bangladesh 2025.
 
@@ -52,6 +52,9 @@ You can test the GraphRAG reasoning engine directly to see the personalized safe
 cd graphRAG
 python3 graph_rag/engine.py
 ```
+
+### 5. Running the Frontend
+The frontend is a modern React application. For detailed installation and development instructions, please refer to the [Frontend README](frontend/README.md).
 
 ---
 
