@@ -104,7 +104,7 @@ const resources = {
         ai_name: 'দেশিডায়েট এআই',
         active_status: 'সক্রিয় অ্যাসিস্ট্যান্ট',
         clear_chat: 'চ্যাট মুছুন',
-        greeting_user: 'নমস্কার, {{name}}',
+        greeting_user: 'হাই, {{name}}',
         how_can_i_help: 'আমি আপনাকে আজ কীভাবে সাহায্য করতে পারি?',
         description_short: 'আপনার পুষ্টি, ডায়েট এবং স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন।',
         typing: 'টাইপ করছে...',
