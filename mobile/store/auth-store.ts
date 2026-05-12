@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queryClient } from '../lib/query-client';
 
 interface User {
   id: string;
@@ -28,6 +29,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setToken: (token) => set({ accessToken: token }),
   logout: async () => {
     await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+    queryClient.clear();
     set({ user: null, accessToken: null });
   },
   hydrate: async () => {

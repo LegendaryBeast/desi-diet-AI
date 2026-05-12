@@ -1,9 +1,24 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
+import { View, ActivityIndicator, Platform } from 'react-native';
+import { useAuthStore } from '../../store/auth-store';
 import { Home, UtensilsCrossed, MessageCircle, BarChart3, User } from 'lucide-react-native';
 import { colors, fonts } from '../../lib/theme';
-import { Platform } from 'react-native';
 
 export default function TabLayout() {
+  const { accessToken, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!accessToken) {
+    return <Redirect href="/(auth)/welcome" />;
+  }
+
   return (
     <Tabs
       screenOptions={{

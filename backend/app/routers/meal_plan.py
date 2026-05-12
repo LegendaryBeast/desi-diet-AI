@@ -27,19 +27,30 @@ def _plan_to_response(plan) -> MealPlanResponse:
 
 
 @router.get("/daily", response_model=MealPlanResponse)
-async def get_daily_plan(language: str = "bn", current_user=Depends(get_current_user)):
+async def get_daily_plan(language: str = "bn", force: bool = False, current_user=Depends(get_current_user)):
     """Generate today's AI meal plan."""
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    existing = await prisma.mealplan.find_first(
-        where={
-            "userId": current_user.id,
-            "planType": "daily",
-            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
-        }
-    )
-    if existing:
-        return _plan_to_response(existing)
+    if not force:
+        existing = await prisma.mealplan.find_first(
+            where={
+                "userId": current_user.id,
+                "planType": "daily",
+                "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+            }
+        )
+        if existing:
+            return _plan_to_response(existing)
+            
+    # If force=true, delete existing daily plan for today before generating
+    if force:
+        await prisma.mealplan.delete_many(
+            where={
+                "userId": current_user.id,
+                "planType": "daily",
+                "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+            }
+        )
 
     try:
         plan_data = await generate_daily_meal_plan(current_user.id, language=language)
@@ -50,22 +61,24 @@ async def get_daily_plan(language: str = "bn", current_user=Depends(get_current_
 
 
 @router.get("/weekly", response_model=List[MealPlanResponse])
-async def get_weekly_plan(language: str = "bn", current_user=Depends(get_current_user)):
+async def get_weekly_plan(language: str = "bn", force: bool = False, current_user=Depends(get_current_user)):
     """Generate a 7-day meal plan with variety enforcement."""
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Check if we already have plans for this week
     week_end = today + timedelta(days=7)
-    existing = await prisma.mealplan.find_many(
-        where={
-            "userId": current_user.id,
-            "planType": "daily",
-            "planDate": {"gte": today, "lt": week_end},
-        },
-        order={"planDate": "asc"},
-    )
-    if len(existing) == 7:
-        return [_plan_to_response(p) for p in existing]
+    
+    if not force:
+        existing = await prisma.mealplan.find_many(
+            where={
+                "userId": current_user.id,
+                "planType": "daily",
+                "planDate": {"gte": today, "lt": week_end},
+            },
+            order={"planDate": "asc"},
+        )
+        if len(existing) == 7:
+            return [_plan_to_response(p) for p in existing]
 
     # Generate 7 unique daily plans
     try:

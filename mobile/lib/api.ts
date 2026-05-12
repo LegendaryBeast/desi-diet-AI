@@ -40,10 +40,16 @@ api.interceptors.response.use(
           await AsyncStorage.setItem('access_token', access_token);
           await AsyncStorage.setItem('refresh_token', refresh_token);
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          const { useAuthStore } = require('../store/auth-store');
+          useAuthStore.getState().setToken(access_token);
           return api(originalRequest);
+        } else {
+          const { useAuthStore } = require('../store/auth-store');
+          await useAuthStore.getState().logout();
         }
       } catch (refreshError) {
-        await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+        const { useAuthStore } = require('../store/auth-store');
+        await useAuthStore.getState().logout();
       }
     }
     return Promise.reject(error);
@@ -75,10 +81,9 @@ export const healthLogApi = {
   trends: () => api.get('/health-logs/trends'),
 };
 
-// Meal Plan API
 export const mealPlanApi = {
-  daily: (language = 'bn') => api.get(`/meal-plans/daily?language=${language}`),
-  weekly: (language = 'bn') => api.get(`/meal-plans/weekly?language=${language}`),
+  daily: (language = 'bn', force = false) => api.get(`/meal-plans/daily?language=${language}${force ? '&force=true' : ''}`),
+  weekly: (language = 'bn', force = false) => api.get(`/meal-plans/weekly?language=${language}${force ? '&force=true' : ''}`),
   history: () => api.get('/meal-plans/history'),
   feedback: (planId: string, score: number) =>
     api.post(`/meal-plans/${planId}/feedback`, { feedback: score }),

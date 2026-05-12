@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, mealPlanApi, mealTrackingApi, medicineApi, profileApi } from '../../lib/api';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
-import { Flame, Pill, Activity, Plus, CheckCircle2 } from 'lucide-react-native';
+import { Flame, Pill, Activity, Plus, CheckCircle2, Sparkles } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { HomeScreenSkeleton } from '../../components/SkeletonLoader';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -52,18 +52,20 @@ export default function HomeScreen() {
   const haptics = useHaptics();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: profileData, refetch: refetchProfile } = useQuery({
+  const { data: profileData, isPending: isProfilePending, refetch: refetchProfile } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => (await profileApi.get()).data,
     staleTime: 1000 * 60 * 10, // 10 min — names don't change often
+    retry: false, // 404 is expected for new users without completed profiles
   });
 
-  const { data: reportData, refetch: refetchReport } = useQuery({
+  const { data: reportData, isPending: isReportPending, refetch: refetchReport } = useQuery({
     queryKey: ['nutrition_report'],
     queryFn: async () => (await reportsApi.nutrition()).data,
+    retry: false,
   });
 
-  const { data: planData, refetch: refetchPlan } = useQuery({
+  const { data: planData, isPending: isPlanPending, refetch: refetchPlan } = useQuery({
     queryKey: ['daily_plan'],
     queryFn: async () => (await mealPlanApi.daily('bn')).data,
   });
@@ -91,7 +93,7 @@ export default function HomeScreen() {
   let consumedFat = 0;
 
   // Add unplanned tracked meals
-  if (trackingData) {
+  if (Array.isArray(trackingData)) {
     trackingData.forEach((log: any) => {
       consumedCals += log.total_calories || 0;
       consumedProtein += log.macros?.protein_g || 0;
@@ -121,8 +123,11 @@ export default function HomeScreen() {
   const targetCarbs = reportData?.targets?.carbs_g || 250;
   const targetFat = reportData?.targets?.fat_g || 65;
 
-  const isLoading = !reportData && !planData && !trackingData;
+  // Only block screen for profile and basic targets, allowing background LLM generation to complete gracefully
+  const isLoading = isProfilePending || isReportPending;
   if (isLoading) return <HomeScreenSkeleton />;
+
+  const isProfileMissing = !profileData?.profile || reportData?.error;
 
   return (
     <ScrollView 
@@ -137,6 +142,23 @@ export default function HomeScreen() {
         <Text style={styles.subGreeting}>আপনার আজকের সারসংক্ষেপ</Text>
       </View>
 
+      {/* Missing Profile Banner */}
+      {isProfileMissing && (
+        <TouchableOpacity 
+          style={[styles.planCtaCard, { borderColor: colors.warning, backgroundColor: colors.warning + '12', marginBottom: spacing.md }]}
+          onPress={() => { haptics.light(); router.push('/(auth)/onboarding'); }}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.planCtaIcon, { backgroundColor: colors.warning }]}>
+            <Flame size={24} color={colors.white} />
+          </View>
+          <View style={styles.planCtaText}>
+            <Text style={styles.planCtaTitle}>প্রোফাইল অসম্পূর্ণ</Text>
+            <Text style={styles.planCtaSub}>সঠিক পুষ্টি ও ডায়েট প্ল্যান পেতে আপনার প্রোফাইল সম্পূর্ণ করুন</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
       {/* Plan CTA */}
       <TouchableOpacity 
         style={styles.planCtaCard}
@@ -148,7 +170,7 @@ export default function HomeScreen() {
         </View>
         <View style={styles.planCtaText}>
           <Text style={styles.planCtaTitle}>
-            {planData ? 'পরিকল্পনা আপডেট করুন' : 'ডায়েট পরিকল্পনা তৈরি করুন'}
+            {isPlanPending ? 'পরিকল্পনা লোড হচ্ছে...' : planData ? 'পরিকল্পনা আপডেট করুন' : 'ডায়েট পরিকল্পনা তৈরি করুন'}
           </Text>
           <Text style={styles.planCtaSub}>এআই আপনার জন্য একটি ব্যক্তিগত পরিকল্পনা তৈরি করবে</Text>
         </View>

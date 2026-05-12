@@ -9,6 +9,7 @@ import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw } from 'lucide-
 import { dietPlanChatApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
+import EventSource from 'react-native-sse';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -59,12 +60,13 @@ export default function DietPlanChatScreen() {
 
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const response = await fetch(dietPlanChatApi.streamUrl, {
-        method: 'POST',
+      
+      const es = new EventSource(dietPlanChatApi.streamUrl, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        method: 'POST',
         body: JSON.stringify({
           message: content,
           language: 'bn',
@@ -75,48 +77,52 @@ export default function DietPlanChatScreen() {
         }),
       });
 
-      if (!response.ok) throw new Error('Chat failed');
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
       let accumulated = '';
-      let isGeneratingPlan = false;
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const lines = decoder.decode(value).split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.token) {
-                  accumulated += data.token;
-                  setMessages((prev) =>
-                    prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m)
-                  );
-                } else if (data.status === 'generating_plan') {
-                  isGeneratingPlan = true;
-                  setMessages((prev) =>
-                    prev.map((m) => m.id === assistantId ? { ...m, content: accumulated + '\n\nপরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳' } : m)
-                  );
-                } else if (data.plan_ready) {
-                  setPlanReady(true);
-                  haptics.success();
-                  setMessages((prev) =>
-                    prev.map((m) => m.id === assistantId ? { ...m, content: data.plan_ready.message_bn } : m)
-                  );
-                } else if (data.error) {
-                  setMessages((prev) =>
-                    prev.map((m) => m.id === assistantId ? { ...m, content: accumulated + '\n\n' + data.error } : m)
-                  );
-                }
-              } catch { /* ignore parse errors */ }
+      es.addEventListener('message', (event) => {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.token) {
+              accumulated += data.token;
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m)
+              );
+            } else if (data.status === 'generating_plan') {
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated + '\n\nপরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳' } : m)
+              );
+            } else if (data.plan_ready) {
+              setPlanReady(true);
+              haptics.success();
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: data.plan_ready.message_bn } : m)
+              );
+            } else if (data.error) {
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated + '\n\n' + data.error } : m)
+              );
             }
-          }
+            if (data.done) {
+              es.close();
+              setStreaming(false);
+            }
+          } catch { /* ignore parse errors */ }
         }
-      }
+      });
+
+      es.addEventListener('error', () => {
+        es.close();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId && !accumulated
+              ? { ...m, content: 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' }
+              : m
+          )
+        );
+        setStreaming(false);
+      });
+
     } catch {
       setMessages((prev) =>
         prev.map((m) =>
@@ -125,7 +131,6 @@ export default function DietPlanChatScreen() {
             : m
         )
       );
-    } finally {
       setStreaming(false);
     }
   };

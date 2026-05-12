@@ -161,7 +161,7 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
               haptics.medium();
               setGenerating(true);
               try {
-                await mealPlanApi.daily('bn');
+                await mealPlanApi.daily('bn', true);
                 queryClient.invalidateQueries({ queryKey: ['daily_plan'] });
                 await dailyQ.refetch();
               } catch {
@@ -196,7 +196,7 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
     }
 
     const planData = plan.plan_data;
-    const planId = plan.id;
+    const planId = plan.plan_id;
     const completedSlots = getCompletedSlots(plan);
     const completedCount = completedSlots.length;
     const totalMeals = (planData?.meals || []).length;
@@ -246,7 +246,7 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
       <View>
         {plans.map((item: any, idx: number) => {
           const planData = item.plan_data;
-          const planId = item.id;
+          const planId = item.plan_id;
           const completedSlots = getCompletedSlots(item);
           const date = item.plan_date ? new Date(item.plan_date) : new Date();
           const isExpanded = expandedDay === idx;

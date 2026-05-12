@@ -3,12 +3,13 @@ import {
   FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import { Send, Bot, Sparkles } from 'lucide-react-native';
 import { API_BASE_URL } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
+import EventSource from 'react-native-sse';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -70,12 +71,13 @@ export default function ChatScreen() {
 
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/chat`, {
-        method: 'POST',
+      
+      const es = new EventSource(`${API_BASE_URL}/chat`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        method: 'POST',
         body: JSON.stringify({
           message: content,
           language: 'bn',
@@ -86,32 +88,38 @@ export default function ChatScreen() {
         }),
       });
 
-      if (!response.ok) throw new Error('Chat failed');
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
       let accumulated = '';
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const lines = decoder.decode(value).split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.token) {
-                  accumulated += data.token;
-                  setMessages((prev) =>
-                    prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m)
-                  );
-                }
-              } catch { /* ignore parse errors */ }
+      es.addEventListener('message', (event) => {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.token) {
+              accumulated += data.token;
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m)
+              );
             }
-          }
+            if (data.done) {
+              es.close();
+              setStreaming(false);
+            }
+          } catch { /* ignore parse errors */ }
         }
-      }
+      });
+
+      es.addEventListener('error', () => {
+        es.close();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId && !accumulated
+              ? { ...m, content: 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' }
+              : m
+          )
+        );
+        setStreaming(false);
+      });
+
     } catch {
       setMessages((prev) =>
         prev.map((m) =>
@@ -120,7 +128,6 @@ export default function ChatScreen() {
             : m
         )
       );
-    } finally {
       setStreaming(false);
     }
   };

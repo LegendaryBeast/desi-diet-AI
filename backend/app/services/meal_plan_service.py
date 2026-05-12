@@ -45,10 +45,10 @@ def _build_meal_plan_prompt(
     lang_instruction = "বাংলায় উত্তর দিন।" if language == "bn" else "Reply in English."
 
     system_prompt = """You are Khadok-Bangla AI, a warm and knowledgeable Bangladeshi nutrition companion.
-Your task is to generate a personalized daily meal plan using ONLY the provided safe foods.
+Your task is to generate a personalized daily meal plan using a wide variety of authentic Bangladeshi foods.
 
 CRITICAL RULES:
-1. Use ONLY foods from the safe foods list.
+1. Generate authentic Bangladeshi meals. Use the provided safe foods as a reference, but freely add other culturally appropriate and healthy foods.
 2. Respect all dietary rules (AVOID, PREFER, LIMIT).
 3. Match the calorie target and macro distribution.
 4. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
@@ -135,6 +135,112 @@ RESPONSE FORMAT (strict JSON, follow exactly):
     ]
 
 
+def _build_weekly_meal_plan_prompt(
+    profile: Any,
+    targets: Dict[str, Any],
+    safe_foods: List[Dict[str, Any]],
+    conditions: List[str],
+    language: str = "bn",
+) -> List[Dict[str, str]]:
+    """Build the LLM prompt for 7-day meal plan generation."""
+
+    applicable_rules = [r for r in NDG_DIETARY_RULES if r["condition"] in conditions]
+
+    foods_text = "\n".join([
+        f"- {f['name_bn']} ({f['name_en']}): {f.get('calories', 'N/A')} kcal, {f.get('protein', 'N/A')}g protein, group: {f['food_group']}"
+        for f in safe_foods[:50]
+    ])
+
+    rules_text = "\n".join([
+        f"- [{r['rule_type']}] {r['group_target']}: {r['reason_en']}"
+        for r in applicable_rules[:20]
+    ])
+
+    lang_instruction = "বাংলায় উত্তর দিন।" if language == "bn" else "Reply in English."
+
+    system_prompt = """You are Khadok-Bangla AI, a warm and knowledgeable Bangladeshi nutrition companion.
+Your task is to generate a personalized 7-DAY weekly meal plan using a wide variety of authentic Bangladeshi foods.
+
+CRITICAL RULES:
+1. Provide a plan for exactly 7 days.
+2. Generate authentic Bangladeshi meals. Use the provided safe foods as a reference, but freely add other culturally appropriate and healthy foods.
+3. Respect all dietary rules (AVOID, PREFER, LIMIT).
+4. Match the daily calorie target and macro distribution for EACH day.
+5. Provide variety across the 7 days (do not repeat the exact same meals every day).
+6. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
+7. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
+8. All numeric values must be integers.
+"""
+
+    dietary_context = ""
+    for condition in conditions:
+        rules_for_condition = [r for r in applicable_rules if r["condition"] == condition]
+        if rules_for_condition:
+            dietary_context += f"\n{condition} Rules:\n"
+            for r in rules_for_condition[:5]:
+                action = "AVOID" if r["rule_type"] == "AVOID" else "PREFER"
+                dietary_context += f"  - {action} {r['group_target']}: {r['reason_en']}\n"
+
+    user_prompt = f"""{lang_instruction}
+
+USER PROFILE:
+- Age: {profile.age}, Gender: {profile.gender}
+- Weight: {profile.weightKg}kg, Height: {profile.heightCm}cm
+- Goal: {profile.goal}
+- Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+- Preferred Foods: {', '.join(safe_list(profile.preferredFoods)) if profile.preferredFoods else 'Any'}
+
+DAILY TARGETS (per day):
+- Target Calories: {targets['target_calories']} kcal
+- Protein: {targets['protein_g']}g | Carbs: {targets['carbs_g']}g | Fat: {targets['fat_g']}g
+
+DIETARY RULES:
+{rules_text}
+{dietary_context}
+
+SAFE FOODS (use only these):
+{foods_text}
+
+TASK: Generate a complete 7-day meal plan in JSON format. Do not include any text outside the JSON object.
+
+RESPONSE FORMAT (strict JSON, follow exactly):
+{{
+  "weekly_plan": [
+    {{
+      "day": 1,
+      "day_name_bn": "সোমবার",
+      "day_name_en": "Monday",
+      "target_calories": {targets['target_calories']},
+      "macros": {{"protein_g": {targets['protein_g']}, "carbs_g": {targets['carbs_g']}, "fat_g": {targets['fat_g']}, "fiber_g": {targets.get('fiber_g', 25)}}},
+      "explanation_bn": "...",
+      "explanation_en": "...",
+      "meals": [
+        {{
+          "slot": "breakfast",
+          "slot_bn": "সকালের নাস্তা",
+          "target_calories": number,
+          "items": [
+            {{
+              "food_code": "code_or_name",
+              "name_bn": "বাংলা নাম",
+              "name_en": "English Name",
+              "amount_g": 150,
+              "calories": 195,
+              "why_bn": "কেন এই খাবার..."
+            }}
+          ]
+        }}
+      ]
+    }}
+  ]
+}}
+"""
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+
 def _generate_fallback_meal_plan(
     profile: Any,
     targets: Dict[str, Any],
@@ -160,13 +266,22 @@ def _generate_fallback_meal_plan(
             used.add(chosen["code"])
             used_codes_global.add(chosen["code"])
             return chosen
-        pool = [f for f in safe_foods if f["code"] not in used and f["code"] not in used_codes_global]
-        if pool:
-            chosen = random.choice(pool)
+        
+        # Fallback to any safe food in the category, ignoring used constraints
+        pool_any = categories.get(cat, [])
+        if pool_any:
+            chosen = random.choice(pool_any)
+            return chosen
+            
+        # Fallback to any safe food not used
+        pool_all = [f for f in safe_foods if f["code"] not in used and f["code"] not in used_codes_global]
+        if pool_all:
+            chosen = random.choice(pool_all)
             used.add(chosen["code"])
             used_codes_global.add(chosen["code"])
             return chosen
-        return safe_foods[0]
+            
+        return random.choice(safe_foods) if safe_foods else None
 
     used_codes = set()
 
@@ -304,7 +419,8 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
             response_format={"type": "json_object"},
         )
         plan_data = json.loads(llm_response)
-    except Exception:
+    except Exception as e:
+        print(f"LLM daily meal plan error: {e}")
         plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language)
 
     plan_data.setdefault("target_calories", targets["target_calories"])
@@ -344,15 +460,36 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
     rag = _get_rag()
     safe_foods = rag.get_safe_foods(conditions=conditions, goal=goal, limit=50)
 
-    # Generate 7 unique daily plans using fallback (fast, no LLM calls)
-    used_codes_global = set()
-    weekly_plans = []
-    for day in range(7):
-        plan = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language, used_codes_global)
-        plan["day"] = day + 1
-        plan["day_name_bn"] = ["সোমবার", "মঙ্গলবার", "বুধবার", "বৃহস্পতিবার", "শুক্রবার", "শনিবার", "রবিবার"][day]
-        plan["day_name_en"] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][day]
-        weekly_plans.append(plan)
+    try:
+        messages = _build_weekly_meal_plan_prompt(profile, targets, safe_foods, conditions, language)
+        llm_response = await llm_client.chat_completion(
+            messages=messages,
+            temperature=0.7,
+            max_tokens=6000,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(llm_response)
+        weekly_plans = data.get("weekly_plan", [])
+        
+        # Ensure correct day numbering and add conditions
+        for i, p in enumerate(weekly_plans):
+            p["day"] = i + 1
+            p["condition_rules_applied"] = conditions
+            p.setdefault("target_calories", targets["target_calories"])
+            
+        if not weekly_plans:
+            raise ValueError("LLM returned empty weekly plan")
+    except Exception as e:
+        print(f"LLM weekly meal plan error: {e}")
+        # Generate 7 unique daily plans using fallback (fast, no LLM calls)
+        used_codes_global = set()
+        weekly_plans = []
+        for day in range(7):
+            plan = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language, used_codes_global)
+            plan["day"] = day + 1
+            plan["day_name_bn"] = ["সোমবার", "মঙ্গলবার", "বুধবার", "বৃহস্পতিবার", "শুক্রবার", "শনিবার", "রবিবার"][day]
+            plan["day_name_en"] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][day]
+            weekly_plans.append(plan)
 
     return weekly_plans
 
