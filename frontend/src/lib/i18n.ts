@@ -53,26 +53,22 @@ const resources = {
       about: {
         ch1: {
           num: '01 / Scientific',
-          titleBn: 'Knowledge Graph',
-          titleEn: 'Powered by Real Science',
+          title: 'Powered by Real Science',
           desc: 'Our system uses Neo4j GraphRAG technology — linking food, nutrition, disease, and dietary rules. Verified by NDG Bangladesh 2025.'
         },
         ch2: {
           num: '02 / Conversational',
-          titleBn: 'Like a Friend',
-          titleEn: 'Your Dietitian Friend',
+          title: 'Your Dietitian Friend',
           desc: 'No complex forms — collects info through natural conversation. Remembers your blood sugar, weight, and preferences.'
         },
         ch3: {
           num: '03 / Precision',
-          titleBn: 'Precise Calories',
-          titleEn: 'Precise Nutrition Math',
+          title: 'Precise Nutrition Math',
           desc: 'NDG 2025 Table 20 formulas for IBW calculation. Scientific macro splitting: 15% Protein, 55% Carbs, 30% Fat.'
         },
         ch4: {
           num: '04 / Planning',
-          titleBn: 'Seven Days',
-          titleEn: 'Weekly Meal Plans',
+          title: 'Weekly Meal Plans',
           desc: 'Different food every day, same nutrition value. At least 4 days of fish as per NDG 2025 recommendations.'
         }
       }
@@ -128,26 +124,22 @@ const resources = {
       about: {
         ch1: {
           num: '01 / Scientific',
-          titleBn: 'নলেজ গ্রাফ',
-          titleEn: 'Powered by Real Science',
-          desc: 'আমাদের সিস্টেম Neo4j GraphRAG প্রযুক্তি ব্যবহার করে — খাবার, পুষ্টি, রোগ এবং ডায়েটারি নিয়মের মধ্যে সম্পর্ক স্থাপন করে। প্রতিটি পরামর্শ সরাসরি National Dietary Guidelines Bangladesh 2025 থেকে যাচাইকৃত।'
+          title: 'নলেজ গ্রাফ',
+          desc: 'আমাদের সিস্টেম Neo4j GraphRAG প্রযুক্তি ব্যবহার করে — খাবার, পুষ্টি, রোগ এবং ডায়েটারি নিয়মের মধ্যে সম্পর্ক স্থাপন করে। প্রতিটি পরামর্শ সরাসরি NDG Bangladesh 2025 থেকে যাচাইকৃত।'
         },
         ch2: {
           num: '02 / Conversational',
-          titleBn: 'বন্ধুর মতো',
-          titleEn: 'Your Dietitian Friend',
+          title: 'বন্ধুর মতো',
           desc: 'জটিল ফর্ম নয় — স্বাভাবিক কথোপকথনে আপনার তথ্য সংগ্রহ করে। আপনার রক্তের শর্করা, ওজন, পছন্দ-অপছন্দ সব মনে রাখে। প্রতিদিন আপডেট হয়, প্রতিদিন নতুন পরামর্শ।'
         },
         ch3: {
           num: '03 / Precision',
-          titleBn: 'সঠিক ক্যালোরি',
-          titleEn: 'Precise Nutrition Math',
+          title: 'সঠিক ক্যালোরি',
           desc: 'NDG 2025-এর Table 20 ফর্মুলা ব্যবহার করে আপনার আদর্শ শরীরের ওজন (IBW) অনুযায়ী ক্যালোরি নির্ধারণ। প্রোটিন ১৫%, শর্করা ৫৫%, চর্বি ৩০% — বৈজ্ঞানিক ম্যাক্রো বিভাজন।'
         },
         ch4: {
           num: '04 / Planning',
-          titleBn: 'সাত দিনের',
-          titleEn: 'Weekly Meal Plans',
+          title: 'সাত দিনের',
           desc: 'প্রতিদিন ভিন্ন খাবার, কিন্তু একই পুষ্টিমান। সপ্তাহে কমপক্ষে ৪ দিন মাছ — NDG 2025-এর সুপারিশ অনুযায়ী। শুক্রবারে একটু বিশেষ — সংস্কৃতির সাথে স্বাস্থ্যের মেলবন্ধন।'
         }
       }

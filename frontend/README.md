@@ -14,30 +14,73 @@ Our platform combines world-class AI technology with a deep respect for Banglade
 | :---: | :---: |
 | ![Mobile Hero](./docs/mobile_hero.png) | ![Chat Mockup](./docs/chat_mockup.png) |
 
+---
+
 ## 🚀 Key Features
 
-- **Editorial Design**: A premium "magazine-style" aesthetic inspired by modern food publications.
-- **Bilingual Support (i18n)**: Seamlessly switch between Bengali and English.
-- **AI Chat Interface**: Modern, conversational AI chat with intelligent meal plan suggestions.
-- **Profile Wizard**: A 9-step conversational health profile setup.
-- **NDG 2025 Grounded**: Scientifically accurate nutrition data tailored for local food.
+### 1. 🤖 AI Chat Assistant (SSE Streaming)
+A modern, conversational AI chat interface capable of generating intelligent meal plans and answering nutritional questions based on local Bangladeshi context. Responses stream in real-time for an incredibly fast and fluid experience.
+
+### 2. 🍽️ Customizable AI Meal Plans
+- **Dynamic Generation:** AI creates full daily and weekly meal plans tailored specifically to your age, gender, BMI, activity level, and medical conditions (e.g., Diabetes, Hypertension).
+- **Editable Slots:** Full control over your diet! Click the "কাস্টমাইজ" (Customize) button to edit AI suggestions. Remove unwanted foods or add new ones inline, directly inside meal slots.
+- **Calorie Tracking:** The UI dynamically tracks the original **AI Suggestion** vs **Your Choice** as you customize your daily intake.
+
+### 3. 🔍 GraphRAG Food Database
+- **Safe Foods Explorer:** Automatically filters and ranks over 370+ local Bangladeshi foods based on your specific health profile (Medical Conditions & Goals) using a powerful Neo4j Knowledge Graph.
+- **Insightful Search:** Search for any food (e.g., *Mango*, *Rui Fish*) and receive immediate, AI-generated personalized safety insights directly in the results.
+
+### 4. 📈 Health Logging & Trends
+- Log your daily weight, blood pressure, blood sugar, and HbA1c.
+- Interactive, beautifully animated trend charts (powered by Recharts) visualize your progress over time.
+
+### 5. 💊 Smart Medicine Reminders
+- Add reminders using natural language (e.g., *"Take Metformin 500mg in the morning and night after food"*).
+- The system automatically parses the medication name, dosage, and schedule.
+
+### 6. 📝 9-Step Profile Setup Wizard
+- A beautifully designed, conversational onboarding flow to collect critical biometric data and dietary preferences to power the AI engine.
+
+### 7. 🇧🇩 Bilingual Design (i18n)
+- Seamlessly switch between **Bengali** and **English** with deep integration throughout the entire application.
+- "Magazine-style" typography paired with brutalist and organic design elements.
+
+---
 
 ## 🛠️ Tech Stack
 
-- **React 18 + TypeScript**
-- **Vite**
-- **Tailwind CSS v3**
-- **Framer Motion**
-- **React-i18next**
+- **React 18 + TypeScript** - Strongly typed component architecture.
+- **Vite** - Lightning-fast build tool and development server.
+- **Tailwind CSS v3** - Utility-first styling for complex, responsive designs.
+- **Framer Motion** - Fluid micro-interactions and page transitions.
+- **Lucide React** - Clean, modern iconography.
+- **Recharts** - Dynamic data visualization for health trends.
+- **React-i18next** - Robust internationalization logic.
+
+---
 
 ## 📦 Getting Started
 
+### Prerequisites
+Make sure your FastAPI backend and Neo4j database are running locally first!
+
+### Installation
 ```bash
-# Install dependencies
+# 1. Navigate to the frontend directory
+cd frontend
+
+# 2. Install dependencies
 npm install
 
-# Start development server
+# 3. Start development server
 npm run dev
+```
+
+### Environment Setup
+Create a `.env` file in the root of the frontend folder:
+```env
+# Forces all API calls to route through the Vite development proxy
+VITE_API_URL=
 ```
 
 ---
