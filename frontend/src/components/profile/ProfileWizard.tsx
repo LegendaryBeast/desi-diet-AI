@@ -9,7 +9,11 @@ import {
   CheckCircle2,
   Loader2,
   AlertCircle,
+  TrendingDown,
+  Scale,
+  TrendingUp,
 } from 'lucide-react';
+import { FaMale, FaFemale } from 'react-icons/fa';
 import { Button } from '../ui/Button';
 import { profileApi } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -156,8 +160,8 @@ export const ProfileWizard = () => {
         return (
           <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto">
             {[
-              { id: 'male', label: 'পুরুষ', emoji: '👨' },
-              { id: 'female', label: 'নারী', emoji: '👩' },
+              { id: 'male', label: 'পুরুষ', icon: <FaMale className="w-12 h-12" /> },
+              { id: 'female', label: 'নারী', icon: <FaFemale className="w-12 h-12" /> },
             ].map((g) => (
               <button
                 key={g.id}
@@ -168,7 +172,7 @@ export const ProfileWizard = () => {
                     : 'border-ink/5 bg-white text-ink-muted hover:border-accent/20'
                 }`}
               >
-                <div className="text-4xl mb-4">{g.emoji}</div>
+                <div className="flex justify-center mb-4">{g.icon}</div>
                 <div className="font-bn font-bold text-lg">{g.label}</div>
               </button>
             ))}
@@ -247,9 +251,9 @@ export const ProfileWizard = () => {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mx-auto">
             {[
-              { id: 'weight_loss', label: 'ওজন কমানো', emoji: '📉', sub: '-৫০০ kcal/দিন' },
-              { id: 'maintain', label: 'ওজন ধরে রাখা', emoji: '⚖️', sub: 'বর্তমান ক্যালোরি' },
-              { id: 'weight_gain', label: 'ওজন বাড়ানো', emoji: '📈', sub: '+৫০০ kcal/দিন' },
+              { id: 'weight_loss', label: 'ওজন কমানো', icon: <TrendingDown className="w-8 h-8" />, sub: '-৫০০ kcal/দিন' },
+              { id: 'maintain', label: 'ওজন ধরে রাখা', icon: <Scale className="w-8 h-8" />, sub: 'বর্তমান ক্যালোরি' },
+              { id: 'weight_gain', label: 'ওজন বাড়ানো', icon: <TrendingUp className="w-8 h-8" />, sub: '+৫০০ kcal/দিন' },
             ].map((g) => (
               <button
                 key={g.id}
@@ -260,7 +264,11 @@ export const ProfileWizard = () => {
                     : 'border-ink/5 bg-white hover:border-accent/20 shadow-sm'
                 }`}
               >
-                <div className="text-3xl mb-3">{g.emoji}</div>
+                <div className={`flex justify-center mb-3 transition-colors ${
+                  form.goal === g.id ? 'text-accent' : 'text-ink-muted'
+                }`}>
+                  {g.icon}
+                </div>
                 <div className="font-bn font-bold text-ink mb-1">{g.label}</div>
                 <div className="font-bn text-xs text-ink-muted opacity-60">{g.sub}</div>
               </button>

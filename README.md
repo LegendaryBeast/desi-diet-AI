@@ -2,6 +2,9 @@
 
 Personalized AI Nutrition Companion for Bangladeshi People. This system uses a GraphRAG architecture based on the National Dietary Guidelines for Bangladesh 2025.
 
+## AI-Native System Architecture
+DesiDiet AI is designed following the **Infinity AI Buildfest 2026 AI-Native Application Blueprint**. For a comprehensive breakdown of our 8-layer enterprise architecture, please see the [System Architecture Documentation](./docs/architecture.md).
+
 ## Installation & Setup
 
 ### Prerequisites

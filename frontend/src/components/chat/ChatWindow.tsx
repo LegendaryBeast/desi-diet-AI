@@ -167,7 +167,7 @@ export const ChatWindow = () => {
         )}
 
         {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-10 hide-scrollbar scroll-smooth relative z-10">
+        <div className="flex-1 overflow-y-auto p-4 pb-12 md:p-8 md:pb-24 space-y-6 md:space-y-10 hide-scrollbar scroll-smooth relative z-10">
           <AnimatePresence initial={false}>
             {messages.length === 0 ? (
               <motion.div
@@ -305,7 +305,7 @@ export const ChatWindow = () => {
               </motion.div>
             )}
           </AnimatePresence>
-          <div ref={messagesEndRef} className="h-2" />
+          <div ref={messagesEndRef} className="h-6 md:h-8 shrink-0" />
         </div>
 
         {/* Scroll to bottom button */}
