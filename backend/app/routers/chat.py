@@ -173,8 +173,8 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
 
         # Re-inject last 10 turns from client-provided history
         for turn in history[-10:]:
-            if turn.get("role") in ("user", "assistant") and turn.get("content"):
-                messages.append({"role": turn["role"], "content": turn["content"]})
+            if turn.role in ("user", "assistant") and turn.content:
+                messages.append({"role": turn.role, "content": turn.content})
 
         messages.append({"role": "user", "content": req.message})
 
@@ -210,8 +210,8 @@ async def diet_plan_session(req: DietPlanChatRequest, current_user=Depends(get_c
 
         # 2. Add conversation history
         for turn in req.history:
-            if turn.get("role") in ("user", "assistant") and turn.get("content"):
-                messages.append({"role": turn["role"], "content": turn["content"]})
+            if turn.role in ("user", "assistant") and turn.content:
+                messages.append({"role": turn.role, "content": turn.content})
 
         # 3. Add current message
         messages.append({"role": "user", "content": req.message})

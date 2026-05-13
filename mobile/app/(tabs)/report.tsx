@@ -136,6 +136,14 @@ export default function ReportScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>রিপোর্ট লোড হচ্ছে...</Text>
         </View>
+      ) : !targets ? (
+        <View style={{ alignItems: 'center', paddingVertical: 40, gap: spacing.md }}>
+          <AlertCircle size={48} color={colors.warning} />
+          <Text style={{ fontFamily: fonts.bnBold, fontSize: 20, color: colors.textPrimary }}>রিপোর্ট ডেটা অনুপলব্ধ</Text>
+          <Text style={{ fontFamily: fonts.bn, fontSize: 15, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg }}>
+            সঠিক সাপ্তাহিক পুষ্টি রিপোর্ট পেতে অনুগ্রহ করে আপনার প্রোফাইল সম্পূর্ণ করুন।
+          </Text>
+        </View>
       ) : (
         <>
           {/* ── Summary Cards ──────────────────────────────────────────────── */}

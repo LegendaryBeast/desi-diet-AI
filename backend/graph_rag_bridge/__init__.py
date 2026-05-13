@@ -95,7 +95,15 @@ class KhadokGraphRAG:
         self._mock = None
         try:
             self._real = _RealKhadokGraphRAG()
+            # Fast verification to prevent subsequent queries from hanging for 30s timeouts if Neo4j is offline
+            self._real.driver.verify_connectivity()
         except Exception:
+            if self._real is not None:
+                try:
+                    self._real.close()
+                except Exception:
+                    pass
+            self._real = None
             self._mock = MockKhadokGraphRAG()
 
     def _delegate(self, method_name, *args, **kwargs):
@@ -104,9 +112,14 @@ class KhadokGraphRAG:
                 return getattr(self._real, method_name)(*args, **kwargs)
             except Exception:
                 # Runtime connection failure — switch to mock permanently
-                self._real.close()
+                try:
+                    self._real.close()
+                except Exception:
+                    pass
                 self._real = None
                 self._mock = MockKhadokGraphRAG()
+        if self._mock is None:
+            self._mock = MockKhadokGraphRAG()
         return getattr(self._mock, method_name)(*args, **kwargs)
 
     def get_safe_foods(self, conditions, goal="Maintain", limit=40):
