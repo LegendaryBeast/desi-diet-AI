@@ -102,11 +102,10 @@ def migrate(driver):
             """, code=str(code).strip())
         print(f"  ✅ {len(universal)} foods marked as supplementary/universal")
 
-        # ── Summary ──────────────────────────────────────────────────────────
         counts = session.run("""
             RETURN
-              (MATCH ()-[:HAS_MEAL_SLOT]->() RETURN count(*) LIMIT 1)[0] AS meal_slots,
-              (MATCH ()-[:BEST_PAIRED_WITH_GROUP]->() RETURN count(*) LIMIT 1)[0] AS pairings
+              count { MATCH ()-[:HAS_MEAL_SLOT]->() } AS meal_slots,
+              count { MATCH ()-[:BEST_PAIRED_WITH_GROUP]->() } AS pairings
         """).single()
         rels = session.run("""
             MATCH ()-[r:HAS_MEAL_SLOT]->() RETURN count(r) AS c1
