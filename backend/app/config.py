@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     llm_api_key: str = Field(alias="LLM_API_KEY")
     llm_base_url: str = Field(default="https://api.groq.com/openai/v1", alias="LLM_BASE_URL")
     llm_model: str = Field(default="llama-3.3-70b-versatile", alias="LLM_MODEL")
+    llm_max_tokens: int = Field(default=1024, alias="LLM_MAX_TOKENS")
 
     @property
     def cors_origin_list(self) -> List[str]:

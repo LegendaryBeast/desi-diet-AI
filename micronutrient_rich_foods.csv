@@ -1,0 +1,55 @@
+code,name_en,name_bn,energy_kcal,protein_g,fat_g,carbohydrate_g,calcium_mg,iron_mg,vitamin_a_mcg,vitamin_c_mg,fiber_g,water_g
+08_0015,"Guava, green, raw","Peyara, bivinno projati, kancha",63.0,1.0,0.5,10.9,17.0,0.7,33.0,228.3,5.4,81.4
+03_0022,"Gourd, teasle, raw",Kakrol,61.0,1.9,0.5,11.8,27.0,2.6,14.0,142.8,1.1,83.7
+08_0040,"Pomelo, raw",Zambura,38.0,0.4,0.3,7.7,36.0,0.2,3.0,121.7,1.0,89.9
+03_0048,"Gourd, bitter, fry*","Gourd, bitter, fry*",130.0,3.1,9.1,7.1,27.0,2.9,30.0,103.2,4.1,74.0
+08_0026,"Mango, Langra, yellow flesh, ripe, raw","Aam, Langra, paka",82.0,0.8,0.4,18.0,13.0,0.2,25.0,103.0,1.6,78.4
+03_0010,"Chilli, green, with seeds, raw",Kancha morich,45.0,2.8,0.1,5.9,22.0,1.6,10.0,102.3,4.7,85.5
+03_0039,"Gourd, teasle, boiled* (without salt)","Kakrol siddha, lobon chara",69.0,2.2,0.5,13.4,31.0,2.6,15.0,99.0,1.3,81.5
+03_0009,"Cauliflower, raw",Fulkopi,27.0,2.6,0.3,2.5,33.0,0.8,1.0,72.7,2.0,91.8
+08_0030,"Orange juice, raw (unsweetened) Komolar ross",,9.0,0.2,0.1,1.7,5.0,0.7,2.0,64.0,0.2,97.7
+08_0035,"Papaya, ripe, raw","Pepe, paka",33.0,0.6,0.1,6.5,29.0,0.3,60.0,61.8,1.7,90.5
+08_0031,"Orange, raw",Komola,44.0,0.7,0.2,8.7,23.0,0.2,19.0,54.0,2.4,87.7
+08_0032,"Orange, sweet, ripe, raw","Malta, paka",49.0,0.2,0.1,10.7,31.0,0.1,11.0,54.0,2.4,86.3
+08_0007,"Carambola, raw",Kamranga,41.0,0.5,0.7,6.7,10.0,0.8,7.0,49.4,2.8,88.7
+08_0023,"Lime, sweet, raw",Mushambee,42.0,0.7,0.5,8.5,35.0,0.5,2.0,48.5,0.5,89.3
+03_0036,"Cauliflower, boiled* (without salt)","Fulkopi siddha, lobon chara",28.0,2.7,0.3,2.7,36.0,0.8,1.0,46.6,2.1,91.4
+08_0022,"Lemon, Kagoji, raw","Lebu, Kagoji",56.0,0.8,1.0,10.2,65.0,0.3,4.0,45.9,1.3,86.0
+04_0031,"Watercress, raw",Helencha shak,49.0,2.0,0.5,8.8,31.0,1.9,530.0,43.0,0.5,87.4
+05_0008,"Misti alu, lal khosa","Misti alu, lal khosa",104.0,0.6,0.3,23.4,32.0,1.4,3.0,35.1,3.0,71.8
+08_0025,"Mango, Fazli, orange flesh, ripe, raw","Aam, Fazli, paka",70.0,0.9,0.5,14.7,14.0,0.5,292.0,34.7,1.6,81.7
+08_0027,"Melon, Futi, orange flesh, ripe, raw","Futi, paka",17.0,0.3,0.2,3.1,17.0,0.2,105.0,33.9,1.0,95.0
+08_0038,"Pineapple, ripe, raw","Anaros, paka",47.0,1.0,0.1,9.7,18.0,0.7,5.0,33.9,1.4,87.2
+08_0014,"Grapes, green, raw","Angur, halka sobuj",94.0,0.5,0.6,20.2,22.0,0.5,3.0,29.0,2.9,75.3
+08_0029,"Bangee, paka","Bangee, paka",16.0,0.3,0.2,2.8,21.0,0.0,4.0,26.0,0.8,95.5
+08_0039,"Pomegranate, ripe, with seed, raw","Bedana, paka, bichi soho",67.0,1.6,0.2,12.7,21.0,0.3,3.0,26.0,4.0,80.9
+05_0015,"Sweet potato, skin purple, flesh pale- Misti alu, lal khosa, siddha,","Sweet potato, skin purple, flesh pale- Misti alu, lal khosa, siddha,",106.0,0.6,0.3,23.6,33.0,1.4,3.0,24.9,3.0,71.4
+03_0032,"Turnip, raw",Shalgom,26.0,1.1,0.2,4.1,32.0,0.4,0.0,24.7,1.8,92.1
+03_0046,Lady’s finger-tomato bhuna * Dheros-tomato bhuna,Lady’s finger-tomato bhuna * Dheros-tomato bhuna,127.0,3.4,7.4,9.0,128.0,1.4,26.0,24.5,5.0,72.1
+03_0014,"Garlic, raw",Rosun,147.0,6.9,0.6,27.6,25.0,1.6,0.0,24.1,2.1,61.6
+08_0042,"Watermelon, ripe, raw","Tarmuz, lal, paka",22.0,0.5,0.2,4.4,12.0,0.4,29.0,23.9,0.4,94.2
+05_0006,"Misti alu, Komola Sundori","Misti alu, Komola Sundori",97.0,0.9,0.3,21.1,30.0,0.6,719.0,23.0,3.0,73.7
+07_0019,"Spearmint leaves, fresh Pudina pata","Spearmint leaves, fresh Pudina pata",35.0,3.0,0.7,0.6,110.0,15.6,62.0,22.0,6.9,87.4
+03_0028,"Pumpkin, raw",Mistikumra,18.0,1.4,0.3,1.3,52.0,0.7,369.0,21.1,2.4,93.9
+08_0005,"Breadfruit, raw",Madar,70.0,1.5,0.2,13.0,40.0,0.5,2.0,21.0,4.9,79.5
+05_0007,"Sweet potato, pale-yellow flesh, raw","Misti alu, holdey",105.0,0.9,0.3,23.1,25.0,1.0,3.0,20.4,3.0,71.7
+05_0009,"Sweet potato, white flesh, raw","Misti alu, sada",98.0,0.6,0.3,21.8,25.0,1.5,1.0,20.3,3.0,73.5
+03_0043,"Pumpkin, boiled* (without salt)",,29.0,2.2,0.5,2.1,79.0,1.1,554.0,20.1,3.8,90.4
+10_0013,"Lamb/Mutton, liver, raw",Verar koliza,150.0,19.3,7.5,1.3,10.0,6.3,8250.0,20.0,0.0,70.4
+10_0008,"Chicken liver, raw",Murgir koliza,114.0,16.9,4.8,0.7,18.0,9.0,3296.0,17.9,0.0,76.5
+05_0016,"Sweet potato, Komola Sundori, orange flesh, boiled","মিষ্টি আলু, কমলা সুন্দরী, সিদ্ধ",98.0,0.9,0.3,21.4,31.0,0.7,692.0,16.3,3.0,73.4
+12_0006,"Milk, cow, powder, whole","Milk, cow, powder, whole",497.0,26.6,26.7,37.5,959.0,0.7,238.0,10.7,0.0,3.2
+12_0011,"Milk, human, colostrum, raw",Shaldudh,58.0,2.0,2.6,6.6,28.0,0.1,166.0,7.0,0.0,88.2
+03_0008,"Carrot, raw",Gajor,34.0,0.9,0.3,6.0,26.0,0.4,329.0,1.4,2.6,89.7
+10_0001,"Beef liver, raw",Gorur koliza,130.0,20.4,3.6,3.9,4.0,3.5,4968.0,1.3,0.0,70.8
+03_0035,"Carrot, boiled* (without salt)","Gajor siddha, lobon chara",43.0,1.1,0.3,7.3,34.0,0.5,364.0,0.7,3.1,87.3
+13_0003,"Fish oil, cod liver Kod liver tel","Fish oil, cod liver Kod liver tel",900.0,0.0,100.0,0.0,1.0,0.1,2500.0,0.0,0.0,0.0
+13_0006,Margarine Margarine,Margarine Margarine,750.0,0.3,83.3,0.0,10.0,0.1,810.0,0.0,0.0,16.0
+13_0001,"Butter, salted Makhon, nonta","Butter, salted Makhon, nonta",733.0,0.9,81.0,0.2,24.0,0.0,633.0,0.0,0.0,15.9
+11_0003,"Egg, chicken, native, yolk, raw",,325.0,16.0,27.8,2.6,120.0,4.8,496.0,0.0,0.0,51.9
+11_0007,"Egg, duck, whole, boiled* (without salt)",,214.0,15.3,16.2,1.6,73.0,2.7,391.0,0.0,0.0,65.6
+11_0004,"Egg, duck, whole, raw",Hasher dim,188.0,13.5,14.3,1.4,65.0,2.4,362.0,0.0,0.0,69.7
+11_0006,"Egg, chicken, native, boiled* (without Deshi murgir dim siddha,",,179.0,15.1,13.2,0.0,68.0,1.9,229.0,0.0,0.0,72.9
+11_0002,"Egg, chicken, native, raw","Murgir dim, deshi",158.0,13.3,11.6,0.0,60.0,1.7,213.0,0.0,0.0,76.1
+11_0005,"Egg, chicken, farmed, boiled* (without Murgir dim siddha, lobon",,158.0,16.5,10.2,0.0,35.0,1.8,178.0,0.0,0.0,68.5
+11_0001,"Egg, chicken, farmed, raw","Murgir dim, farm er",139.0,14.5,9.0,0.0,29.0,1.5,165.0,0.0,0.0,72.3

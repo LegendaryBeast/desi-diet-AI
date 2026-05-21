@@ -1,13 +1,13 @@
-"""
-Graph Ingestion Module
-Reads the clean CSV and dietary rules, and creates the Knowledge Graph in Neo4j.
-"""
+import sys
+import os
+# Add project root and scripts directory to sys.path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(__file__))
 
 import csv
-import os
 from neo4j import GraphDatabase
-from .config import get_neo4j_config
-from .dietary_rules_data import NDG_DIETARY_RULES
+from config import get_neo4j_config
+from rag_engine.dietary_rules_data import NDG_DIETARY_RULES
 
 class GraphIngestion:
     def __init__(self):
@@ -214,8 +214,8 @@ class GraphIngestion:
         print(f"Loaded {len(foods)} NDG foods and connected to FoodGroups.")
 
 def run_ingestion():
-    csv_path = os.path.join(os.path.dirname(__file__), '..', 'preprocessing', 'bd_foods_clean.csv')
-    ndg_path = os.path.join(os.path.dirname(__file__), '..', 'preprocessing', 'ndg_foods.csv')
+    csv_path = os.path.join(os.path.dirname(__file__), 'preprocessing', 'bd_foods_clean.csv')
+    ndg_path = os.path.join(os.path.dirname(__file__), 'preprocessing', 'ndg_foods.csv')
 
     if not os.path.exists(csv_path):
         print("Error: Clean CSV not found. Please run preprocessing/clean_csv.py first.")

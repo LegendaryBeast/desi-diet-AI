@@ -19,7 +19,7 @@ class LLMClient:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
-        max_tokens: int = 2048,
+        max_tokens: Optional[int] = None,
         response_format: Optional[Dict[str, str]] = None,
     ) -> str:
         """Non-streaming chat completion. Returns full text."""
@@ -27,7 +27,7 @@ class LLMClient:
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": max_tokens or settings.llm_max_tokens,
         }
         if response_format:
             kwargs["response_format"] = response_format
@@ -39,14 +39,14 @@ class LLMClient:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
-        max_tokens: int = 2048,
+        max_tokens: Optional[int] = None,
     ) -> AsyncIterator[str]:
         """Streaming chat completion. Yields token chunks."""
         stream = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens or settings.llm_max_tokens,
             stream=True,
         )
         async for chunk in stream:

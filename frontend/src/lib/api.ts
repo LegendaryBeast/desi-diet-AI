@@ -227,8 +227,8 @@ export interface MarkSlotCompleteResponse {
 }
 
 export const mealPlanApi = {
-  getDaily: (language = 'bn') =>
-    apiFetch<MealPlanResponse>(`/meal-plans/daily?language=${language}`),
+  getDaily: (language = 'bn', offset = 0, force = false) =>
+    apiFetch<MealPlanResponse>(`/meal-plans/daily?language=${language}&offset=${offset}&force=${force}`),
 
   getWeekly: (language = 'bn') =>
     apiFetch<MealPlanResponse[]>(`/meal-plans/weekly?language=${language}`),
@@ -243,7 +243,7 @@ export const mealPlanApi = {
     }),
 
   markSlotComplete: (planId: string, slot: string, completed = true) =>
-    apiFetch<MarkSlotCompleteResponse>(`/meal-plans/${planId}/mark-complete`, {
+    apiFetch<MealPlanResponse>(`/meal-plans/${planId}/mark-complete`, {
       method: 'PATCH',
       body: JSON.stringify({ slot, completed }),
     }),
@@ -279,6 +279,14 @@ export const chatApi = {
   ): (() => void) => {
     const token = getToken();
     const ctrl = new AbortController();
+    let finished = false;
+
+    const finish = () => {
+      if (!finished) {
+        finished = true;
+        onDone();
+      }
+    };
 
     fetch(`${BASE_URL}/chat`, {
       method: 'POST',
@@ -294,30 +302,52 @@ export const chatApi = {
           onError('Failed to connect to AI');
           return;
         }
-        const reader = res.body!.getReader();
+        if (!res.body) {
+          onError('AI response stream was empty');
+          finish();
+          return;
+        }
+
+        const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
                 if (data.token) onToken(data.token);
-                if (data.done) onDone();
+                if (data.done) finish();
                 if (data.error) onError(data.error);
               } catch { /* ignore parse errors */ }
             }
           }
         }
+
+        buffer += decoder.decode();
+        if (buffer.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(buffer.slice(6));
+            if (data.token) onToken(data.token);
+            if (data.done) finish();
+            if (data.error) onError(data.error);
+          } catch { /* ignore parse errors */ }
+        }
+        finish();
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') onError(err.message);
+        if (err.name !== 'AbortError') {
+          onError(err.message);
+          finish();
+        }
       });
 
     return () => ctrl.abort();
@@ -338,6 +368,14 @@ export const chatApi = {
   ): (() => void) => {
     const token = getToken();
     const ctrl = new AbortController();
+    let finished = false;
+
+    const finish = () => {
+      if (!finished) {
+        finished = true;
+        onDone();
+      }
+    };
 
     fetch(`${BASE_URL}/chat/diet-plan-session`, {
       method: 'POST',
@@ -353,31 +391,54 @@ export const chatApi = {
           onError('Failed to connect to AI');
           return;
         }
-        const reader = res.body!.getReader();
+        if (!res.body) {
+          onError('AI response stream was empty');
+          finish();
+          return;
+        }
+
+        const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
                 if (data.token) onToken(data.token);
-                if (data.done) onDone();
+                if (data.done) finish();
                 if (data.plan_ready) onPlanReady(data.plan_ready);
                 if (data.error) onError(data.error);
               } catch { /* ignore */ }
             }
           }
         }
+
+        buffer += decoder.decode();
+        if (buffer.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(buffer.slice(6));
+            if (data.token) onToken(data.token);
+            if (data.done) finish();
+            if (data.plan_ready) onPlanReady(data.plan_ready);
+            if (data.error) onError(data.error);
+          } catch { /* ignore */ }
+        }
+        finish();
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') onError(err.message);
+        if (err.name !== 'AbortError') {
+          onError(err.message);
+          finish();
+        }
       });
 
     return () => ctrl.abort();
@@ -442,6 +503,11 @@ export const foodsApi = {
   detail: (code: string) =>
     apiFetch<FoodDetailResponse>(`/foods/${encodeURIComponent(code)}`),
 
+  justify: (code: string, name?: string) =>
+    apiFetch<{ explanation: string }>(
+      `/foods/${encodeURIComponent(code)}/justify${name ? `?name=${encodeURIComponent(name)}` : ''}`
+    ),
+
   searchWithInsight: (q: string, slot = 'any') =>
     apiFetch<FoodWithInsightResponse[]>(
       `/foods/search-with-insight?q=${encodeURIComponent(q)}&slot=${slot}`
@@ -466,6 +532,32 @@ export interface ConditionsReport {
   rules: { condition: string; food: string; action: string; reason: string }[];
 }
 
+export interface HealthSummaryReport {
+  period_days: number;
+  days_with_data: number;
+  adherence_pct: number;
+  avg_daily_calories: number;
+  target_calories: number;
+  targets: Record<string, number>;
+  calorie_history: Array<{
+    date: string;
+    calories_consumed: number;
+    calories_target: number;
+    completed_slots: number;
+    total_slots: number;
+  }>;
+  weight_history: Array<{ date: string; weight_kg: number }>;
+  macro_summary: {
+    protein_g: number; carbs_g: number; fat_g: number; fiber_g: number;
+    target_protein_g: number; target_carbs_g: number; target_fat_g: number;
+  };
+  pie_data: Array<{ name: string; name_en: string; value: number; grams: number; color: string }>;
+  micronutrient_targets: Array<{
+    name: string; name_bn: string; target: number; consumed: number; unit: string; percentage: number;
+  }>;
+  current_weight_kg: number;
+}
+
 export const reportsApi = {
   nutrition: () => apiFetch<NutritionReport>('/reports/nutrition'),
 
@@ -476,6 +568,12 @@ export const reportsApi = {
       method: 'POST',
       body: JSON.stringify({ email, language }),
     }),
+
+  healthSummary: (days: number, weightKg?: number) => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (weightKg) params.set('weight_kg', String(weightKg));
+    return apiFetch<HealthSummaryReport>(`/reports/health-summary?${params}`);
+  },
 };
 
 // ─── Meal Tracking ────────────────────────────────────────────────────────────

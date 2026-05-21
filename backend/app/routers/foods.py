@@ -6,7 +6,7 @@ from app.db import prisma
 from app.schemas import FoodSearchResponse, SafeFoodsResponse, FoodDetailResponse, FoodWithInsightResponse
 from app.utils import safe_list
 from app.core.llm_client import llm_client
-from graph_rag_bridge import KhadokGraphRAG
+from rag_engine import KhadokGraphRAG
 from typing import List
 
 router = APIRouter()
@@ -149,6 +149,66 @@ async def search_foods_with_insight(q: str, slot: str = "any", current_user=Depe
             )
         )
     return response
+
+
+JUSTIFY_SYSTEM_PROMPT = """You are a warm, professional, and knowledgeable Bangladeshi AI clinical dietitian.
+Your task is to explain why a specific food is suggested for the user's meal plan.
+Write a clear, personalized explanation in Bengali that covers:
+1. Why this food is suggested for their meal plan.
+2. The specific macro-nutrients (protein, carbs, fat, fiber) and key micro-nutrients (vitamins, minerals) present in the food (quote values from the food data provided).
+3. How this food is safe or beneficial for their specific medical conditions (like Diabetes, High Blood Pressure, Kidney Disease, etc.) and alignment with their overall health goal.
+
+Rules:
+- Be warm and friendly, using "আপনি" (you) and speaking directly to the user.
+- Keep the language easy to understand for a general user, but keep the scientific and nutritional details accurate.
+- Answer in Bengali.
+- Do not include any JSON structure or markdown wrappers around JSON. Simply return the text explanation. Use clean markdown formatting (bolding, lists, paragraphs) for the explanation.
+"""
+
+
+@router.get("/{code}/justify")
+async def justify_food_recommendation(
+    code: str,
+    name: str = None,
+    current_user = Depends(get_current_user)
+):
+    """Generate a personalized RAG-based explanation of why this food is suggested."""
+    profile = await prisma.profile.find_unique(where={"userId": current_user.id})
+    if not profile:
+        raise HTTPException(status_code=400, detail="Profile not found. Please complete profile setup.")
+    
+    conditions = safe_list(profile.medicalConditions)
+    goal = profile.goal or "Maintain"
+    
+    rag = _get_rag()
+    
+    # Try fetching context for the code
+    context = rag.get_chatbot_context(code, conditions)
+    if "not found in the knowledge graph" in context and name:
+        context = rag.get_chatbot_context(name, conditions)
+        
+    user_info = (
+        f"USER PROFILE:\n"
+        f"- Age: {profile.age}, Gender: {profile.gender}\n"
+        f"- Weight: {profile.weightKg}kg, Height: {profile.heightCm}cm\n"
+        f"- Medical Conditions: {', '.join(conditions) if conditions else 'None'}\n"
+        f"- Goal: {goal}\n\n"
+        f"FOOD DATA & CONTEXT (GraphRAG):\n"
+        f"{context}\n"
+    )
+    
+    messages = [
+        {"role": "system", "content": JUSTIFY_SYSTEM_PROMPT},
+        {"role": "user", "content": user_info},
+    ]
+    
+    explanation = await llm_client.chat_completion(
+        messages=messages,
+        temperature=0.4,
+        max_tokens=400
+    )
+    
+    return {"explanation": explanation.strip()}
 
 
 @router.get("/{code}", response_model=FoodDetailResponse)

@@ -11,7 +11,7 @@ from app.schemas import (
     NutritionTargetsResponse,
 )
 from app.utils import safe_list, to_json_string
-from graph_rag_bridge import calculate_targets
+from rag_engine import calculate_targets
 from typing import List
 
 router = APIRouter()
@@ -47,6 +47,8 @@ def _calculate_targets_from_profile(profile) -> NutritionTargetsResponse:
         "height_cm": profile.heightCm,
         "weight_kg": profile.weightKg,
         "activity_level": profile.activityLevel,
+        "age": profile.age,
+        "goal": profile.goal,
     })
 
     return NutritionTargetsResponse(

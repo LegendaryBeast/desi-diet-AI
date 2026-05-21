@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from app.db import prisma
 from app.core.llm_client import llm_client
 from app.utils import safe_list, to_json_string
-from graph_rag_bridge import calculate_targets, KhadokGraphRAG, NDG_DIETARY_RULES
+from rag_engine import calculate_targets, KhadokGraphRAG, NDG_DIETARY_RULES, get_rag_recommended_foods
 
 
 # Singleton Neo4j connection
@@ -21,21 +21,289 @@ def _get_rag() -> KhadokGraphRAG:
     return _rag_engine
 
 
+def _get_popular_pairings(driver) -> List[Dict[str, Any]]:
+    try:
+        with driver.session() as session:
+            result = session.run("""
+                MATCH (f1:Food)-[r:PAIRS_WITH]->(f2:Food)
+                RETURN f1.name_en AS f1_en, coalesce(f1.name_bn, f1.name_en) AS f1_bn,
+                       f2.name_en AS f2_en, coalesce(f2.name_bn, f2.name_en) AS f2_bn,
+                       r.popularity AS popularity, r.pairing_type AS pairing_type,
+                       r.meal_slot AS meal_slot
+                ORDER BY r.popularity DESC
+            """)
+            pairings = []
+            for rec in result:
+                pairings.append({
+                    "f1_en": rec["f1_en"] or "",
+                    "f1_bn": rec["f1_bn"] or rec["f1_en"] or "",
+                    "f2_en": rec["f2_en"] or "",
+                    "f2_bn": rec["f2_bn"] or rec["f2_en"] or "",
+                    "popularity": rec["popularity"] or 1.0,
+                    "pairing_type": rec["pairing_type"] or "",
+                    "meal_slot": rec["meal_slot"] or "all"
+                })
+            return pairings
+    except Exception as e:
+        print(f"⚠️ Failed to get popular pairings: {e}")
+        return []
+
+
+def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
+    """
+    Returns per-slot sets of food codes that are appropriate for each meal slot.
+    Uses HAS_MEAL_SLOT relationships to enforce proper Bangladeshi meal structure.
+    Returns: {breakfast: set, lunch: set, dinner: set, supplementary: set}
+    """
+    result = {"breakfast": set(), "lunch": set(), "dinner": set(), "supplementary": set()}
+    try:
+        with driver.session() as session:
+            # Foods for each slot
+            rows = session.run("""
+                MATCH (f:Food)-[r:HAS_MEAL_SLOT]->(ms:MealSlot)
+                WHERE f.code IN $codes
+                RETURN f.code AS code, ms.name AS slot, r.role AS role
+            """, codes=list(safe_food_codes)).data()
+
+            for row in rows:
+                slot = row["slot"]
+                code = row["code"]
+                role = row.get("role", "side")
+                if slot in result:
+                    result[slot].add(code)
+                if slot == "all":
+                    result["breakfast"].add(code)
+                    result["lunch"].add(code)
+                    result["dinner"].add(code)
+
+            # Supplementary = foods marked is_supplementary=true (milk, fruits, etc.)
+            supp = session.run("""
+                MATCH (f:Food) WHERE f.is_supplementary = true AND f.code IN $codes
+                RETURN f.code AS code
+            """, codes=list(safe_food_codes)).data()
+            for row in supp:
+                result["supplementary"].add(row["code"])
+
+    except Exception as e:
+        print(f"⚠️ Failed to get slot-separated foods: {e}")
+        # Fallback: allow all foods in all slots
+        for key in result:
+            result[key] = set(safe_food_codes)
+    return result
+
+
+def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, Any]], min_per_group: int = 3) -> List[Dict[str, Any]]:
+    """
+    Ensures the food list has adequate representation from all major food groups
+    and includes essential micronutrient-dense foods (eggs, milk, lentils, spinach, guava)
+    so the LLM can build calorie-sufficient and nutrient-complete meal plans.
+    """
+    existing_codes = {f["code"] for f in rag_foods if f.get("code")}
+    existing_groups = {f["food_group"] for f in rag_foods}
+
+    driver = rag.get_neo4j_driver()
+    supplemental = []
+
+    # 1. Always ensure key micronutrient-dense staples are present
+    essential_codes = ["M004", "L002", "B013", "C033", "E028"]
+    missing_essentials = [c for c in essential_codes if c not in existing_codes]
+    if missing_essentials:
+        try:
+            with driver.session() as session:
+                result = session.run("""
+                    MATCH (f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+                    WHERE f.code IN $codes
+                    RETURN f.code AS code, f.name_en AS name_en,
+                           coalesce(f.name_bn, f.name_en) AS name_bn,
+                           f.energy_kcal AS calories, f.protein_g AS protein,
+                           f.fiber_g AS fiber, fg.name_en AS food_group
+                """, codes=missing_essentials)
+                for rec in result:
+                    if rec["code"] not in existing_codes:
+                        supplemental.append({
+                            "code":       rec["code"] or "",
+                            "name_en":    rec["name_en"] or "",
+                            "name_bn":    rec["name_bn"] or rec["name_en"] or "",
+                            "calories":   round(float(rec["calories"] or 0), 1),
+                            "protein":    round(float(rec["protein"]  or 0), 2),
+                            "fiber":      round(float(rec["fiber"]    or 0), 2),
+                            "food_group": rec["food_group"] or "Other",
+                            "similarity_score": 0.0,
+                        })
+                        existing_codes.add(rec["code"])
+                        existing_groups.add(rec["food_group"] or "Other")
+        except Exception as e:
+            print(f"⚠️ _ensure_balanced_food_list essentials query error: {e}")
+
+    # 2. Check and ensure each major group has at least 3-4 diverse items for a balanced cultural diet
+    has_grain = any(g in existing_groups for g in ["Cereals and Millets", "Cereals", "Cereals & Grains"])
+    has_pulses = any(g in existing_groups for g in ["Grain Legumes", "Pulses & Legumes", "Pulse and Pulse Products"])
+    has_meat = any(g in existing_groups for g in ["Poultry", "Animal Meat", "Meat & Poultry"])
+    has_fish = any(g in existing_groups for g in ["Marine Fish", "Fresh Water Fish and Shellfish", "Marine Shellfish", "Fish & Seafood", "Fish and Fish Products"])
+
+    # Query Neo4j for specific missing groups
+    def fetch_missing_group_foods(groups, limit=4):
+        try:
+            with driver.session() as session:
+                result = session.run("""
+                    MATCH (f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+                    WHERE fg.name_en IN $groups AND f.is_partial = false
+                    RETURN f.code AS code, f.name_en AS name_en,
+                           coalesce(f.name_bn, f.name_en) AS name_bn,
+                           f.energy_kcal AS calories, f.protein_g AS protein,
+                           f.fiber_g AS fiber, fg.name_en AS food_group
+                    ORDER BY f.energy_kcal DESC
+                    LIMIT $limit
+                """, groups=groups, limit=limit)
+                
+                added = 0
+                for rec in result:
+                    if rec["code"] not in existing_codes:
+                        supplemental.append({
+                            "code":       rec["code"] or "",
+                            "name_en":    rec["name_en"] or "",
+                            "name_bn":    rec["name_bn"] or rec["name_en"] or "",
+                            "calories":   round(float(rec["calories"] or 0), 1),
+                            "protein":    round(float(rec["protein"]  or 0), 2),
+                            "fiber":      round(float(rec["fiber"]    or 0), 2),
+                            "food_group": rec["food_group"] or "Other",
+                            "similarity_score": 0.0,
+                        })
+                        existing_codes.add(rec["code"])
+                        added += 1
+                if added > 0:
+                    print(f"✅ Supplemental: Added {added} items from {groups[0]}")
+        except Exception as e:
+            print(f"⚠️ _ensure_balanced_food_list groups query error for {groups}: {e}")
+
+    # Enforce Staples
+    if not has_grain:
+        fetch_missing_group_foods(["Cereals and Millets", "Cereals", "Cereals & Grains"], limit=4)
+        
+    # Enforce Pulses
+    if not has_pulses:
+        fetch_missing_group_foods(["Grain Legumes", "Pulses & Legumes"], limit=4)
+
+    # Enforce Meat & Poultry (Beef/Chicken)
+    if not has_meat:
+        fetch_missing_group_foods(["Poultry", "Animal Meat", "Meat & Poultry"], limit=5)
+
+    # Enforce Fish & Seafood
+    if not has_fish:
+        fetch_missing_group_foods(["Marine Fish", "Fresh Water Fish and Shellfish", "Fish & Seafood"], limit=5)
+
+    combined = rag_foods + supplemental
+    print(f"✅ Balanced food list: {len(rag_foods)} RAG + {len(supplemental)} essential/staple foods")
+    return combined
+
+
+def _scale_plan_to_target(plan_data: Dict[str, Any], target_calories: int) -> Dict[str, Any]:
+    """Scale all food item portions proportionally so the total calories exactly hit the target.
+    This fixes the common issue where the LLM under-generates food portions.
+    """
+    meals = plan_data.get("meals", [])
+    if not meals:
+        return plan_data
+
+    # Calculate actual total from LLM output
+    actual_total = sum(
+        item.get("calories", 0)
+        for meal in meals
+        for item in meal.get("items", [])
+    )
+
+    if actual_total <= 0:
+        return plan_data
+
+    # Only scale if there's a meaningful gap (>3% off target)
+    gap_pct = abs(actual_total - target_calories) / target_calories
+    if gap_pct < 0.03:
+        return plan_data
+
+    scale = target_calories / actual_total
+    print(f"⚖️  Scaling plan: LLM generated {actual_total} kcal → scaling by {scale:.3f} to reach {target_calories} kcal")
+
+    meal_targets = [0.30, 0.40, 0.30]  # breakfast / lunch / dinner fractions
+    for i, meal in enumerate(meals):
+        meal_target = round(target_calories * meal_targets[i]) if i < len(meal_targets) else round(target_calories / len(meals))
+        meal["target_calories"] = meal_target
+        items = meal.get("items", [])
+        for item in items:
+            original_cal = item.get("calories", 0)
+            original_g   = item.get("amount_g", 0)
+            item["calories"]  = round(original_cal * scale)
+            item["amount_g"]  = round(original_g  * scale)
+
+    return plan_data
+
+
 def _build_meal_plan_prompt(
     profile: Any,
     targets: Dict[str, Any],
     safe_foods: List[Dict[str, Any]],
     conditions: List[str],
     language: str = "bn",
+    pairings: List[Dict[str, Any]] = None,
+    slot_pools: Dict[str, set] = None,
 ) -> List[Dict[str, str]]:
     """Build the LLM prompt for meal plan generation."""
 
     applicable_rules = [r for r in NDG_DIETARY_RULES if r["condition"] in conditions]
 
-    foods_text = "\n".join([
-        f"- {f['name_bn']} ({f['name_en']}): {f.get('calories', 'N/A')} kcal, {f.get('protein', 'N/A')}g protein, group: {f['food_group']}"
-        for f in safe_foods[:30]
-    ])
+    # Slot-separated food lists — each slot gets its own filtered pool
+    import random
+
+    def _foods_for_slot(slot: str) -> str:
+        if slot_pools and slot in slot_pools and slot_pools[slot]:
+            slot_codes = slot_pools[slot]
+            supp_codes = slot_pools.get("supplementary", set())
+            allowed = [f for f in safe_foods if f.get("code") in slot_codes or f.get("code") in supp_codes]
+        else:
+            allowed = safe_foods[:]
+        
+        # Categorize allowed foods
+        staples = []
+        proteins = []
+        veggies = []
+        others = []
+        
+        for f in allowed:
+            g = f.get("food_group", "Other")
+            if g in ["Cereals and Millets", "Cereals", "Cereals & Grains"]:
+                staples.append(f)
+            elif g in ["Poultry", "Animal Meat", "Marine Fish", "Fresh Water Fish and Shellfish", "Marine Shellfish", "Egg and Egg Products", "Eggs", "Grain Legumes", "Pulses & Legumes"]:
+                proteins.append(f)
+            elif g in ["Green Leafy Vegetables", "Other Vegetables", "Roots and Tubers", "Leafy Vegetables", "Vegetables", "Roots & Tubers"]:
+                veggies.append(f)
+            else:
+                others.append(f)
+                
+        # Shuffle each category for maximum variety
+        random.shuffle(staples)
+        random.shuffle(proteins)
+        random.shuffle(veggies)
+        random.shuffle(others)
+        
+        # Build structured text block
+        lines = []
+        if staples:
+            lines.append("  STAPLES (grains/roti/rice):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:6]])
+        if proteins:
+            lines.append("  PROTEINS (meat/poultry/fish/eggs/lentils):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in proteins[:12]])
+        if veggies:
+            lines.append("  VEGETABLES & GREENS:")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in veggies[:10]])
+        if others and slot in ["breakfast", "snack"]:
+            lines.append("  OTHER (supplementary/dairy/fruits):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in others[:6]])
+            
+        return "\n".join(lines)
+
+    foods_text_breakfast = _foods_for_slot("breakfast")
+    foods_text_lunch     = _foods_for_slot("lunch")
+    foods_text_dinner    = _foods_for_slot("dinner")
 
     rules_text = "\n".join([
         f"- [{r['rule_type']}] {r['group_target']}: {r['reason_en']}"
@@ -44,19 +312,9 @@ def _build_meal_plan_prompt(
 
     lang_instruction = "বাংলায় উত্তর দিন।" if language == "bn" else "Reply in English."
 
-    system_prompt = """You are Khadok-Bangla AI, a warm and knowledgeable Bangladeshi nutrition companion.
-Your task is to generate a personalized daily meal plan using a wide variety of authentic Bangladeshi foods.
-
-CRITICAL RULES:
-1. Generate authentic Bangladeshi meals. Use the provided safe foods as a reference, but freely add other culturally appropriate and healthy foods.
-2. Respect all dietary rules (AVOID, PREFER, LIMIT).
-3. Match the calorie target and macro distribution.
-4. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
-5. Explain WHY each food is recommended for this specific user.
-6. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
-7. All numeric values must be integers where specified.
-8. Every meal must have at least one item.
-"""
+    breakfast_cal = round(targets['target_calories'] * 0.30)
+    lunch_cal     = round(targets['target_calories'] * 0.40)
+    dinner_cal    = round(targets['target_calories'] * 0.30)
 
     # Enrich prompt with dietary context from GraphRAG
     dietary_context = ""
@@ -68,41 +326,87 @@ CRITICAL RULES:
                 action = "AVOID" if r["rule_type"] == "AVOID" else "PREFER"
                 dietary_context += f"  - {action} {r['group_target']}: {r['reason_en']}\n"
 
+    pairings_section = ""
+    if pairings:
+        # Shuffle pairings to provide diverse inspiration
+        display_pairings = pairings[:25]
+        random.shuffle(display_pairings)
+        pairings_lines = []
+        for p in display_pairings:
+            pairings_lines.append(f"- {p['f1_bn']} ({p['f1_en']}) pairs well with {p['f2_bn']} ({p['f2_en']}) [Popularity weight: {p['popularity']}, Type: {p['pairing_type']}, Slot: {p['meal_slot']}]")
+        pairings_section = "\nPOPULAR FOOD COMBINATIONS & PAIRINGS (highly recommended to combine these foods together inside a meal slot):\n" + "\n".join(pairings_lines) + "\n"
+
+
+
+    system_prompt = """You are Khadok-Bangla AI, a Bangladeshi clinical nutrition assistant.
+Your task is to format a personalized daily meal plan using ONLY the graph-validated foods provided below.
+
+CRITICAL RULES:
+1. Use ONLY foods from the GRAPH-RANKED FOODS list as main ingredients. Do NOT invent or add any food not on that list.
+2. You may supplement with small amounts of pantry staples: salt, water, oil, turmeric, cumin, coriander, chili, garam masala, ginger, garlic.
+3. Respect all dietary rules (AVOID, PREFER, LIMIT).
+4. YOU MUST HIT THE CALORIE TARGET. Each slot has a per-slot target below. Use generous portions of calorie-dense foods (rice, fish, dal, meat) to reach those targets.
+5. Calorie calculation: calories = round((kcal_per_100g × amount_g) / 100). Use large enough amounts.
+6. DO NOT select only low-calorie vegetables. Include high-calorie staples (rice, roti, dal, fish, meat, eggs) to meet energy needs.
+7. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
+8. Explain WHY each food helps the user's specific condition.
+9. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
+10. All numeric values must be integers.
+11. Lunch and dinner MUST include a staple grain (Rice/ভাত or Roti/রুটি) from the food list.
+12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
+13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations!
+14. MEAL SLOT RULES: Follow the food-to-slot compatibility data below. Do NOT serve breakfast-only foods (fruits, nuts, milk) as lunch/dinner main items. Lunch and dinner should contain heavy foods: rice/roti + protein curry + dal + vegetable. Breakfast should be lighter: roti/bread + egg/dal + optional fruit.
+15. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
+  - For example, if you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
+  - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
+  - If you choose `পোলট্রি মুরগি` (chicken), list it as `মুরগির মাংসের তরকারি (কম তেল)` (chicken curry).
+  - If you choose a leafy vegetable like `লাল শাক` or `পালং শাক`, list it as `লাল শাক ভাজি` or `পালং শাকের তরকারি`.
+  - If you choose lentils like `মসুর ডাল`, list it as `মসুর ডাল (রান্না করা)`.
+  This makes the meal plan highly practical and realistic for daily eating.
+"""
+
     user_prompt = f"""{lang_instruction}
 
 USER PROFILE:
 - Age: {profile.age}, Gender: {profile.gender}
 - Weight: {profile.weightKg}kg, Height: {profile.heightCm}cm
-- Activity Level: {profile.activityLevel}
-- Goal: {profile.goal}
+- Activity Level: {profile.activityLevel}, Goal: {profile.goal}
 - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
-- Preferred Foods: {', '.join(safe_list(profile.preferredFoods)) if profile.preferredFoods else 'Any'}
-- Disliked Foods: {', '.join(safe_list(profile.dislikedFoods)) if profile.dislikedFoods else 'None'}
 
 DAILY NUTRITION TARGETS (NDG 2025):
-- Target Calories: {targets['target_calories']} kcal
+- Total Target Calories: {targets['target_calories']} kcal (YOU MUST REACH THIS)
 - Protein: {targets['protein_g']}g | Carbs: {targets['carbs_g']}g | Fat: {targets['fat_g']}g
-- Fiber: {targets.get('fiber_g', 25)}g | Water: {targets['water_L']}L
+
+MEAL CALORIE DISTRIBUTION (MUST HIT EACH TARGET):
+- Breakfast (সকালের নাস্তা): {breakfast_cal} kcal  ← use rice/roti + protein + veg
+- Lunch (দুপুরের খাবার):    {lunch_cal} kcal  ← use rice 250g≈{round(356*2.5)} kcal + dal 150g≈{round(357*1.5)} kcal + fish + veg
+- Dinner (রাতের খাবার):    {dinner_cal} kcal  ← use rice/roti + protein + veg
+
+PORTION GUIDANCE (to help you hit targets):
+- Rice (ভাত) 200g ≈ {round(356*2)} kcal  |  Rice 300g ≈ {round(356*3)} kcal
+- Roti (রুটি) 80g ≈ {round(300*0.8)} kcal  |  Dal 150g ≈ {round(357*1.5)} kcal
+- Fish (মাছ) 150g ≈ 150–250 kcal  |  Eggs (ডিম) 2 pcs (100g) ≈ 150 kcal
 
 DIETARY RULES:
 {rules_text}
 
-DETAILED CONTEXT:
 {dietary_context}
 
-SAFE FOODS (use only these):
-{foods_text}
+{pairings_section}
 
-MEAL DISTRIBUTION:
-- Breakfast (সকালের নাস্তা): 20% of calories
-- Morning Snack (সকালের হালকা নাস্তা): 10%
-- Lunch (দুপুরের খাবার): 35%
-- Evening Snack (বিকেলের নাস্তা): 10%
-- Dinner (রাতের খাবার): 25%
 
-TASK: Generate a complete daily meal plan in JSON format. Do not include any text outside the JSON object.
+FOODS FOR BREAKFAST (সকালের নাস্তা) — choose ONLY from this list for breakfast:
+{foods_text_breakfast}
 
-RESPONSE FORMAT (strict JSON, follow exactly):
+FOODS FOR LUNCH (দুপুরের খাবার) — choose ONLY from this list for lunch:
+{foods_text_lunch}
+
+FOODS FOR DINNER (রাতের খাবার) — choose ONLY from this list for dinner:
+{foods_text_dinner}
+
+TASK: Generate a complete daily meal plan. Make sure the sum of all item calories ≈ {targets['target_calories']} kcal.
+
+RESPONSE FORMAT (strict JSON, no text outside JSON):
 {{
   "target_calories": {targets['target_calories']},
   "macros": {{"protein_g": {targets['protein_g']}, "carbs_g": {targets['carbs_g']}, "fat_g": {targets['fat_g']}, "fiber_g": {targets.get('fiber_g', 25)}}},
@@ -112,17 +416,29 @@ RESPONSE FORMAT (strict JSON, follow exactly):
     {{
       "slot": "breakfast",
       "slot_bn": "সকালের নাস্তা",
-      "target_calories": number,
+      "target_calories": {breakfast_cal},
       "items": [
         {{
-          "food_code": "code_or_name",
+          "food_code": "code_from_list",
           "name_bn": "বাংলা নাম",
           "name_en": "English Name",
-          "amount_g": 150,
-          "calories": 195,
+          "amount_g": 200,
+          "calories": {round(356*2)},
           "why_bn": "কেন এই খাবার..."
         }}
       ]
+    }},
+    {{
+      "slot": "lunch",
+      "slot_bn": "দুপুরের খাবার",
+      "target_calories": {lunch_cal},
+      "items": []
+    }},
+    {{
+      "slot": "dinner",
+      "slot_bn": "রাতের খাবার",
+      "target_calories": {dinner_cal},
+      "items": []
     }}
   ],
   "condition_rules_applied": {json.dumps(conditions)}
@@ -135,21 +451,74 @@ RESPONSE FORMAT (strict JSON, follow exactly):
     ]
 
 
+
 def _build_weekly_meal_plan_prompt(
     profile: Any,
     targets: Dict[str, Any],
     safe_foods: List[Dict[str, Any]],
     conditions: List[str],
     language: str = "bn",
+    pairings: List[Dict[str, Any]] = None,
+    slot_pools: Dict[str, set] = None,
 ) -> List[Dict[str, str]]:
     """Build the LLM prompt for 7-day meal plan generation."""
 
     applicable_rules = [r for r in NDG_DIETARY_RULES if r["condition"] in conditions]
 
-    foods_text = "\n".join([
-        f"- {f['name_bn']} ({f['name_en']}): {f.get('calories', 'N/A')} kcal, {f.get('protein', 'N/A')}g protein, group: {f['food_group']}"
-        for f in safe_foods[:50]
-    ])
+    # Slot-separated food lists
+    import random
+
+    def _foods_for_slot(slot: str) -> str:
+        if slot_pools and slot in slot_pools and slot_pools[slot]:
+            slot_codes = slot_pools[slot]
+            supp_codes = slot_pools.get("supplementary", set())
+            allowed = [f for f in safe_foods if f.get("code") in slot_codes or f.get("code") in supp_codes]
+        else:
+            allowed = safe_foods[:]
+        
+        # Categorize allowed foods
+        staples = []
+        proteins = []
+        veggies = []
+        others = []
+        
+        for f in allowed:
+            g = f.get("food_group", "Other")
+            if g in ["Cereals and Millets", "Cereals", "Cereals & Grains"]:
+                staples.append(f)
+            elif g in ["Poultry", "Animal Meat", "Marine Fish", "Fresh Water Fish and Shellfish", "Marine Shellfish", "Egg and Egg Products", "Eggs", "Grain Legumes", "Pulses & Legumes"]:
+                proteins.append(f)
+            elif g in ["Green Leafy Vegetables", "Other Vegetables", "Roots and Tubers", "Leafy Vegetables", "Vegetables", "Roots & Tubers"]:
+                veggies.append(f)
+            else:
+                others.append(f)
+                
+        # Shuffle each category for maximum variety
+        random.shuffle(staples)
+        random.shuffle(proteins)
+        random.shuffle(veggies)
+        random.shuffle(others)
+        
+        # Build structured text block
+        lines = []
+        if staples:
+            lines.append("  STAPLES (grains/roti/rice):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:6]])
+        if proteins:
+            lines.append("  PROTEINS (meat/poultry/fish/eggs/lentils):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in proteins[:12]])
+        if veggies:
+            lines.append("  VEGETABLES & GREENS:")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in veggies[:10]])
+        if others and slot in ["breakfast", "snack"]:
+            lines.append("  OTHER (supplementary/dairy/fruits):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in others[:6]])
+            
+        return "\n".join(lines)
+
+    foods_text_breakfast = _foods_for_slot("breakfast")
+    foods_text_lunch     = _foods_for_slot("lunch")
+    foods_text_dinner    = _foods_for_slot("dinner")
 
     rules_text = "\n".join([
         f"- [{r['rule_type']}] {r['group_target']}: {r['reason_en']}"
@@ -158,18 +527,39 @@ def _build_weekly_meal_plan_prompt(
 
     lang_instruction = "বাংলায় উত্তর দিন।" if language == "bn" else "Reply in English."
 
-    system_prompt = """You are Khadok-Bangla AI, a warm and knowledgeable Bangladeshi nutrition companion.
-Your task is to generate a personalized 7-DAY weekly meal plan using a wide variety of authentic Bangladeshi foods.
+    pairings_section = ""
+    if pairings:
+        display_pairings = pairings[:30]
+        random.shuffle(display_pairings)
+        pairings_lines = []
+        for p in display_pairings:
+            pairings_lines.append(f"- {p['f1_bn']} ({p['f1_en']}) pairs well with {p['f2_bn']} ({p['f2_en']}) [Popularity weight: {p['popularity']}, Type: {p['pairing_type']}, Slot: {p['meal_slot']}]")
+        pairings_section = "\nPOPULAR FOOD COMBINATIONS & PAIRINGS (highly recommended to combine these foods together inside a meal slot):\n" + "\n".join(pairings_lines) + "\n"
+
+    system_prompt = """You are Khadok-Bangla AI, a Bangladeshi clinical nutrition assistant.
+Your task is to format a personalized 7-DAY weekly meal plan using ONLY the graph-validated foods provided below.
 
 CRITICAL RULES:
 1. Provide a plan for exactly 7 days.
-2. Generate authentic Bangladeshi meals. Use the provided safe foods as a reference, but freely add other culturally appropriate and healthy foods.
-3. Respect all dietary rules (AVOID, PREFER, LIMIT).
-4. Match the daily calorie target and macro distribution for EACH day.
-5. Provide variety across the 7 days (do not repeat the exact same meals every day).
-6. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
-7. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
-8. All numeric values must be integers.
+2. For each day, include exactly 3 meals: breakfast (সকালের নাস্তা), lunch (দুপুরের খাবার), and dinner (রাতের খাবার). No snacks.
+3. Use ONLY foods from the GRAPH-RANKED FOODS list as main ingredients. Do NOT invent or add any food not on that list.
+4. You may supplement with pantry staples: salt, water, oil, turmeric, cumin, coriander, chili, garam masala, ginger, garlic.
+5. Respect all dietary rules (AVOID, PREFER, LIMIT).
+6. Match the daily calorie target for EACH day. Calculate: round((kcal_per_100g × amount_g) / 100).
+7. Provide variety across the 7 days — do not repeat the exact same meals every day.
+8. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
+9. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
+10. All numeric values must be integers.
+11. Authentic Bengali lunch and dinner MUST include a staple grain: Rice (ভাত), Roti/Chapati (রুটি), or similar.
+12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
+13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations across the 7 days!
+14. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
+  - For example, if you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
+  - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
+  - If you choose `পোলট্রি মুরগি` (chicken), list it as `মুরগির মাংসের তরকারি (কম তেল)` (chicken curry).
+  - If you choose a leafy vegetable like `লাল শাক` or `পালং শাক`, list it as `লাল শাক ভাজি` or `পালং শাকের তরকারি`.
+  - If you choose lentils like `মসুর ডাল`, list it as `মসুর ডাল (রান্না করা)`.
+  This makes the meal plan highly practical and realistic for daily eating.
 """
 
     dietary_context = ""
@@ -198,8 +588,16 @@ DIETARY RULES:
 {rules_text}
 {dietary_context}
 
-SAFE FOODS (use only these):
-{foods_text}
+{pairings_section}
+
+FOODS FOR BREAKFAST (সকালের নাস্তা) — choose ONLY from this list for breakfast:
+{foods_text_breakfast}
+
+FOODS FOR LUNCH (দুপুরের খাবার) — choose ONLY from this list for lunch:
+{foods_text_lunch}
+
+FOODS FOR DINNER (রাতের খাবার) — choose ONLY from this list for dinner:
+{foods_text_dinner}
 
 TASK: Generate a complete 7-day meal plan in JSON format. Do not include any text outside the JSON object.
 
@@ -256,7 +654,24 @@ def _generate_fallback_meal_plan(
 
     categories = {}
     for f in safe_foods:
-        cat = f.get("food_group", "Other")
+        raw_cat = f.get("food_group", "Other")
+        cat = "Other"
+        if raw_cat in ["Cereals", "Cereals & Grains", "Cereals and Millets", "Cereals and Cereal Products"]:
+            cat = "Cereals & Grains"
+        elif raw_cat in ["Pulses & Legumes", "Grain Legumes", "Pulse and Pulse Products"]:
+            cat = "Pulses & Legumes"
+        elif raw_cat in ["Fish & Seafood", "Fresh Water Fish and Shellfish", "Marine Fish", "Marine Shellfish", "Marine Mollusks", "Fish and Fish Products"]:
+            cat = "Fish & Seafood"
+        elif raw_cat in ["Meat & Poultry", "Animal Meat", "Poultry"]:
+            cat = "Meat & Poultry"
+        elif raw_cat in ["Eggs", "Egg and Egg Products"]:
+            cat = "Eggs"
+        elif raw_cat in ["Leafy Vegetables", "Green Leafy Vegetables"]:
+            cat = "Leafy Vegetables"
+        elif raw_cat in ["Vegetables", "Other Vegetables", "Roots & Tubers", "Roots and Tubers"]:
+            cat = "Vegetables"
+        elif raw_cat in ["Fruits", "Fresh Fruits"]:
+            cat = "Fruits"
         categories.setdefault(cat, []).append(f)
 
     def pick(cat, used):
@@ -285,53 +700,180 @@ def _generate_fallback_meal_plan(
 
     used_codes = set()
 
+    # Breakfast-only cereals (Semolina/Suji, Vermicelli/Semai)
+    BREAKFAST_ONLY_CEREALS = {"A016", "A022", "A023", "A024"}
+
+    def pick_slot_specific(cat, slot, used):
+        pool = categories.get(cat, [])
+        
+        # 1. Slot-based filtering
+        if slot in ["lunch", "dinner"]:
+            # Exclude sweet breakfast items
+            pool = [f for f in pool if f["code"] not in BREAKFAST_ONLY_CEREALS]
+        elif slot == "breakfast":
+            # For breakfast cereals, prefer suji, semai, atta/roti, exclude raw rice
+            preferred_bfast_codes = BREAKFAST_ONLY_CEREALS.union({"A019", "A018"})
+            bfast_pool = [f for f in pool if f["code"] in preferred_bfast_codes]
+            if bfast_pool:
+                pool = bfast_pool
+
+        # 2. Protein slot preference
+        if cat in ["Fish & Seafood", "Meat & Poultry"] and slot == "breakfast":
+            # Do not serve heavy fish/meat curry at breakfast
+            return None
+
+        # Filter used codes
+        eligible = [f for f in pool if f["code"] not in used and f["code"] not in used_codes_global]
+        if eligible:
+            chosen = random.choice(eligible)
+            used.add(chosen["code"])
+            used_codes_global.add(chosen["code"])
+            return chosen
+
+        # Fallback to any in category matching slot constraints
+        if pool:
+            chosen = random.choice(pool)
+            return chosen
+
+        # absolute fallback
+        return random.choice(safe_foods) if safe_foods else None
+
     def make_meal(slot, slot_bn, pct):
         target = int(targets["target_calories"] * pct)
         items = []
-        meal_cals = 0
 
-        grain = pick("Cereals & Grains", used_codes)
-        items.append({
-            "food_code": grain["code"],
-            "name_bn": grain["name_bn"],
-            "name_en": grain["name_en"],
-            "amount_g": 150 if slot in ["lunch", "dinner"] else 100,
-            "calories": grain.get("calories", 150),
-            "why_bn": "শক্তির উৎস" if language == "bn" else "Energy source",
-        })
-        meal_cals += grain.get("calories", 150)
+        # 1. Pick staple grain
+        grain = pick_slot_specific("Cereals & Grains", slot, used_codes)
 
-        protein = pick("Fish & Seafood", used_codes)
-        if not protein:
-            protein = pick("Pulses & Legumes", used_codes)
-        if not protein:
-            protein = pick("Eggs", used_codes)
+        # 2. Pick Protein (Lunch/Dinner shuffles categories to ensure meat/beef/chicken/fish/egg/lentil variety)
+        protein = None
+        if slot == "breakfast":
+            protein = pick_slot_specific("Eggs", slot, used_codes)
+            if not protein:
+                protein = pick_slot_specific("Pulses & Legumes", slot, used_codes)
+        else:
+            # Lunch / Dinner: Shuffle order to give equal chance to Beef/Chicken/Fish/Lentils
+            categories_to_try = ["Meat & Poultry", "Fish & Seafood", "Pulses & Legumes", "Eggs"]
+            random.shuffle(categories_to_try)
+            for cat_name in categories_to_try:
+                protein = pick_slot_specific(cat_name, slot, used_codes)
+                if protein:
+                    break
+
+        # 3. Pick Vegetable
+        veg = None
+        if slot == "breakfast":
+            # Breakfast: lighter vegetables or pulses
+            veg = pick_slot_specific("Vegetables", slot, used_codes)
+        else:
+            # Lunch/Dinner: greens or other vegetables
+            veg = pick_slot_specific("Leafy Vegetables", slot, used_codes)
+            if not veg:
+                veg = pick_slot_specific("Vegetables", slot, used_codes)
+
+        # Base calorie values per 100g
+        grain_cal_per_100 = grain.get("calories", 350) if grain else 350
+        prot_cal_per_100 = protein.get("calories", 150) if protein else 150
+        veg_cal_per_100 = veg.get("calories", 30) if veg else 30
+
+        # Set fixed vegetable portion
+        veg_amt = 80
+        veg_cal = round(veg_cal_per_100 * veg_amt / 100)
+
+        # Distribute remaining calorie budget between grain and protein (70% grain, 30% protein)
+        remaining = max(50, target - veg_cal)
+        grain_budget = remaining * 0.70
+        prot_budget = remaining * 0.30
+
+        grain_amt = max(30, min(300, round(grain_budget * 100 / grain_cal_per_100)))
+        prot_amt = max(30, min(200, round(prot_budget * 100 / prot_cal_per_100)))
+
+        # Cooked naming mapping for realistic Bangladeshi meals
+        def get_cooked_name(raw_name_bn: str, raw_name_en: str, food_group_name: str) -> tuple:
+            bn = raw_name_bn
+            en = raw_name_en
+            if "সিদ্ধ চাল" in raw_name_bn:
+                bn = "সিদ্ধ চালের ভাত"
+                en = "Cooked Parboiled Rice"
+            elif "আতপ চাল" in raw_name_bn:
+                bn = "আতপ চালের ভাত"
+                en = "Cooked Atap Rice"
+            elif "আটা" in raw_name_bn:
+                bn = "আটা রুটি"
+                en = "Atta Roti"
+            elif "ময়দা" in raw_name_bn:
+                bn = "ময়দা রুটি"
+                en = "White Flour Roti"
+            elif "সুজি" in raw_name_bn:
+                bn = "সুজির হালুয়া"
+                en = "Semolina Halwa"
+            elif "সেমাই" in raw_name_bn:
+                bn = "রান্না করা মিষ্টি সেমাই"
+                en = "Cooked Vermicelli"
+            elif "পোলট্রি মুরগির  ডিম" in raw_name_bn or "মুরগির ডিম" in raw_name_bn or "ডিম" in raw_name_bn:
+                bn = "সিদ্ধ মুরগির ডিম"
+                en = "Boiled Poultry Egg"
+            elif "পোলট্রি মুরগি" in raw_name_bn or "মুরগি" in raw_name_bn:
+                bn = "মুরগির মাংসের তরকারি (কম তেল)"
+                en = "Chicken Curry (Low Oil)"
+            elif "গরুর মাংস" in raw_name_bn or "গরুর" in raw_name_bn:
+                bn = "গরুর মাংসের তরকারি (কম চর্বি)"
+                en = "Beef Curry (Low Fat)"
+            elif "পাঁঠার মাংস" in raw_name_bn or "খাসি" in raw_name_bn:
+                bn = "খাসির মাংসের তরকারি"
+                en = "Mutton Curry"
+            elif "ডাল" in raw_name_bn:
+                bn = f"{raw_name_bn} (রান্না করা)"
+                en = f"Cooked {raw_name_en}"
+            elif "মটর" in raw_name_bn or "ছোলা" in raw_name_bn:
+                bn = f"{raw_name_bn}র তরকারি"
+                en = f"Cooked {raw_name_en}"
+            elif "মাছ" in raw_name_bn or food_group_name == "Fish & Seafood":
+                bn = f"{raw_name_bn}র হালকা ঝোল / দো পেঁয়াজা"
+                en = f"{raw_name_en} Curry"
+            elif "কচু পাতা" in raw_name_bn:
+                bn = "কচু পাতার ভর্তা"
+                en = "Colocasia Leaf Bhorta"
+            elif "শাক" in raw_name_bn or food_group_name == "Leafy Vegetables":
+                bn = f"{raw_name_bn} ভাজি"
+                en = f"Stir-fried {raw_name_en}"
+            elif food_group_name == "Vegetables":
+                bn = f"{raw_name_bn}র তরকারি"
+                en = f"{raw_name_en} Curry"
+            return bn, en
+
+        if grain:
+            g_bn, g_en = get_cooked_name(grain["name_bn"], grain["name_en"], "Cereals & Grains")
+            items.append({
+                "food_code": grain["code"],
+                "name_bn": g_bn,
+                "name_en": g_en,
+                "amount_g": grain_amt,
+                "calories": round(grain_cal_per_100 * grain_amt / 100),
+                "why_bn": "শক্তির উৎস" if language == "bn" else "Energy source",
+            })
+
         if protein:
+            p_bn, p_en = get_cooked_name(protein["name_bn"], protein["name_en"], protein.get("food_group", "Protein"))
             items.append({
                 "food_code": protein["code"],
-                "name_bn": protein["name_bn"],
-                "name_en": protein["name_en"],
-                "amount_g": 100 if slot in ["lunch", "dinner"] else 50,
-                "calories": protein.get("calories", 150),
+                "name_bn": p_bn,
+                "name_en": p_en,
+                "amount_g": prot_amt,
+                "calories": round(prot_cal_per_100 * prot_amt / 100),
                 "why_bn": "প্রোটিনের উৎস" if language == "bn" else "Protein source",
             })
-            meal_cals += protein.get("calories", 150)
 
-        veg = pick("Leafy Vegetables", used_codes)
-        if not veg:
-            veg = pick("Vegetables", used_codes)
-        if not veg:
-            veg = pick("Fruits", used_codes)
         if veg:
+            v_bn, v_en = get_cooked_name(veg["name_bn"], veg["name_en"], veg.get("food_group", "Vegetables"))
             items.append({
                 "food_code": veg["code"],
-                "name_bn": veg["name_bn"],
-                "name_en": veg["name_en"],
-                "amount_g": 80,
-                "calories": veg.get("calories", 30),
+                "name_bn": v_bn,
+                "name_en": v_en,
+                "amount_g": veg_amt,
+                "calories": veg_cal,
                 "why_bn": "ভিটামিন ও আঁশ সমৃদ্ধ" if language == "bn" else "Rich in vitamins and fiber",
             })
-            meal_cals += veg.get("calories", 30)
 
         return {
             "slot": slot,
@@ -341,11 +883,9 @@ def _generate_fallback_meal_plan(
         }
 
     meals = [
-        make_meal("breakfast", "সকালের নাস্তা", 0.20),
-        make_meal("morning_snack", "সকালের হালকা নাস্তা", 0.10),
-        make_meal("lunch", "দুপুরের খাবার", 0.35),
-        make_meal("evening_snack", "বিকেলের নাস্তা", 0.10),
-        make_meal("dinner", "রাতের খাবার", 0.25),
+        make_meal("breakfast", "সকালের নাস্তা", 0.30),
+        make_meal("lunch", "দুপুরের খাবার", 0.40),
+        make_meal("dinner", "রাতের খাবার", 0.30),
     ]
 
     total_cals = sum(sum(i["calories"] for i in m["items"]) for m in meals)
@@ -401,21 +941,52 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
         "height_cm": profile.heightCm,
         "weight_kg": current_weight,
         "activity_level": profile.activityLevel,
+        "age": profile.age,
+        "goal": profile.goal,
     })
 
     conditions = safe_list(profile.medicalConditions)
     goal = profile.goal or "Maintain"
 
     rag = _get_rag()
-    safe_foods = rag.get_safe_foods(conditions=conditions, goal=goal, limit=50)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # PRIMARY PATH: Paper's Algorithm 1 — cosine-similarity food ranking
+    # Uses Disease → REQUIRES Nutrient → CONTAINS_NUTRIENT → Food graph traversal
+    # ──────────────────────────────────────────────────────────────────────────
+    safe_foods = []
+    matched_disease = None
+    disease_text = ", ".join(conditions) if conditions else goal
+
+    rag_data = get_rag_recommended_foods(
+        disease_text=disease_text,
+        age=profile.age or 30,
+        gender=profile.gender or "male",
+        neo4j_driver=rag.get_neo4j_driver()
+    )
+    if rag_data and rag_data.get("recommended_foods"):
+        safe_foods = rag_data["recommended_foods"]  # already full food dicts
+        matched_disease = rag_data.get("matched_disease")
+        print(f"🌟 RAG algorithm selected {len(safe_foods)} foods for: {matched_disease}")
+
+    # FALLBACK: basic food filter when RAG returns nothing
+    if not safe_foods:
+        print("⚠️  RAG returned no foods — falling back to basic food filter")
+        safe_foods = rag.get_safe_foods(conditions=conditions, goal=goal, limit=50)
+
+    # ALWAYS supplement with staple foods to ensure caloric adequacy
+    safe_foods = _ensure_balanced_food_list(rag, safe_foods)
 
     plan_data = None
     try:
-        messages = _build_meal_plan_prompt(profile, targets, safe_foods, conditions, language)
+        pairings = _get_popular_pairings(rag.get_neo4j_driver())
+        safe_codes = {f.get("code") for f in safe_foods if f.get("code")}
+        slot_pools = _get_slot_separated_foods(rag.get_neo4j_driver(), safe_codes)
+        messages = _build_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
         llm_response = await llm_client.chat_completion(
             messages=messages,
-            temperature=0.7,
-            max_tokens=3000,
+            temperature=0.85,
+            max_tokens=1000,
             response_format={"type": "json_object"},
         )
         plan_data = json.loads(llm_response)
@@ -423,7 +994,8 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
         print(f"LLM daily meal plan error: {e}")
         plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language)
 
-    plan_data.setdefault("target_calories", targets["target_calories"])
+    # Always use the server-calculated calorie target — never trust the LLM's value
+    plan_data["target_calories"] = targets["target_calories"]
     plan_data.setdefault("macros", {
         "protein_g": targets["protein_g"],
         "carbs_g": targets["carbs_g"],
@@ -434,6 +1006,9 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
     plan_data.setdefault("condition_rules_applied", conditions)
     # Annotate which weight was used for transparency
     plan_data["_calculated_from_weight_kg"] = current_weight
+
+    # ✅ Scale portions proportionally so total calories always hit the target
+    plan_data = _scale_plan_to_target(plan_data, targets["target_calories"])
 
     return plan_data
 
@@ -452,20 +1027,42 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
         "height_cm": profile.heightCm,
         "weight_kg": profile.weightKg,
         "activity_level": profile.activityLevel,
+        "age": profile.age,
+        "goal": profile.goal,
     })
 
     conditions = safe_list(profile.medicalConditions)
     goal = profile.goal or "Maintain"
 
     rag = _get_rag()
-    safe_foods = rag.get_safe_foods(conditions=conditions, goal=goal, limit=50)
+
+    # Use paper's algorithm for weekly plan too
+    disease_text = ", ".join(conditions) if conditions else goal
+    safe_foods = []
+    rag_data = get_rag_recommended_foods(
+        disease_text=disease_text,
+        age=profile.age or 30,
+        gender=profile.gender or "male",
+        neo4j_driver=rag.get_neo4j_driver()
+    )
+    if rag_data and rag_data.get("recommended_foods"):
+        safe_foods = rag_data["recommended_foods"]
+        print(f"🌟 RAG weekly: {len(safe_foods)} foods for {rag_data.get('matched_disease')}")
+    if not safe_foods:
+        safe_foods = rag.get_safe_foods(conditions=conditions, goal=goal, limit=50)
+
+    # ALWAYS supplement with staple foods for caloric adequacy
+    safe_foods = _ensure_balanced_food_list(rag, safe_foods)
 
     try:
-        messages = _build_weekly_meal_plan_prompt(profile, targets, safe_foods, conditions, language)
+        pairings = _get_popular_pairings(rag.get_neo4j_driver())
+        safe_codes = {f.get("code") for f in safe_foods if f.get("code")}
+        slot_pools = _get_slot_separated_foods(rag.get_neo4j_driver(), safe_codes)
+        messages = _build_weekly_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
         llm_response = await llm_client.chat_completion(
             messages=messages,
-            temperature=0.7,
-            max_tokens=6000,
+            temperature=0.85,
+            max_tokens=1000,
             response_format={"type": "json_object"},
         )
         data = json.loads(llm_response)
@@ -476,6 +1073,8 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
             p["day"] = i + 1
             p["condition_rules_applied"] = conditions
             p.setdefault("target_calories", targets["target_calories"])
+            # ✅ Scale each day's portions so calories hit the target
+            _scale_plan_to_target(p, targets["target_calories"])
             
         if not weekly_plans:
             raise ValueError("LLM returned empty weekly plan")
@@ -494,9 +1093,10 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
     return weekly_plans
 
 
-async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any], language: str) -> Any:
+async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any], language: str, target_date: datetime = None) -> Any:
     """Save a generated meal plan to the database."""
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    if target_date is None:
+        target_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     ai_cal = sum(
         item.get("calories", 0)
@@ -507,7 +1107,7 @@ async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any]
     plan = await prisma.mealplan.create(
         data={
             "userId": user_id,
-            "planDate": today,
+            "planDate": target_date,
             "planType": plan_type,
             "planData": to_json_string(plan_data),
             "calorieTarget": plan_data.get("target_calories", 2000),

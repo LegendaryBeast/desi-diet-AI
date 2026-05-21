@@ -7,7 +7,7 @@ from app.dependencies import get_current_user
 from app.schemas import MealBuilderAnalyzeRequest, MealBuilderAnalyzeResponse
 from app.core.llm_client import llm_client
 from app.utils import safe_list, safe_dict, to_json_string
-from graph_rag_bridge import KhadokGraphRAG
+from rag_engine import KhadokGraphRAG
 
 router = APIRouter()
 

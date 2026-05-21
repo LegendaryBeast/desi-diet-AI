@@ -6,7 +6,7 @@ from app.db import prisma
 from app.core.llm_client import llm_client
 from app.utils import safe_list, to_json_string
 from app.services.meal_plan_service import _get_rag, _generate_fallback_meal_plan, save_meal_plan
-from graph_rag_bridge import calculate_targets
+from rag_engine import calculate_targets
 
 # ── Required fields & their Bengali question prompts ────────────────────────
 
@@ -97,6 +97,8 @@ async def generate_plan_from_collected(
         "height_cm": float(collected["height_cm"]),
         "weight_kg": float(collected["weight_kg"]),
         "activity_level": collected["activity_level"],
+        "age": collected.get("age", 25),
+        "goal": collected.get("goal", "maintain"),
     })
 
     rag = _get_rag()
@@ -106,7 +108,7 @@ async def generate_plan_from_collected(
     # Try LLM generation; fall back to template on failure
     plan_data: Dict[str, Any] = {}
     try:
-        from app.services.meal_plan_service import _build_meal_plan_prompt
+        from app.services.meal_plan_service import _build_meal_plan_prompt, _get_popular_pairings
         import json as _json
 
         # Build a lightweight proxy profile object for the prompt builder
@@ -120,10 +122,16 @@ async def generate_plan_from_collected(
             preferredFoods = None
             dislikedFoods = None
 
-        messages = _build_meal_plan_prompt(_ProfileProxy(), targets, safe_foods, conditions, language)
+        pairings = []
+        try:
+            pairings = _get_popular_pairings(rag.get_neo4j_driver())
+        except Exception:
+            pass
+
+        messages = _build_meal_plan_prompt(_ProfileProxy(), targets, safe_foods, conditions, language, pairings)
         llm_response = await llm_client.chat_completion(
             messages=messages,
-            temperature=0.7,
+            temperature=0.85,
             max_tokens=3000,
             response_format={"type": "json_object"},
         )

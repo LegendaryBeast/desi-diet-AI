@@ -21,6 +21,8 @@ import {
   Save,
   X,
   Plus,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,12 +46,15 @@ const SLOT_COLORS: Record<string, string> = {
   snack: 'text-green-500',
 };
 
-type Tab = 'today' | 'weekly' | 'history';
+type Tab = 'today' | 'tomorrow' | 'history';
 
 interface MealItem {
+  code?: string;
+  food_code?: string;
   name_bn?: string;
   name_en?: string;
   amount?: string;
+  amount_g?: number;
   calories?: number;
   protein_g?: number;
   why_bn?: string;
@@ -68,14 +73,25 @@ interface PlanData {
   meals?: MealSlot[];
   target_calories?: number;
   macros?: { protein_g?: number; carbs_g?: number; fat_g?: number };
+  explanation_bn?: string;
+  explanation_en?: string;
+  micronutrient_targets?: Array<{
+    name: string;
+    name_bn: string;
+    target: number;
+    consumed: number;
+    unit: string;
+    percentage: number;
+  }>;
 }
 
 export const MealPlan = () => {
   const { profileData } = useAuth();
   const [tab, setTab] = useState<Tab>('today');
   const [plan, setPlan] = useState<MealPlanResponse | null>(null);
-  const [weeklyPlans, setWeeklyPlans] = useState<MealPlanResponse[]>([]);
+  const [tomorrowPlan, setTomorrowPlan] = useState<MealPlanResponse | null>(null);
   const [historyPlans, setHistoryPlans] = useState<MealPlanResponse[]>([]);
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
   const [completedSlots, setCompletedSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +105,47 @@ export const MealPlan = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodSearchResponse[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [justifications, setJustifications] = useState<Record<string, string>>({});
+  const [justificationLoading, setJustificationLoading] = useState<Record<string, boolean>>({});
+
+  const isFuturePlan = (planDateStr: string) => {
+    const planDate = new Date(planDateStr);
+    const planYear = planDate.getFullYear();
+    const planMonth = planDate.getMonth();
+    const planDay = planDate.getDate();
+
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDay = today.getDate();
+
+    if (planYear > todayYear) return true;
+    if (planYear < todayYear) return false;
+    if (planMonth > todayMonth) return true;
+    if (planMonth < todayMonth) return false;
+    return planDay > todayDay;
+  };
+
+  const toggleFoodJustification = async (code: string, name: string) => {
+    if (!code) return;
+    if (justifications[code]) {
+      setJustifications((prev) => {
+        const next = { ...prev };
+        delete next[code];
+        return next;
+      });
+      return;
+    }
+    setJustificationLoading((prev) => ({ ...prev, [code]: true }));
+    try {
+      const data = await foodsApi.justify(code, name);
+      setJustifications((prev) => ({ ...prev, [code]: data.explanation }));
+    } catch (e) {
+      setJustifications((prev) => ({ ...prev, [code]: 'বিশ্লেষণ লোড করতে সমস্যা হয়েছে।' }));
+    } finally {
+      setJustificationLoading((prev) => ({ ...prev, [code]: false }));
+    }
+  };
 
   const targets = profileData?.targets;
 
@@ -109,14 +166,14 @@ export const MealPlan = () => {
     }
   }, []);
 
-  const fetchWeekly = useCallback(async () => {
+  const fetchTomorrow = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await mealPlanApi.getWeekly('bn');
-      setWeeklyPlans(data);
+      const data = await mealPlanApi.getDaily('bn', 1);
+      setTomorrowPlan(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'সাপ্তাহিক প্ল্যান লোড করতে সমস্যা হয়েছে');
+      setError(err instanceof Error ? err.message : 'আগামীকালের প্ল্যান লোড করতে সমস্যা হয়েছে');
     } finally {
       setLoading(false);
     }
@@ -135,11 +192,33 @@ export const MealPlan = () => {
     }
   }, []);
 
+  const regenerateDaily = async (offset = 0) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await mealPlanApi.getDaily('bn', offset, true);
+      if (offset === 0) {
+        setPlan(data);
+        setCompletedSlots(data.completed_slots || []);
+        setFeedback(data.feedback || 0);
+        setEditingPlanData(data.plan_data as PlanData);
+        setIsEditing(false);
+      } else if (offset === 1) {
+        setTomorrowPlan(data);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'প্ল্যান পুনরায় তৈরি করতে সমস্যা হয়েছে');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   useEffect(() => {
     if (tab === 'today') fetchDaily();
-    else if (tab === 'weekly') fetchWeekly();
+    else if (tab === 'tomorrow') fetchTomorrow();
     else fetchHistory();
-  }, [tab, fetchDaily, fetchWeekly, fetchHistory]);
+  }, [tab, fetchDaily, fetchTomorrow, fetchHistory]);
 
   useEffect(() => {
     if (!searchQuery) {
@@ -161,18 +240,41 @@ export const MealPlan = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const toggleSlot = async (slot: string) => {
-    if (!plan) return;
-    const isComplete = completedSlots.includes(slot);
+  const toggleSlotForPlan = async (targetPlan: MealPlanResponse, slot: string) => {
+    const isComplete = (targetPlan.completed_slots || []).includes(slot);
     try {
-      const res = await mealPlanApi.markSlotComplete(plan.plan_id, slot, !isComplete);
-      setCompletedSlots(res.completed_slots);
+      const res = await mealPlanApi.markSlotComplete(targetPlan.plan_id, slot, !isComplete);
+      
+      // Update plan in state
+      if (plan && plan.plan_id === targetPlan.plan_id) {
+        setPlan(res);
+        setCompletedSlots(res.completed_slots || []);
+      }
+      if (tomorrowPlan && tomorrowPlan.plan_id === targetPlan.plan_id) {
+        setTomorrowPlan(res);
+      }
+      setHistoryPlans((prev) =>
+        prev.map((p) => (p.plan_id === targetPlan.plan_id ? res : p))
+      );
     } catch {
-      // Optimistic update fallback
-      setCompletedSlots((prev) =>
-        isComplete ? prev.filter((s) => s !== slot) : [...prev, slot]
+      // Fallback
+      setHistoryPlans((prev) =>
+        prev.map((p) => {
+          if (p.plan_id === targetPlan.plan_id) {
+            const nextCompleted = isComplete
+              ? (p.completed_slots || []).filter((s) => s !== slot)
+              : [...(p.completed_slots || []), slot];
+            return { ...p, completed_slots: nextCompleted };
+          }
+          return p;
+        })
       );
     }
+  };
+
+  const toggleSlot = async (slot: string) => {
+    if (!plan) return;
+    await toggleSlotForPlan(plan, slot);
   };
 
   const submitFeedback = async (rating: number) => {
@@ -226,11 +328,11 @@ export const MealPlan = () => {
 
 
   const renderMealCard = (p: MealPlanResponse, showToggle = false) => {
-    const isToday = showToggle;
+    const isToday = showToggle && plan?.plan_id === p.plan_id;
     const pd = isToday && isEditing && editingPlanData ? editingPlanData : getPlanData(p);
     const meals = pd.meals || [];
     const consumedCal = meals
-      .filter((m) => completedSlots.includes(m.slot))
+      .filter((m) => (p.completed_slots || []).includes(m.slot))
       .reduce((acc, m) => acc + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 0);
     
     // Total calculation
@@ -324,21 +426,130 @@ export const MealPlan = () => {
                     </button>
                   </>
                 ) : (
-                  <button onClick={() => setIsEditing(true)} className="text-xs font-bn font-bold px-4 py-2 border border-ink/10 text-ink rounded-xl hover:bg-ink/5 transition-colors flex items-center gap-2">
-                    <Edit2 className="w-3.5 h-3.5" /> কাস্টমাইজ
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => regenerateDaily(tab === 'today' ? 0 : 1)}
+                      disabled={loading}
+                      className="text-xs font-bn font-bold px-4 py-2 bg-accent text-white rounded-xl hover:bg-accent/80 transition-colors flex items-center gap-2 shadow-sm shadow-accent/20"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> পুনরায় তৈরি করুন
+                    </button>
+                    <button onClick={() => setIsEditing(true)} className="text-xs font-bn font-bold px-4 py-2 border border-ink/10 text-ink rounded-xl hover:bg-ink/5 transition-colors flex items-center gap-2">
+                      <Edit2 className="w-3.5 h-3.5" /> কাস্টমাইজ
+                    </button>
+                  </div>
                 )}
               </div>
             )}
           </div>
         </header>
 
+        {/* Micronutrients checklist target */}
+        {p.plan_data && (p.plan_data as any).micronutrient_targets && (p.plan_data as any).micronutrient_targets.length > 0 && (() => {
+          const allNutrients: any[] = (p.plan_data as any).micronutrient_targets;
+
+          // Group nutrients into categories
+          const VITAMIN_NAMES = [
+            "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+            "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
+            "Pantothenic acid (B5)", "Biotin (B7)"
+          ];
+          const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
+          const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
+
+          const vitamins = allNutrients.filter(n => VITAMIN_NAMES.includes(n.name));
+          const minerals = allNutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+          const fatty = allNutrients.filter(n => FATTY_NAMES.includes(n.name));
+
+          const groups = [
+            { id: 'vitamins', label: 'ভিটামিন', labelEn: 'Vitamins', items: vitamins, color: 'bg-amber-500', light: 'bg-amber-50', border: 'border-amber-200' },
+            { id: 'minerals', label: 'খনিজ', labelEn: 'Minerals', items: minerals, color: 'bg-blue-500', light: 'bg-blue-50', border: 'border-blue-200' },
+            { id: 'fats', label: 'ফ্যাটি অ্যাসিড', labelEn: 'Fatty Acids', items: fatty, color: 'bg-green-500', light: 'bg-green-50', border: 'border-green-200' },
+          ];
+
+          const NutrientCard = ({ nut, accentColor }: { nut: any; accentColor: string }) => {
+            let barColor = accentColor;
+            if (nut.percentage >= 100) barColor = "bg-green-500";
+            else if (nut.percentage >= 50) barColor = "bg-amber-500";
+            else if (nut.percentage > 0) barColor = accentColor;
+            else barColor = "bg-ink/10";
+
+            return (
+              <div className="bg-white p-3.5 rounded-2xl border border-ink/5 hover:border-accent/20 hover:shadow-sm transition-all flex flex-col justify-between space-y-2.5">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bn font-bold text-xs text-ink leading-tight truncate">{nut.name_bn}</h3>
+                    <span className="text-[0.6rem] text-ink-faint uppercase font-bold tracking-wider truncate block">{nut.name}</span>
+                  </div>
+                  <span className={`font-display text-xs font-black shrink-0 px-1.5 py-0.5 rounded-lg ${nut.percentage >= 100 ? 'text-green-700 bg-green-50' : nut.percentage >= 50 ? 'text-amber-700 bg-amber-50' : 'text-ink-muted bg-cream'}`}>
+                    {nut.percentage}%
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="w-full bg-cream rounded-full h-1.5 overflow-hidden border border-ink/5">
+                    <div
+                      className={`h-full ${barColor} transition-all duration-700 rounded-full`}
+                      style={{ width: `${Math.min(100, nut.percentage)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[0.62rem] font-bn text-ink-faint">
+                    <span>গৃহীত: <b className="text-ink-muted">{nut.consumed} {nut.unit}</b></span>
+                    <span>লক্ষ্য: <b className="text-ink-muted">{nut.target} {nut.unit}</b></span>
+                  </div>
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-ink/5 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-5 bg-accent rounded-full" />
+                <h2 className="font-display text-lg md:text-xl font-black text-ink">
+                  পুষ্টি উপাদান ট্র্যাকার (Micronutrient Tracker)
+                </h2>
+              </div>
+
+              {/* Summary pills */}
+              <div className="flex flex-wrap gap-2">
+                {groups.map(g => {
+                  const met = g.items.filter(n => n.percentage >= 100).length;
+                  return (
+                    <div key={g.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${g.border} ${g.light}`}>
+                      <div className={`w-2 h-2 rounded-full ${g.color}`} />
+                      <span className="font-bn text-xs font-bold text-ink">{g.label}</span>
+                      <span className="text-xs text-ink-faint">({met}/{g.items.length} পূর্ণ)</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Groups */}
+              {groups.map(g => g.items.length > 0 && (
+                <div key={g.id} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${g.color}`} />
+                    <h3 className="font-display font-black text-sm text-ink">{g.label} <span className="text-ink-faint font-normal">({g.labelEn})</span></h3>
+                    <div className="flex-1 h-px bg-ink/5" />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+                    {g.items.map((nut, i) => (
+                      <NutrientCard key={i} nut={nut} accentColor={g.color} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Meal Cards */}
         <div className="space-y-4">
           {meals.map((slot, i) => {
             const SlotIcon = SLOT_ICONS[slot.slot] || Utensils;
             const slotColor = SLOT_COLORS[slot.slot] || 'text-ink';
-            const isDone = completedSlots.includes(slot.slot);
+            const isDone = (p.completed_slots || []).includes(slot.slot);
 
             return (
               <motion.div
@@ -362,9 +573,9 @@ export const MealPlan = () => {
                         {(slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0)} kcal
                       </div>
                     </div>
-                    {showToggle && (
+                    {showToggle && !isFuturePlan(p.plan_date) && (
                       <button
-                        onClick={() => toggleSlot(slot.slot)}
+                        onClick={() => toggleSlotForPlan(p, slot.slot)}
                         className={`mt-3 lg:mt-4 text-xs font-bn font-bold px-3 py-1.5 rounded-xl transition-all ${
                           isDone
                             ? 'bg-green-500 text-white hover:bg-red-400'
@@ -381,29 +592,62 @@ export const MealPlan = () => {
                     {(slot.items || []).map((food, j) => (
                       <div
                         key={j}
-                        className="flex items-start justify-between p-4 bg-cream/30 rounded-2xl hover:bg-cream/60 transition-colors border border-transparent hover:border-ink/5 relative group/item"
+                        className="flex flex-col p-4 bg-cream/30 rounded-2xl hover:bg-cream/60 transition-colors border border-transparent hover:border-ink/5 relative group/item"
                       >
-                        <div className="flex-1 pr-3">
-                          <div className="font-bn text-ink font-bold text-sm">{food.name_bn || food.name_en}</div>
-                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                            {food.amount && <div className="font-bn text-[0.7rem] text-ink-faint">{food.amount}</div>}
+                        <div className="flex items-start justify-between w-full">
+                          <div className="flex-1 pr-3">
+                            <div className="font-bn text-ink font-bold text-sm">{food.name_bn || food.name_en}</div>
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                              {(food.amount_g || food.amount) && (
+                                <div className="font-bn text-[0.7rem] text-accent font-bold bg-accent/5 px-2 py-0.5 rounded-lg border border-accent/10 mt-1 inline-block">
+                                  পরিমাণ: {food.amount_g || food.amount} গ্রাম
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="font-bold text-ink-muted text-xs bg-white px-2 py-1 rounded-lg border border-ink/5 whitespace-nowrap">
+                              {food.calories || '?'} cal
+                            </div>
+                            {isEditing && (
+                              <button
+                                onClick={() => removeFoodItem(i, j)}
+                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="বাদ দিন"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="font-bold text-ink-muted text-xs bg-white px-2 py-1 rounded-lg border border-ink/5 whitespace-nowrap">
-                            {food.calories || '?'} cal
-                          </div>
-                          {isEditing && (
+                        {!isEditing && (
+                          <div className="mt-2.5 pt-2 border-t border-ink/5 flex justify-end">
                             <button
-                              onClick={() => removeFoodItem(i, j)}
-                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="বাদ দিন"
+                              onClick={() => toggleFoodJustification(food.food_code || food.code || food.name_en || food.name_bn || '', food.name_bn || food.name_en || '')}
+                              className="text-[0.65rem] md:text-[0.7rem] font-bn font-bold text-accent hover:text-white flex items-center gap-1 bg-accent/5 hover:bg-accent px-2 py-1 rounded-lg border border-accent/10 transition-all cursor-pointer"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Info className="w-3.5 h-3.5" />
+                              {justifications[food.food_code || food.code || food.name_en || food.name_bn || ''] ? 'বিশ্লেষণ বন্ধ করুন' : 'কেন এই খাবার? বিস্তারিত দেখুন'}
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
+
+                        {justificationLoading[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
+                          <div className="mt-3 p-3 bg-white/50 rounded-xl text-xs font-bn text-ink-muted flex items-center gap-2 border border-ink/5">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" /> विश्लेषण তৈরি করা হচ্ছে...
+                          </div>
+                        )}
+
+                        {justifications[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
+                          <div className="mt-3 p-4 bg-white rounded-xl border border-ink/5 text-[0.7rem] font-bn text-ink-muted leading-relaxed whitespace-pre-wrap shadow-inner relative">
+                            <p className="font-bold text-ink mb-1.5 flex items-center gap-1.5 text-xs">
+                              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
+                              ডায়েটিশিয়ান বিশ্লেষণ:
+                            </p>
+                            {justifications[food.food_code || food.code || food.name_en || food.name_bn || '']}
+                          </div>
+                        )}
                       </div>
                     ))}
                     
@@ -495,6 +739,8 @@ export const MealPlan = () => {
           })}
         </div>
 
+
+
         {/* Feedback */}
         {showToggle && (
           <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm">
@@ -523,7 +769,7 @@ export const MealPlan = () => {
       subtitle="Nutrition Strategy"
       headerActions={(
         <button
-          onClick={() => tab === 'today' ? fetchDaily() : tab === 'weekly' ? fetchWeekly() : fetchHistory()}
+          onClick={() => tab === 'today' ? fetchDaily() : tab === 'tomorrow' ? fetchTomorrow() : fetchHistory()}
           disabled={loading}
           className="p-2.5 bg-cream rounded-2xl text-ink-muted hover:bg-accent hover:text-white transition-all"
         >
@@ -537,7 +783,7 @@ export const MealPlan = () => {
           <div className="flex bg-white p-1.5 rounded-2xl border border-ink/5 shadow-sm gap-1">
             {[
               { id: 'today' as Tab, label: 'আজকের', icon: Flame },
-              { id: 'weekly' as Tab, label: 'সাপ্তাহিক', icon: CalendarDays },
+              { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays },
               { id: 'history' as Tab, label: 'ইতিহাস', icon: History },
             ].map(({ id, label, icon: Icon }) => (
               <button
@@ -587,24 +833,25 @@ export const MealPlan = () => {
                 )
               )}
 
-              {tab === 'weekly' && (
+              {tab === 'tomorrow' && (
                 <div className="space-y-6">
-                  {weeklyPlans.length > 0 ? (
-                    weeklyPlans.map((p) => (
-                      <div key={p.plan_id} className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-bn font-bold text-lg text-ink">
-                            {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', month: 'long', day: 'numeric' })}
-                          </h3>
-                          <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-xl">{p.calorie_target} kcal</span>
-                        </div>
-                        {renderMealCard(p, false)}
+                  {tomorrowPlan ? (
+                    <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bn font-bold text-lg text-ink">
+                          {new Date(tomorrowPlan.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </h3>
+                        <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-xl">{tomorrowPlan.calorie_target} kcal</span>
                       </div>
-                    ))
+                      {renderMealCard(tomorrowPlan, true)}
+                    </div>
                   ) : (
                     <div className="text-center py-20 font-bn text-ink-muted">
                       <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p>সাপ্তাহিক প্ল্যান পাওয়া যায়নি</p>
+                      <p>আগামীকালের প্ল্যান পাওয়া যায়নি</p>
+                      <button onClick={fetchTomorrow} className="mt-4 px-6 py-2 bg-accent text-white font-bn font-bold rounded-xl hover:bg-accent/80 transition-colors">
+                        আগামীকালের প্ল্যান তৈরি করুন
+                      </button>
                     </div>
                   )}
                 </div>
@@ -613,27 +860,153 @@ export const MealPlan = () => {
               {tab === 'history' && (
                 <div className="space-y-4">
                   {historyPlans.length > 0 ? (
-                    historyPlans.map((p) => (
-                      <div key={p.plan_id} className="bg-white p-5 rounded-[1.5rem] border border-ink/5 flex items-center justify-between hover:border-accent/20 transition-all">
-                        <div>
-                          <p className="font-bn font-bold text-ink">
-                            {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                          </p>
-                          <p className="text-xs text-ink-faint font-bn">{p.calorie_target} kcal লক্ষ্যমাত্রা</p>
-                        </div>
-                        <div className="text-right">
-                          {p.feedback ? (
-                            <div className="flex gap-1">
-                              {[1, 2, 3, 4, 5].map((s) => (
-                                <Star key={s} className={`w-4 h-4 ${p.feedback! >= s ? 'text-gold fill-current' : 'text-ink/10'}`} />
-                              ))}
+                    historyPlans.map((p) => {
+                      const isExpanded = expandedPlanId === p.plan_id;
+                      const pd = getPlanData(p);
+                      const meals = pd.meals || [];
+                      const planCompletedSlots = p.completed_slots || [];
+                      
+                      const planConsumedCal = meals
+                        .filter((m) => planCompletedSlots.includes(m.slot))
+                        .reduce((acc, m) => acc + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 0);
+                      
+                      let planTotalCal = p.calorie_target || pd.target_calories || 0;
+                      if (p.user_choice_cal) {
+                        planTotalCal = p.user_choice_cal;
+                      } else if (p.ai_suggestion_cal) {
+                        planTotalCal = p.ai_suggestion_cal;
+                      }
+                      
+                      const planPct = planTotalCal > 0 ? Math.min(100, Math.round((planConsumedCal / planTotalCal) * 100)) : 0;
+
+                      return (
+                        <div key={p.plan_id} className="bg-white rounded-[1.5rem] border border-ink/5 overflow-hidden hover:border-accent/20 hover:shadow-md transition-all">
+                          <div 
+                            onClick={() => setExpandedPlanId(isExpanded ? null : p.plan_id)}
+                            className="p-5 flex items-center justify-between cursor-pointer select-none"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="bg-cream/50 p-2.5 rounded-xl text-ink-muted">
+                                <CalendarDays className="w-5 h-5 text-accent" />
+                              </div>
+                              <div>
+                                <p className="font-bn font-bold text-ink leading-snug">
+                                  {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                </p>
+                                <p className="text-xs text-ink-faint font-bn mt-0.5">
+                                  {planConsumedCal} / {planTotalCal} kcal ({planPct}%) গৃহীত
+                                </p>
+                              </div>
                             </div>
-                          ) : (
-                            <span className="text-xs text-ink-faint font-bn">রেটিং নেই</span>
-                          )}
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="text-right hidden sm:block">
+                                {p.feedback ? (
+                                  <div className="flex gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                      <Star key={s} className={`w-3.5 h-3.5 ${p.feedback! >= s ? 'text-gold fill-current' : 'text-ink/10'}`} />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-ink-faint font-bn">রেটিং নেই</span>
+                                )}
+                              </div>
+                              <div className="text-ink-muted">
+                                {isExpanded ? (
+                                  <ChevronUp className="w-5 h-5" />
+                                ) : (
+                                  <ChevronDown className="w-5 h-5" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="border-t border-ink/5 bg-cream/10 p-5 space-y-4"
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-ink/5 pb-2.5 gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Utensils className="w-4 h-4 text-accent" />
+                                    <span className="font-bn font-bold text-xs text-ink">খাবারের সারসংক্ষেপ (Meal Summary)</span>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 w-full sm:w-48">
+                                    <div className="w-full bg-cream rounded-full h-1.5 overflow-hidden border border-ink/5">
+                                      <div 
+                                        className="h-full bg-accent transition-all duration-500 rounded-full"
+                                        style={{ width: `${planPct}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-bn text-[0.68rem] text-ink font-bold">{planPct}%</span>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {meals.map((slot, idx) => {
+                                    const SlotIcon = SLOT_ICONS[slot.slot] || Utensils;
+                                    const isDone = planCompletedSlots.includes(slot.slot);
+                                    const slotCal = (slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0);
+
+                                    return (
+                                      <div 
+                                        key={slot.slot + idx}
+                                        className={`p-3.5 rounded-2xl border transition-all ${
+                                          isDone 
+                                            ? 'bg-green-50/20 border-green-200' 
+                                            : 'bg-white border-ink/5'
+                                        }`}
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="flex items-start gap-3">
+                                            <div className={`p-2 rounded-xl shrink-0 ${isDone ? 'bg-green-100 text-green-600' : 'bg-cream text-ink-muted'}`}>
+                                              <SlotIcon className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                              <div className="flex items-baseline gap-2">
+                                                <h4 className="font-bn font-bold text-xs text-ink leading-tight">{slot.slot_bn || slot.slot}</h4>
+                                                <span className="font-bn text-[0.62rem] text-ink-faint font-bold">{slotCal} kcal</span>
+                                              </div>
+                                              
+                                              <p className="font-bn text-[0.68rem] text-ink-muted mt-1 leading-relaxed">
+                                                {(slot.items || []).map((item) => `${item.name_bn || item.name_en || ''} (${item.amount || ''})`).join(', ') || 'কোনো খাবার নেই'}
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          {!isFuturePlan(p.plan_date) ? (
+                                            <button
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await toggleSlotForPlan(p, slot.slot);
+                                              }}
+                                              className={`text-[0.62rem] shrink-0 font-bn font-bold px-2.5 py-1 rounded-xl transition-all ${
+                                                isDone
+                                                  ? 'bg-green-500 text-white hover:bg-red-400'
+                                                  : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
+                                              }`}
+                                            >
+                                              {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
+                                            </button>
+                                          ) : (
+                                            <span className="text-[0.62rem] text-ink-faint font-bn italic shrink-0">খাওয়া শুরু হয়নি</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-20 font-bn text-ink-muted">
                       <History className="w-12 h-12 mx-auto mb-4 opacity-20" />

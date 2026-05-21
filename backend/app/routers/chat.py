@@ -7,8 +7,9 @@ from app.db import prisma
 from app.schemas import ChatRequest, DietPlanChatRequest, DietPlanChatResponse
 from app.core.llm_client import llm_client
 from app.utils import safe_list
-from graph_rag_bridge import calculate_targets, KhadokGraphRAG
+from rag_engine import calculate_targets, KhadokGraphRAG
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 from app.services.diet_plan_chat_service import (
@@ -18,6 +19,7 @@ from app.services.diet_plan_chat_service import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _build_user_context(current_user_id: str) -> str:
@@ -53,6 +55,8 @@ async def _build_user_context(current_user_id: str) -> str:
                     "height_cm": profile.heightCm,
                     "weight_kg": profile.weightKg,
                     "activity_level": profile.activityLevel,
+                    "age": profile.age,
+                    "goal": profile.goal,
                 })
                 lines.append(f"\n=== NUTRITION TARGETS (AI-calculated) ===")
                 lines.append(f"Daily Calories: {targets['target_calories']} kcal")
@@ -117,7 +121,8 @@ async def _build_user_context(current_user_id: str) -> str:
             day = log.loggedAt.strftime("%a %d %b")
             slot = log.mealSlot or "unknown"
             cals = log.totalCalories or 0
-            lines.append(f"[{day} · {slot}] {log.inputText[:80]} → {cals} kcal")
+            text = log.inputText[:80] if log.inputText else "খাবার ট্র্যাক করা হয়েছে"
+            lines.append(f"[{day} · {slot}] {text} → {cals} kcal")
 
     return "\n".join(lines)
 
@@ -134,9 +139,9 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
         user_context = await _build_user_context(current_user.id)
 
         # 2. Query GraphRAG for food knowledge relevant to the message
-        rag = KhadokGraphRAG()
         rag_food_context = ""
         try:
+            rag = KhadokGraphRAG()
             profile = await prisma.profile.find_unique(where={"userId": current_user.id})
             conditions = safe_list(profile.medicalConditions) if profile else []
             search_results = rag.search_food(req.message)
@@ -145,8 +150,8 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                 for food in search_results[:6]:
                     ctx = rag.get_chatbot_context(food["code"], conditions)
                     rag_food_context += f"- {ctx}\n"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Chat GraphRAG context unavailable: %s", e)
 
         # 3. Build system prompt
         system_msg = (
@@ -162,7 +167,9 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "4. If no recent meal data exists, ask the user about their preferences interactively.\n"
             "5. For calorie/macro questions, always use their calculated targets from the profile.\n"
             "6. Be proactive — mention if something they ate recently was risky given their conditions.\n"
-            "7. Keep responses concise but warm. Use bullet points for lists.\n\n"
+            "7. Keep responses concise but warm. Use bullet points for lists.\n"
+            "8. When discussing ANY food (e.g., banana/কলা), you MUST state the calorie count per specific quantity/weight (e.g., '১০০ গ্রাম কলায় ৮৯ ক্যালোরি থাকে' / '100g of banana contains 89 calories'). Clearly state the quantity, weight, and calorie values.\n"
+            "9. Always analyze and explain the element-level pros and cons (e.g., carbohydrates, protein, fat, fiber, potassium, sodium, etc.) of the discussed food for the user's specific health goals and medical conditions.\n\n"
             f"=== USER'S COMPLETE CONTEXT ===\n{user_context}\n"
             f"{rag_food_context}"
         )
@@ -182,7 +189,8 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
         try:
             async for token in llm_client.chat_completion_stream(messages):
                 yield f"data: {json.dumps({'token': token})}\n\n"
-        except Exception:
+        except Exception as e:
+            logger.exception("LLM chat stream failed: %s", e)
             fallback = (
                 "আমি এই মুহূর্তে উত্তর দিতে পারছি না — LLM সেবা সাময়িকভাবে বন্ধ আছে। "
                 "আপনার পূর্ববর্তী খাবার পরিকল্পনা দেখতে 'খাবার' ট্যাব ব্যবহার করুন।"

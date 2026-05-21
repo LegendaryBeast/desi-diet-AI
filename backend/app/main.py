@@ -1,6 +1,6 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point containing both Q1 journal endpoints and production routes."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db import lifespan
@@ -8,15 +8,17 @@ from app.routers import (
     auth, profile, health_log, meal_plan, chat, foods, report,
     meal_tracking, medicine, meal_builder
 )
+from app.models.schemas import UserProfile as JournalUserProfile, DietPlanResponse as JournalDietPlanResponse
+from app.logic.planner import generate_plan_logic
 
 app = FastAPI(
-    title=settings.app_name,
-    description="Personalized AI Nutrition Companion for Bangladeshi People — Backend API",
-    version="1.0.0",
+    title="Khadok-Bangla Personalized AI Nutrition API (GraphRAG Q1 Version)",
+    description="Backend API serving DesiDiet React frontend and implementing Neo4j GraphRAG planning.",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
-# CORS
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -25,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
+# Production Routers for Frontend Compatibility
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(health_log.router, prefix="/health-logs", tags=["Health Log"])
@@ -38,6 +40,30 @@ app.include_router(medicine.router, prefix="/medicine-reminders", tags=["Medicin
 app.include_router(meal_builder.router, prefix="/meal-builder", tags=["Meal Builder"])
 
 
+# --- Q1 Journal Endpoints ---
+
+@app.post("/api/generate-plan", response_model=JournalDietPlanResponse, tags=["Q1 Journal API"])
+async def generate_plan_endpoint(user_profile: JournalUserProfile, request: Request):
+    """
+    Q1 Journal direct endpoint.
+    Receives user profile, processes it through GraphRAG, and returns a Gemini-generated diet plan.
+    """
+    neo4j_driver = request.app.state.neo4j_driver
+    ai_models = request.app.state.ai_models
+    
+    if not neo4j_driver:
+        raise HTTPException(status_code=503, detail="Neo4j Graph Database connection is not available.")
+    if not ai_models:
+        raise HTTPException(status_code=503, detail="AI models (SentenceTransformer) are not loaded.")
+
+    try:
+        plan_content = await generate_plan_logic(user_profile, neo4j_driver, ai_models)
+        return {"plan": plan_content}
+    except Exception as e:
+        print(f"❌ Error generating Q1 plan: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error occurred.")
+
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {"status": "ok", "app": settings.app_name}
@@ -46,7 +72,10 @@ async def health_check():
 @app.get("/", tags=["Root"])
 async def root():
     return {
-        "message": "Khadok-Bangla AI API",
+        "message": "Khadok-Bangla AI API (GraphRAG Q1 Version)",
         "docs": "/docs",
         "health": "/health",
     }
+
+# Live reload trigger comment
+
