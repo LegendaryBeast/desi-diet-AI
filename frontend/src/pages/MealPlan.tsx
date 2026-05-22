@@ -85,6 +85,62 @@ interface PlanData {
   }>;
 }
 
+const CookingAnimation = () => (
+  <div className="relative w-24 h-24 flex flex-col items-center justify-end mb-4">
+    {/* Steam */}
+    <div className="absolute top-2 flex gap-3 z-0">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          animate={{
+            y: [0, -20],
+            x: [0, i % 2 === 0 ? -5 : 5, 0],
+            opacity: [0, 0.5, 0],
+            scale: [0.8, 1.5]
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            delay: i * 0.4,
+            ease: "easeOut"
+          }}
+          className="w-2 h-6 bg-ink-muted/30 rounded-full blur-[2px]"
+        />
+      ))}
+    </div>
+    
+    {/* Pot */}
+    <motion.div 
+      animate={{ y: [0, -3, 0], rotate: [-2, 2, -2] }}
+      transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+      className="relative z-10 w-16 h-10 bg-ink rounded-b-2xl rounded-t-sm border-t-4 border-ink shadow-lg flex items-center justify-center mt-6"
+    >
+      <div className="absolute -left-2 top-1.5 w-3 h-2 bg-ink rounded-l-md" />
+      <div className="absolute -right-2 top-1.5 w-3 h-2 bg-ink rounded-r-md" />
+      
+      {/* Food inside pot (bouncing) */}
+      <div className="absolute -top-3 flex gap-1 items-end">
+        <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.5, repeat: Infinity, delay: 0.1 }} className="w-3 h-3 bg-amber-400 rounded-full" />
+        <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} className="w-4 h-4 bg-green-400 rounded-lg" />
+        <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 0.4, repeat: Infinity, delay: 0.2 }} className="w-3 h-3 bg-red-400 rounded-full" />
+      </div>
+    </motion.div>
+
+    {/* Flame */}
+    <div className="absolute -bottom-3 flex justify-center items-end text-accent z-20">
+      <motion.div animate={{ scale: [0.8, 1.1, 0.8], opacity: [0.7, 1, 0.7] }} transition={{ duration: 0.4, repeat: Infinity, ease: "easeInOut" }}>
+        <Flame className="w-5 h-5 -rotate-12" />
+      </motion.div>
+      <motion.div animate={{ scale: [0.9, 1.2, 0.9], opacity: [0.8, 1, 0.8] }} transition={{ duration: 0.3, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}>
+        <Flame className="w-7 h-7 -mt-1" />
+      </motion.div>
+      <motion.div animate={{ scale: [0.8, 1.1, 0.8], opacity: [0.7, 1, 0.7] }} transition={{ duration: 0.4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}>
+        <Flame className="w-5 h-5 rotate-12" />
+      </motion.div>
+    </div>
+  </div>
+);
+
 export const MealPlan = () => {
   const { profileData } = useAuth();
   const [tab, setTab] = useState<Tab>('today');
@@ -805,9 +861,10 @@ export const MealPlan = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-accent" />
-            <p className="font-bn text-xs text-ink-muted">AI আপনার জন্য পরিকল্পনা তৈরি করছে...</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            <CookingAnimation />
+            <p className="font-display font-black text-sm text-ink tracking-wide mt-2">AI আপনার জন্য পরিকল্পনা তৈরি করছে...</p>
+            <p className="font-bn text-xs text-ink-muted mt-1 animate-pulse">অনুগ্রহ করে অপেক্ষা করুন</p>
           </div>
         )}
 
