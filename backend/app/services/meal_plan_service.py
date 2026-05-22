@@ -356,6 +356,7 @@ CRITICAL RULES:
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations!
 14. MEAL SLOT RULES: Follow the food-to-slot compatibility data below. Do NOT serve breakfast-only foods (fruits, nuts, milk) as lunch/dinner main items. Lunch and dinner should contain heavy foods: rice/roti + protein curry + dal + vegetable. Breakfast should be lighter: roti/bread + egg/dal + optional fruit.
+16. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), Rice (ভাত), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. This is authentic Bangladeshi morning food culture.
 15. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
   - For example, if you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
   - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
@@ -553,6 +554,7 @@ CRITICAL RULES:
 11. Authentic Bengali lunch and dinner MUST include a staple grain: Rice (ভাত), Roti/Chapati (রুটি), or similar.
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations across the 7 days!
+15. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), Rice (ভাত), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. This applies for every single day in the 7-day plan. This is authentic Bangladeshi morning food culture.
 14. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
   - For example, if you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
   - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
@@ -761,10 +763,16 @@ def _generate_fallback_meal_plan(
                     break
 
         # 3. Pick Vegetable
+        # RULE: At breakfast, vegetables are ONLY served when the staple is Ruti/Paratha.
+        # Breakfast-only cereals (suji, semai) → no vegetable at breakfast.
+        RUTI_PARATHA_CODES = {"A019", "A018", "A020"}  # atta roti, whole wheat roti, paratha
         veg = None
         if slot == "breakfast":
-            # Breakfast: lighter vegetables or pulses
-            veg = pick_slot_specific("Vegetables", slot, used_codes)
+            grain_is_ruti = grain and grain.get("code") in RUTI_PARATHA_CODES
+            if grain_is_ruti:
+                # Only pick veg when breakfast has ruti/paratha
+                veg = pick_slot_specific("Vegetables", slot, used_codes)
+            # else: no vegetable for non-ruti breakfasts (suji, semai, etc.)
         else:
             # Lunch/Dinner: greens or other vegetables
             veg = pick_slot_specific("Leafy Vegetables", slot, used_codes)
@@ -1022,10 +1030,18 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
     if not profile.weightKg or not profile.heightCm or not profile.gender or not profile.activityLevel:
         raise ValueError("Profile incomplete")
 
+    current_weight = profile.weightKg
+    latest_log = await prisma.healthlog.find_first(
+        where={"userId": user_id},
+        order={"logDate": "desc"},
+    )
+    if latest_log and latest_log.weightKg:
+        current_weight = latest_log.weightKg
+
     targets = calculate_targets({
         "gender": profile.gender,
         "height_cm": profile.heightCm,
-        "weight_kg": profile.weightKg,
+        "weight_kg": current_weight,
         "activity_level": profile.activityLevel,
         "age": profile.age,
         "goal": profile.goal,

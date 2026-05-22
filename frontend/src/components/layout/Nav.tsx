@@ -63,7 +63,7 @@ export const Nav = () => {
             {i18n.language === 'bn' ? 'EN' : 'বাং'}
           </button>
           {isLoggedIn ? (
-            <Link to="/chat" className="hidden sm:block">
+            <Link to="/dashboard" className="hidden sm:block">
               <button className={`text-[0.65rem] lg:text-[0.75rem] tracking-[0.1em] uppercase px-4 lg:px-6 py-2 lg:py-2.5 border transition-all font-body interactive ${
                 isLightNav 
                   ? 'border-cream text-cream hover:bg-cream hover:text-ink' 
@@ -118,7 +118,7 @@ export const Nav = () => {
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bn text-ink hover:text-accent transition-colors">{t('nav.about')}</Link>
             <Link to="/conditions" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bn text-ink hover:text-accent transition-colors">{t('nav.conditions')}</Link>
             {isLoggedIn ? (
-              <Link to="/chat" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
                 <button className="text-lg font-bn border border-ink px-10 py-3 bg-ink text-cream hover:bg-accent hover:border-accent transition-all">
                   {i18n.language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
                 </button>

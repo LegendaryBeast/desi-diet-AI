@@ -50,10 +50,18 @@ async def _build_user_context(current_user_id: str) -> str:
 
         if profile.weightKg and profile.heightCm and profile.gender and profile.activityLevel:
             try:
+                current_weight = profile.weightKg
+                latest_log = await prisma.healthlog.find_first(
+                    where={"userId": current_user_id},
+                    order={"logDate": "desc"},
+                )
+                if latest_log and latest_log.weightKg:
+                    current_weight = latest_log.weightKg
+
                 targets = calculate_targets({
                     "gender": profile.gender,
                     "height_cm": profile.heightCm,
-                    "weight_kg": profile.weightKg,
+                    "weight_kg": current_weight,
                     "activity_level": profile.activityLevel,
                     "age": profile.age,
                     "goal": profile.goal,

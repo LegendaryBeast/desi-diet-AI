@@ -11,8 +11,8 @@ import {
   History,
   Bot,
   WifiOff,
-  User,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { DashboardLayout } from '../layout/DashboardLayout';
@@ -25,6 +25,75 @@ interface Message {
   time: string;
 }
 
+const renderFormattedText = (text: string) => {
+  if (!text) return null;
+
+  // Split by line to handle block elements
+  const lines = text.split('\n');
+
+  return lines.map((line, lineIndex) => {
+    let content = line;
+    let isHeader = false;
+    let headerLevel = 0;
+
+    // Check for headers (e.g. ### Header or ## Header)
+    const headerMatch = content.match(/^(#{1,6})\s+(.*)$/);
+    if (headerMatch) {
+      isHeader = true;
+      headerLevel = headerMatch[1].length;
+      content = headerMatch[2];
+    }
+
+    // Check for bullets
+    const isBullet = content.trim().startsWith('-');
+    if (isBullet) {
+      // Remove the dash and space
+      content = content.replace(/^\s*-\s*/, '');
+    }
+
+    // Format bold text (**text**)
+    const parts = content.split('**');
+    const formattedLine = parts.map((part, partIndex) => {
+      // Odd indices are between **
+      if (partIndex % 2 === 1) {
+        return <strong key={partIndex} className="font-bold text-accent">{part}</strong>;
+      }
+      return part;
+    });
+
+    if (isHeader) {
+      const headerClasses = headerLevel === 3
+        ? "text-xs md:text-sm font-bold text-ink mt-3 mb-1.5 block border-b border-ink/5 pb-0.5"
+        : "text-sm md:text-base font-bold text-ink mt-4 mb-2 block border-b border-ink/5 pb-0.5";
+      return (
+        <span key={lineIndex} className={headerClasses}>
+          {formattedLine}
+        </span>
+      );
+    }
+
+    if (isBullet) {
+      return (
+        <span key={lineIndex} className="pl-3 py-0.5 flex items-start gap-1.5 leading-relaxed block text-ink-muted">
+          <span className="text-accent shrink-0 mt-2 text-[0.45rem]">•</span>
+          <span className="flex-1">{formattedLine}</span>
+        </span>
+      );
+    }
+
+    // Standard paragraph or empty line
+    if (content.trim() === '') {
+      return <span key={lineIndex} className="h-1.5 block" />;
+    }
+
+    return (
+      <span key={lineIndex} className="block leading-relaxed">
+        {formattedLine}
+      </span>
+    );
+  });
+};
+
 export const ChatWindow = () => {
   const { t, i18n } = useTranslation();
   const { profileData, isLoggedIn } = useAuth();
@@ -36,15 +105,23 @@ export const ChatWindow = () => {
   const [apiError, setApiError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior,
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, scrollToBottom]);
+    scrollToBottom(isStreaming || isTyping ? 'auto' : 'smooth');
+  }, [messages, isTyping, isStreaming, scrollToBottom]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -138,32 +215,33 @@ export const ChatWindow = () => {
       noPadding
       headerExtra={(
         <div className="relative">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-ink rounded-xl md:rounded-2xl flex items-center justify-center text-cream shadow-lg transform -rotate-3">
-            <Bot size={20} className="md:w-6 md:h-6" />
+          <div className="w-10 h-10 md:w-11 md:h-11 bg-ink rounded-xl flex items-center justify-center text-cream shadow-md transform -rotate-3 border border-white/10 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-accent/20 to-transparent" />
+            <Bot size={18} className="relative z-10" />
           </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-4 md:h-4 bg-green-500 border-2 md:border-4 border-white rounded-full" />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-[3px] border-white rounded-full animate-pulse" />
         </div>
       )}
       headerActions={(
         <button
           onClick={() => { abortRef.current?.(); setMessages([]); setApiError(null); }}
-          className="p-2 md:p-3 bg-cream text-ink-muted hover:bg-red-50 hover:text-red-500 rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm"
+          className="px-3 py-2 bg-cream text-ink-muted hover:bg-red-50 hover:text-red-500 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold font-bn shadow-sm border border-ink/5"
         >
-          <History size={16} />
+          <History size={13} />
           <span className="hidden sm:inline">{t('chat.clear_chat')}</span>
         </button>
       )}
     >
-      <div className="flex-1 flex flex-col relative max-w-6xl mx-auto w-full min-h-0">
+      <div className="flex-1 h-full flex flex-col relative max-w-3xl mx-auto w-full min-h-0">
         {/* Soft Background Glows */}
-        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[300px] md:w-[800px] h-[300px] md:h-[600px] bg-accent/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[400px] bg-accent/5 blur-[80px] md:blur-[100px] rounded-full pointer-events-none" />
 
         {/* API Error Banner */}
         {apiError && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="m-4 p-3 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-bn z-20"
+            className="mx-4 mt-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-500 text-xs font-bn z-20 shadow-sm"
           >
             <WifiOff className="w-4 h-4 shrink-0" />
             <span>{apiError}</span>
@@ -171,57 +249,70 @@ export const ChatWindow = () => {
         )}
 
         {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-12 md:p-8 md:pb-24 space-y-6 md:space-y-10 scroll-smooth relative z-10">
+        <div 
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto min-h-0 px-3 pt-6 pb-4 md:px-6 md:pt-8 md:pb-6 space-y-4 md:space-y-6 relative z-10"
+        >
           <AnimatePresence initial={false}>
             {messages.length === 0 ? (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="h-full flex flex-col items-center justify-center text-center py-10"
+                className="flex flex-col items-center text-center pt-6 pb-4 md:pt-10"
               >
-                {/* Brand Icon */}
-                <motion.div
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  className="w-12 h-12 md:w-20 md:h-20 bg-ink rounded-2xl md:rounded-[2rem] flex items-center justify-center text-cream mb-4 md:mb-8 shadow-2xl relative overflow-hidden group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <MessageSquare size={32} className="relative z-10" />
-                </motion.div>
+                {/* Brand Bot Avatar */}
+                <div className="relative mb-4">
+                  {/* Glowing Pulse Rings */}
+                  <div className="absolute inset-0 bg-accent/15 rounded-full animate-ping opacity-75 scale-105" />
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    className="relative w-12 h-12 md:w-14 md:h-14 bg-ink rounded-full flex items-center justify-center text-cream shadow-lg border-2 border-white overflow-hidden group cursor-pointer"
+                  >
+                    <Bot size={22} className="relative z-10 text-cream" />
+                  </motion.div>
+                  {/* Active Pulse Badge */}
+                  <span className="absolute bottom-0 right-0 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white"></span>
+                  </span>
+                </div>
 
-                <div className="space-y-2 md:space-y-4 mb-6 md:mb-16 px-4">
-                  <h4 className="text-ink-muted font-bn text-sm md:text-xl opacity-60">
+                <div className="space-y-1 mb-6 px-4 max-w-sm">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-accent/10 rounded-full text-[0.58rem] text-accent font-bn font-black tracking-wider uppercase mb-1">
+                    <Sparkles size={9} className="animate-pulse" /> {isBn ? 'দেশিডায়েট এআই সহকারী' : 'DESIDIET AI'}
+                  </span>
+                  <h4 className="text-ink-muted font-bn text-[0.68rem] md:text-xs opacity-60">
                     {t('chat.greeting_user', { name: displayName })}
                   </h4>
-                  <h3 className="font-display text-2xl md:text-4xl lg:text-5xl font-black text-ink tracking-tight leading-tight">
+                  <h3 className="font-display text-lg md:text-2xl font-black text-ink tracking-tight leading-tight">
                     {t('chat.how_can_i_help')}
                   </h3>
-                  <p className="font-bn text-[0.75rem] md:text-base text-ink-faint max-w-md mx-auto">
+                  <p className="font-bn text-[0.62rem] md:text-[0.68rem] text-ink-faint max-w-xs mx-auto opacity-75">
                     {t('chat.description_short')}
                   </p>
                 </div>
 
-                {/* Suggestion Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 w-full max-w-4xl px-2">
+                {/* Suggestion List (Thin Stack) */}
+                <div className="flex flex-col gap-2 w-full max-w-[340px] px-4">
                   {[
-                    { icon: Layout, title: t('chat.suggestions.title1'), sub: t('chat.suggestions.sub1'), label: 'Meal Plan' },
-                    { icon: Activity, title: t('chat.suggestions.title2'), sub: t('chat.suggestions.sub2'), label: 'Health Status' },
-                    { icon: Flame, title: t('chat.suggestions.title3'), sub: t('chat.suggestions.sub3'), label: 'Nutrients' },
+                    { icon: Layout, title: t('chat.suggestions.title1'), sub: t('chat.suggestions.sub1'), label: isBn ? 'খাবার তালিকা' : 'Meal Plan', bg: 'hover:bg-amber-50/20 hover:border-amber-200/50' },
+                    { icon: Activity, title: t('chat.suggestions.title2'), sub: t('chat.suggestions.sub2'), label: isBn ? 'স্বাস্থ্য অবস্থা' : 'Health Status', bg: 'hover:bg-emerald-50/20 hover:border-emerald-200/50' },
+                    { icon: Flame, title: t('chat.suggestions.title3'), sub: t('chat.suggestions.sub3'), label: isBn ? 'পুষ্টির হিসাব' : 'Nutrients', bg: 'hover:bg-rose-50/20 hover:border-rose-200/50' },
                   ].map((btn, i) => (
                     <button
                       key={i}
                       onClick={() => send(btn.title)}
                       disabled={isStreaming}
-                      className="p-4 md:p-8 bg-white border border-ink/5 rounded-2xl md:rounded-[2.5rem] text-center sm:text-left hover:border-accent/20 hover:shadow-2xl transition-all group shadow-sm disabled:opacity-50 flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0"
+                      className={`p-2.5 bg-white border border-ink/5 rounded-xl transition-all shadow-[0_1px_4px_rgba(0,0,0,0.01)] hover:shadow-md disabled:opacity-50 flex items-center gap-3 text-left group w-full ${btn.bg}`}
                     >
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-cream rounded-xl md:rounded-2xl flex items-center justify-center text-ink group-hover:bg-accent group-hover:text-cream transition-colors shrink-0 sm:mb-6">
-                        <btn.icon size={18} className="md:w-5 md:h-5" />
+                      <div className="w-7 h-7 bg-cream rounded-lg flex items-center justify-center text-ink-muted group-hover:scale-105 transition-transform shrink-0">
+                        <btn.icon size={12} />
                       </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-bn font-bold text-sm md:text-xl text-ink mb-0.5 md:mb-2">{btn.title}</div>
-                        <div className="font-bn text-xs text-ink-muted opacity-60">{btn.sub}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bn font-bold text-[0.72rem] md:text-xs text-ink group-hover:text-accent transition-colors leading-tight mb-0.5">{btn.title}</div>
+                        <div className="font-bn text-[0.58rem] md:text-[0.62rem] text-ink-muted leading-none opacity-85">{btn.sub}</div>
                       </div>
-                      <div className="hidden sm:block text-[0.6rem] uppercase tracking-widest text-ink-faint font-body font-bold border-t border-ink/5 pt-4 w-full mt-4">
+                      <div className="text-[0.52rem] uppercase tracking-widest text-ink-faint font-body font-bold shrink-0 opacity-60">
                         {btn.label}
                       </div>
                     </button>
@@ -232,40 +323,53 @@ export const ChatWindow = () => {
               messages.map((msg) => (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 md:gap-4`}
+                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} items-start gap-2 md:gap-3`}
                 >
                   {msg.type === 'ai' && (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-xl mb-1 transform -rotate-6 border-2 border-white/10"
+                      className="w-7 h-7 rounded-xl bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-sm mt-0.5 border border-white/10"
                     >
-                      <Bot size={16} className="md:w-6 md:h-6" />
+                      <Bot size={14} />
                     </motion.div>
                   )}
-                  <div className={`relative p-4 md:p-7 lg:p-9 rounded-[1.5rem] md:rounded-[2.8rem] font-bn leading-relaxed text-sm md:text-lg max-w-[92%] md:max-w-[80%] lg:max-w-[70%] shadow-lg transition-all duration-300 ${
+                  
+                  <div className={`relative p-3.5 rounded-2xl font-bn leading-relaxed text-xs md:text-sm max-w-[85%] md:max-w-[75%] shadow-[0_2px_12px_rgba(0,0,0,0.02)] transition-all ${
                     msg.type === 'user'
-                      ? 'bg-ink text-cream rounded-br-none shadow-ink/30'
-                      : 'bg-white border border-ink/5 text-ink rounded-tl-none ring-1 ring-ink/5'
+                      ? 'bg-ink text-cream rounded-tr-none border border-ink/10'
+                      : 'bg-white/95 border border-ink/5 text-ink rounded-tl-none ring-1 ring-ink/5'
                   }`}>
-                    {/* Loading dots when empty */}
-                    {msg.type === 'ai' && msg.text === '' && (
-                      <div className="flex gap-1.5 py-2 px-1">
-                        <div className="w-2 h-2 bg-ink/20 rounded-full animate-pulse" />
-                        <div className="w-2 h-2 bg-ink/20 rounded-full animate-pulse delay-75" />
-                        <div className="w-2 h-2 bg-ink/20 rounded-full animate-pulse delay-150" />
+                    {/* Bot Message Header */}
+                    {msg.type === 'ai' && (
+                      <div className="flex items-center gap-1.5 mb-1.5 border-b border-ink/5 pb-1 opacity-70">
+                        <span className="text-[0.62rem] uppercase tracking-wider font-body font-black text-accent">{t('chat.ai_name')}</span>
+                        <span className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
                       </div>
                     )}
-                    <div className="relative z-10 whitespace-pre-wrap">{msg.text}</div>
+
+                    {/* Loading dots when empty */}
+                    {msg.type === 'ai' && msg.text === '' && (
+                      <div className="flex gap-1 py-1 px-0.5">
+                        <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" />
+                        <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100" />
+                        <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200" />
+                      </div>
+                    )}
+
+                    <div className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed">
+                      {msg.type === 'user' ? msg.text : renderFormattedText(msg.text)}
+                    </div>
+
                     {/* Streaming cursor */}
                     {msg.type === 'ai' && isStreaming && msg.text !== '' && (
-                      <span className="inline-block w-0.5 h-5 bg-accent ml-1 animate-pulse" />
+                      <span className="inline-block w-1 h-3.5 bg-accent ml-0.5 animate-pulse" />
                     )}
-                    <div className={`text-[0.6rem] md:text-[0.65rem] mt-2 md:mt-4 font-body font-black uppercase tracking-[0.2em] opacity-40 flex items-center gap-2 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      {msg.type === 'ai' && <div className="w-1 h-1 bg-accent rounded-full animate-ping" />}
+
+                    <div className={`text-[0.52rem] mt-2 font-body font-black uppercase tracking-wider opacity-40 flex items-center gap-1 ${msg.type === 'user' ? 'justify-end text-cream/70' : 'justify-start text-ink-muted'}`}>
                       {msg.time}
                     </div>
                   </div>
@@ -276,67 +380,81 @@ export const ChatWindow = () => {
             {/* AI Typing Indicator */}
             {isTyping && (
               <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                initial={{ opacity: 0, y: 8, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="flex flex-col gap-2"
+                className="flex justify-start items-start gap-2 md:gap-3"
               >
-                <div className="flex justify-start items-end gap-2 md:gap-4">
-                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-xl mb-1 transform -rotate-6">
-                    <Bot size={16} className="md:w-6 md:h-6" />
+                <div className="w-7 h-7 rounded-xl bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-sm mt-0.5">
+                  <Bot size={14} />
+                </div>
+                <div className="p-3.5 bg-white border border-ink/5 rounded-2xl rounded-tl-none shadow-sm flex flex-col gap-1.5 ring-1 ring-ink/5">
+                  <div className="flex items-center gap-1.5 border-b border-ink/5 pb-1 opacity-70">
+                    <span className="text-[0.62rem] uppercase tracking-wider font-body font-black text-accent">{t('chat.ai_name')}</span>
+                    <span className="text-[0.58rem] font-bn text-ink-muted italic animate-pulse">{t('chat.typing')}</span>
                   </div>
-                  <div className="p-5 md:p-6 bg-white border border-ink/5 rounded-[1.8rem] md:rounded-[2.2rem] rounded-tl-none shadow-xl flex items-center gap-1.5 ring-1 ring-ink/5">
+                  <div className="flex items-center gap-1 py-1 px-0.5">
                     {[0, 1, 2].map((dot) => (
                       <motion.div
                         key={dot}
-                        className="w-2 h-2 md:w-2.5 md:h-2.5 bg-accent/40 rounded-full"
-                        animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                        className="w-1.5 h-1.5 bg-accent rounded-full"
+                        animate={{ scale: [1, 1.25, 1], opacity: [0.4, 1, 0.4] }}
                         transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.15, ease: 'easeInOut' }}
                       />
                     ))}
                   </div>
                 </div>
-                <motion.div
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="ml-10 md:ml-16 flex items-center gap-2"
-                >
-                  <span className="text-[0.65rem] md:text-xs font-bn font-bold text-accent tracking-wider uppercase flex items-center gap-1.5">
-                    {t('chat.ai_name')}
-                    <span className="animate-pulse">{t('chat.typing')}</span>
-                  </span>
-                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
-          <div ref={messagesEndRef} className="h-6 md:h-8 shrink-0" />
+          <div ref={messagesEndRef} className="h-4 md:h-6 shrink-0" />
         </div>
 
         {/* Scroll to bottom button */}
         {messages.length > 3 && (
           <button
-            onClick={scrollToBottom}
-            className="absolute bottom-32 right-6 p-3 bg-white border border-ink/10 rounded-2xl shadow-xl text-ink-muted hover:text-accent transition-all z-20"
+            onClick={() => scrollToBottom('smooth')}
+            className="absolute bottom-32 right-4 p-2.5 bg-white border border-ink/10 rounded-xl shadow-lg text-ink-muted hover:text-accent transition-all z-20 hover:scale-105 active:scale-95"
           >
-            <ChevronDown size={18} />
+            <ChevronDown size={14} />
           </button>
         )}
 
-        {/* Input Bar */}
-        <div className="p-4 md:p-8 bg-white/90 backdrop-blur-xl border-t border-ink/5 z-30 shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
-          <div className="max-w-5xl mx-auto flex items-center gap-3 md:gap-5">
+        {/* Floating Prompt Chips */}
+        {messages.length === 0 && (
+          <div className="px-3 md:px-6 mb-3 flex flex-wrap justify-center gap-1.5 md:gap-2 z-20">
+            {[
+              isBn ? 'আজকের ডায়েট কী?' : "What is today's diet plan?",
+              isBn ? 'ওজন কমানোর কিছু সহজ উপায় বলুন' : 'Simple ways to lose weight',
+              isBn ? 'ডায়াবেটিস রোগীর খাবার তালিকা কেমন হবে?' : 'Diet tips for diabetes'
+            ].map((text, i) => (
+              <button
+                key={i}
+                onClick={() => send(text)}
+                disabled={isStreaming}
+                className="px-3 py-1.5 bg-white border border-ink/5 hover:border-accent hover:bg-white text-ink-muted hover:text-accent rounded-full text-[0.62rem] md:text-xs font-bn shadow-[0_1px_4px_rgba(0,0,0,0.01)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              >
+                ✦ {text}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input Bar Dock */}
+        <div className="p-3 md:p-4 bg-white/95 backdrop-blur-xl border-t border-ink/5 z-30 shrink-0 shadow-[0_-8px_30px_rgba(0,0,0,0.03)] rounded-b-2xl">
+          <div className="max-w-4xl mx-auto flex items-center gap-2 md:gap-3">
             <button
               aria-label="View history"
               onClick={() => setMessages([])}
-              className="p-4 md:p-5 bg-ink text-cream rounded-[1.2rem] md:rounded-[1.5rem] shadow-2xl hover:bg-accent transition-all shrink-0 group relative overflow-hidden"
+              className="p-3 bg-ink text-cream rounded-xl shadow-sm hover:bg-accent transition-all shrink-0 group relative overflow-hidden active:scale-95"
             >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform" />
-              <History size={22} className="relative z-10" />
+              <History size={15} className="relative z-10" />
             </button>
 
-            <div className="flex-1 bg-white border border-ink/10 rounded-full flex items-center px-4 md:px-8 py-1 md:py-2 shadow-2xl shadow-ink/5 focus-within:border-accent/60 focus-within:ring-4 ring-accent/5 transition-all duration-500">
-              <div className="text-accent mr-3 md:mr-5 hidden sm:block opacity-60">
-                <FileText size={20} />
+            <div className="flex-1 bg-cream/30 border border-ink/5 rounded-2xl flex items-center px-3.5 md:px-4 py-0.5 focus-within:bg-white focus-within:border-accent/30 focus-within:ring-4 ring-accent/5 transition-all duration-300">
+              <div className="text-ink-faint mr-2 hidden sm:block opacity-40">
+                <FileText size={15} />
               </div>
               <input
                 type="text"
@@ -346,25 +464,26 @@ export const ChatWindow = () => {
                 disabled={isStreaming}
                 aria-label="Chat input"
                 placeholder={t('chat.input_placeholder')}
-                className="flex-1 bg-transparent py-3 md:py-5 font-bn text-sm md:text-xl focus:outline-none placeholder:text-ink/30 disabled:opacity-50"
+                className="flex-1 bg-transparent py-2.5 md:py-3.5 font-bn text-xs md:text-sm focus:outline-none placeholder:text-ink/30 disabled:opacity-50 text-ink"
               />
               <button
                 onClick={() => send()}
                 disabled={!input.trim() || isStreaming}
                 aria-label="Send message"
-                className="ml-2 px-4 md:px-10 py-2 md:py-4 bg-accent text-white rounded-full font-bn font-black text-sm md:text-xl flex items-center gap-2 hover:bg-ink hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100 transition-all shadow-xl shadow-accent/20 shrink-0"
+                className="ml-1 px-3 py-1.5 md:px-4.5 md:py-2.5 bg-accent hover:bg-ink text-white rounded-xl font-bn font-black text-xs md:text-sm flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-20 disabled:scale-100 transition-all shadow-sm shrink-0"
               >
                 <span className="hidden md:inline">{t('chat.send')}</span>
-                <Send size={18} className={input.trim() ? 'animate-pulse' : ''} />
+                <Send size={11} className={input.trim() ? 'animate-pulse' : ''} />
               </button>
             </div>
           </div>
-          <div className="flex flex-col md:flex-row justify-center items-center gap-2 mt-4 md:mt-6">
-            <p className="text-[0.6rem] md:text-[0.7rem] uppercase tracking-[0.3em] text-ink-faint font-body font-black opacity-40">
+          
+          <div className="flex flex-col md:flex-row justify-center items-center gap-1 md:gap-1.5 mt-2.5 md:mt-3 opacity-60">
+            <p className="text-[0.5rem] md:text-[0.55rem] uppercase tracking-widest text-ink-faint font-body font-black">
               {t('chat.footer_secure')}
             </p>
-            <span className="hidden md:block text-ink-faint opacity-20">•</span>
-            <p className="text-[0.6rem] md:text-[0.7rem] uppercase tracking-[0.3em] text-ink-faint font-body font-black opacity-40">
+            <span className="hidden md:block text-ink-faint opacity-30 text-[0.6rem]">•</span>
+            <p className="text-[0.5rem] md:text-[0.55rem] uppercase tracking-widest text-ink-faint font-body font-black text-center max-w-md">
               {t('chat.footer_disclaimer')}
             </p>
           </div>

@@ -25,10 +25,13 @@ async def get_nutrition_report(current_user=Depends(get_current_user)):
     latest_log = await prisma.healthlog.find_first(
         where={"userId": current_user.id}, order={"logDate": "desc"}
     )
+    current_weight = profile.weightKg or 70
+    if latest_log and latest_log.weightKg:
+        current_weight = latest_log.weightKg
     targets = calculate_targets({
         "gender": profile.gender or "male",
         "height_cm": profile.heightCm or 170,
-        "weight_kg": profile.weightKg or 70,
+        "weight_kg": current_weight,
         "activity_level": profile.activityLevel or "sedentary",
         "age": profile.age,
         "goal": profile.goal,
@@ -153,8 +156,14 @@ async def get_health_summary(
                 "weightKg": weight_kg,
             })
 
-    # 2. Compute targets
-    current_weight = weight_kg or profile.weightKg or 70
+    current_weight = weight_kg
+    if not current_weight:
+        latest_log = await prisma.healthlog.find_first(
+            where={"userId": current_user.id},
+            order={"logDate": "desc"},
+        )
+        current_weight = latest_log.weightKg if latest_log else profile.weightKg or 70
+
     targets = calculate_targets({
         "gender": profile.gender or "male",
         "height_cm": profile.heightCm or 170,
