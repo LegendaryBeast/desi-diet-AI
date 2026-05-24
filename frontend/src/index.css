@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  @font-face {
+    font-family: 'Playfair Display';
+    src: local('Space Grotesk'), local('system-ui'), local('-apple-system'), local('sans-serif');
+    unicode-range: U+30-39, U+2F, U+25;
+    font-weight: 100 900;
+  }
+
   html {
     scroll-behavior: smooth;
   }
