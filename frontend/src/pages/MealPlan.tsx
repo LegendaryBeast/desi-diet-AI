@@ -383,8 +383,6 @@ export const MealPlan = () => {
     setEditingPlanData({ ...editingPlanData, meals: newMeals });
   };
 
-
-
   const renderMealCard = (p: MealPlanResponse, showToggle = false) => {
     const isToday = showToggle && plan?.plan_id === p.plan_id;
     const pd = isToday && isEditing && editingPlanData ? editingPlanData : getPlanData(p);
@@ -415,39 +413,39 @@ export const MealPlan = () => {
     const pct = totalCal > 0 ? Math.min(100, Math.round((consumedCal / totalCal) * 100)) : 0;
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <header className="flex flex-col lg:flex-row items-center gap-8 md:gap-12 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-ink/5">
+        <header className="flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-white p-5 md:p-6.5 rounded-3xl shadow-sm border border-ink/5">
           {/* Circular Progress */}
-          <div className="relative w-36 h-36 flex items-center justify-center flex-shrink-0">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-cream" />
+          <div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-cream" />
               <circle
-                cx="50%" cy="50%" r="45%"
-                stroke="currentColor" strokeWidth="10" fill="transparent"
-                strokeDasharray={`${2 * Math.PI * 0.45 * 144}`}
-                strokeDashoffset={`${2 * Math.PI * 0.45 * 144 * (1 - pct / 100)}`}
+                cx="50" cy="50" r="40"
+                stroke="currentColor" strokeWidth="8" fill="transparent"
+                strokeDasharray={`${2 * Math.PI * 40}`}
+                strokeDashoffset={`${2 * Math.PI * 40 * (1 - pct / 100)}`}
                 className="text-accent transition-all duration-700"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="font-display text-3xl font-black text-ink leading-none">{pct}%</span>
-              <div className="font-bn text-[0.65rem] text-ink-muted mt-1 leading-tight font-bold">
+              <span className="font-display text-2xl font-black text-ink leading-none">{pct}%</span>
+              <div className="font-bn text-[0.62rem] text-ink-muted mt-0.5 leading-tight font-bold">
                 <span className="text-accent">{consumedCal}</span> / {totalCal} <br />
-                <span className="uppercase tracking-wider">kcal গৃহীত</span>
+                <span className="uppercase tracking-wider">kcal</span>
               </div>
             </div>
           </div>
 
           <div className="flex-1 text-center lg:text-left">
-            <h1 className="font-display text-3xl md:text-5xl font-black text-ink mb-3">
+            <h1 className="font-display text-2xl md:text-3xl font-black text-ink mb-1.5">
               {p.plan_id === tomorrowPlan?.plan_id ? 'আগামীকালের' : 'আজকের'} <em className="italic text-ink-muted">খাবার</em>
             </h1>
-            <p className="font-bn text-sm text-ink-muted mb-6">
+            <p className="font-bn text-xs text-ink-muted mb-4">
               {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {(() => {
                 // Calculate consumed macros from completed slots
                 const slotMacros = meals
@@ -475,59 +473,59 @@ export const MealPlan = () => {
                   { icon: Droplet, label: 'চর্বি', val: targets ? `${consumedMacros.fat_g}/${targets.fat_g}` : '--', unit: 'g', color: 'text-gold' },
                 ];
               })().map((item, i) => (
-                <div key={i} className="bg-cream/50 p-4 rounded-2xl border border-ink/5">
-                  <div className="flex items-center gap-2 text-ink-faint mb-1 justify-center lg:justify-start">
-                    <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
-                    <span className="font-bn text-[0.65rem] font-bold uppercase tracking-wider">{item.label}</span>
+                <div key={i} className="bg-cream/40 p-2.5 rounded-xl border border-ink/5 text-center lg:text-left">
+                  <div className="flex items-center gap-1.5 text-ink-faint mb-0.5 justify-center lg:justify-start">
+                    <item.icon className={`w-3 h-3 ${item.color}`} />
+                    <span className="font-bn text-[0.6rem] font-bold uppercase tracking-wider">{item.label}</span>
                   </div>
-                  <div className="font-bold text-base md:text-lg text-ink">{item.val}</div>
+                  <div className="font-bold text-sm md:text-base text-ink">{item.val}</div>
                 </div>
               ))}
             </div>
 
             {isToday && (
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 {aiCal && (
-                  <div className="text-xs font-bn px-3 py-1.5 bg-ink/5 text-ink-muted rounded-xl">
+                  <div className="text-[10px] font-bn px-2.5 py-1 bg-ink/5 text-ink-muted rounded-lg">
                     AI Suggestion: <span className="font-bold">{aiCal} kcal</span>
                   </div>
                 )}
                 {userCal && (
-                  <div className="text-xs font-bn px-3 py-1.5 bg-accent/10 text-accent rounded-xl">
+                  <div className="text-[10px] font-bn px-2.5 py-1 bg-accent/10 text-accent rounded-lg">
                     Your Choice: <span className="font-bold">{userCal} kcal</span>
                   </div>
                 )}
                 <div className="flex-1" />
                 {isEditing ? (
-                  <>
-                    <button onClick={() => setIsEditing(false)} className="text-xs font-bn font-bold px-4 py-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors flex items-center gap-2">
-                      <X className="w-3.5 h-3.5" /> বাতিল
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setIsEditing(false)} className="text-[11px] font-bn font-bold px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5">
+                      <X className="w-3 h-3" /> বাতিল
                     </button>
-                    <button onClick={saveEdits} disabled={savingEdit} className="text-xs font-bn font-bold px-4 py-2 bg-ink text-cream rounded-xl hover:bg-accent transition-colors flex items-center gap-2">
-                      {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} সেভ করুন
+                    <button onClick={saveEdits} disabled={savingEdit} className="text-[11px] font-bn font-bold px-3 py-1.5 bg-ink text-cream rounded-lg hover:bg-accent transition-colors flex items-center gap-1.5">
+                      {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3 h-3" />} সেভ করুন
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <button
                       onClick={() => regenerateDaily(tab === 'today' ? 0 : 1)}
                       disabled={loading}
-                      className={`text-xs font-bn font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm ${
+                      className={`text-[11px] font-bn font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${
                         isPro
-                          ? 'bg-accent text-white hover:bg-accent/80 shadow-accent/20'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-orange-500/20 hover:shadow-lg'
+                          ? 'bg-accent text-white hover:bg-accent/85 shadow-accent/10'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-orange-500/10 hover:shadow-md'
                       }`}
                     >
                       {isPro ? (
-                        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                       ) : (
-                        <Crown className="w-3.5 h-3.5" />
+                        <Crown className="w-3 h-3" />
                       )}
                       পুনরায় তৈরি করুন
-                      {!isPro && <span className="text-[0.5rem] bg-white/20 px-1.5 py-0.5 rounded font-black uppercase">Pro</span>}
+                      {!isPro && <span className="text-[0.45rem] bg-white/20 px-1 py-0.5 rounded font-black uppercase">Pro</span>}
                     </button>
-                    <button onClick={() => setIsEditing(true)} className="text-xs font-bn font-bold px-4 py-2 border border-ink/10 text-ink rounded-xl hover:bg-ink/5 transition-colors flex items-center gap-2">
-                      <Edit2 className="w-3.5 h-3.5" /> কাস্টমাইজ
+                    <button onClick={() => setIsEditing(true)} className="text-[11px] font-bn font-bold px-3 py-1.5 border border-ink/10 text-ink rounded-lg hover:bg-ink/5 transition-colors flex items-center gap-1.5">
+                      <Edit2 className="w-3 h-3" /> কাস্টমাইজ
                     </button>
                   </div>
                 )}
@@ -544,23 +542,23 @@ export const MealPlan = () => {
           const pct = Math.round((completed / total) * 100) || 0;
 
           return (
-            <div className="bg-white p-6 rounded-[2.2rem] border border-ink/5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5 w-full sm:w-auto">
-                <div className="w-10 h-10 rounded-xl bg-accent/5 flex items-center justify-center text-accent shrink-0">
-                  <Droplet className="w-5 h-5 animate-pulse" />
+            <div className="bg-white p-4.5 rounded-2xl border border-ink/5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="w-9 h-9 rounded-lg bg-accent/5 flex items-center justify-center text-accent shrink-0">
+                  <Droplet className="w-4.5 h-4.5 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="font-display font-black text-sm text-ink">
+                  <h3 className="font-display font-black text-xs text-ink">
                     পুষ্টি উপাদান ট্র্যাকার (Micronutrient Tracker)
                   </h3>
-                  <p className="font-bn text-xs text-ink-muted mt-0.5">
+                  <p className="font-bn text-[11px] text-ink-muted mt-0.5">
                     আজকের ভিটামিন ও মিনারেল গ্রহণের মাত্রা: <b className="text-accent font-body font-bold">{completed}/{total}</b> সম্পূর্ণ ({pct}%)
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => navigate('/micronutrients')}
-                className="w-full sm:w-auto px-5 py-2.5 bg-ink text-cream hover:bg-accent rounded-xl font-bn font-bold text-xs transition-colors shadow-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-ink text-cream hover:bg-accent rounded-lg font-bn font-bold text-[11px] transition-colors shadow-sm"
               >
                 বিস্তারিত ট্র্যাকিং দেখুন
               </button>
@@ -569,7 +567,7 @@ export const MealPlan = () => {
         })()}
 
         {/* Meal Cards */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {meals.map((slot, i) => {
             const SlotIcon = SLOT_ICONS[slot.slot] || Utensils;
             const slotColor = SLOT_COLORS[slot.slot] || 'text-ink';
@@ -578,157 +576,174 @@ export const MealPlan = () => {
             return (
               <motion.div
                 key={slot.slot + i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07 }}
-                className={`bg-white rounded-[2rem] p-6 md:p-8 border transition-all group shadow-sm ${isDone ? 'border-green-200 bg-green-50/30' : 'border-ink/5 hover:border-accent/10'
-                  }`}
+                transition={{ delay: i * 0.05 }}
+                className={`bg-white rounded-2xl p-4.5 md:p-5 border transition-all group shadow-sm ${
+                  isDone ? 'border-green-200 bg-green-50/20' : 'border-ink/5 hover:border-accent/10'
+                }`}
               >
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col lg:flex-row gap-4.5">
                   {/* Slot info */}
-                  <div className="lg:w-48 flex lg:flex-col items-center lg:items-start justify-between border-b lg:border-b-0 lg:border-r border-ink/5 pb-4 lg:pb-0 lg:pr-8">
-                    <div className={`bg-cream p-3 rounded-2xl ${isDone ? 'bg-green-100' : 'group-hover:bg-ink group-hover:text-cream'} transition-colors`}>
-                      {isDone ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <SlotIcon className={`w-6 h-6 ${slotColor}`} />}
-                    </div>
-                    <div className="mt-0 lg:mt-4">
-                      <div className="font-bn text-base font-bold text-ink">{slot.slot_bn || slot.slot}</div>
-                      <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">
-                        {(slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0)} kcal
+                  <div className="lg:w-36 flex lg:flex-col items-center lg:items-start justify-between border-b lg:border-b-0 lg:border-r border-ink/5 pb-3 lg:pb-0 lg:pr-5">
+                    <div className="flex items-center gap-3 lg:flex-col lg:items-start">
+                      <div className={`p-2.5 rounded-xl ${isDone ? 'bg-green-100 text-green-600' : 'bg-cream'} transition-colors`}>
+                        {isDone ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <SlotIcon className={`w-5 h-5 ${slotColor}`} />}
+                      </div>
+                      <div className="mt-0 lg:mt-2.5">
+                        <div className="font-bn text-sm font-bold text-ink leading-snug">{slot.slot_bn || slot.slot}</div>
+                        <div className="font-body text-[0.62rem] uppercase tracking-wider text-ink-faint font-bold mt-0.5">
+                          {(slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0)} kcal
+                        </div>
                       </div>
                     </div>
                     {showToggle && !isFuturePlan(p.plan_date) && (
                       <button
                         onClick={() => toggleSlotForPlan(p, slot.slot)}
-                        className={`mt-3 lg:mt-4 text-xs font-bn font-bold px-3 py-1.5 rounded-xl transition-all ${isDone
+                        className={`mt-0 lg:mt-3 text-[10px] font-bn font-bold px-2.5 py-1 rounded-lg transition-all ${
+                          isDone
                             ? 'bg-green-500 text-white hover:bg-red-400'
                             : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
-                          }`}
+                        }`}
                       >
-                        {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
+                        {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
                       </button>
                     )}
                   </div>
 
                   {/* Food items */}
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {(slot.items || []).map((food, j) => (
-                      <div
-                        key={j}
-                        className="flex flex-col p-4 bg-cream/30 rounded-2xl hover:bg-cream/60 transition-colors border border-transparent hover:border-ink/5 relative group/item"
-                      >
-                        <div className="flex items-start justify-between w-full">
-                          <div className="flex-1 pr-3">
-                            <div className="font-bn text-ink font-bold text-sm flex items-center gap-2">
-                              <span className="text-xl leading-none" aria-hidden>{food.emoji || '🍽️'}</span>
-                              <span>{food.name_bn || food.name_en}</span>
+                      <div key={j} className="flex flex-col gap-1.5">
+                        {/* Food Card Row */}
+                        <div className="flex items-center justify-between p-3 bg-cream/20 hover:bg-cream/40 rounded-xl border border-ink/5 transition-all shadow-sm group/item relative">
+                          {/* Left: Food Info */}
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                            <span className="text-xl w-8.5 h-8.5 flex items-center justify-center bg-white rounded-lg shrink-0 border border-ink/5" aria-hidden>
+                              {food.emoji || '🍽️'}
+                            </span>
+                            <div className="min-w-0">
+                              <h4 className="font-bn font-bold text-ink text-xs md:text-sm truncate leading-tight">
+                                {food.name_bn || food.name_en}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                {food.amount_g || food.amount ? (
+                                  <span className="text-[10px] text-accent font-bold font-bn">
+                                    {food.amount_g || food.amount} গ্রাম
+                                  </span>
+                                ) : null}
+                                <ShoppingSources
+                                  foodName={food.name_en || food.name_bn || `food-${j}`}
+                                  count={2}
+                                  compact={true}
+                                />
+                              </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                              {(food.amount_g || food.amount) && (
-                                <div className="font-bn text-[0.7rem] text-accent font-bold bg-accent/5 px-2 py-0.5 rounded-lg border border-accent/10 mt-1 inline-block">
-                                  পরিমাণ: {food.amount_g || food.amount} গ্রাম
-                                </div>
+                          </div>
+
+                          {/* Right: Calories & Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-bold font-sans px-2 py-0.5 bg-white text-ink-muted rounded border border-ink/5 whitespace-nowrap">
+                              {food.calories || '?'} cal
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              {/* Info Trigger */}
+                              {!isEditing && (
+                                <button
+                                  onClick={() => toggleFoodJustification(food.food_code || food.code || food.name_en || food.name_bn || '', food.name_bn || food.name_en || '')}
+                                  className={`p-1 rounded border transition-all ${
+                                    justifications[food.food_code || food.code || food.name_en || food.name_bn || '']
+                                      ? 'bg-accent/10 text-accent border-accent/25'
+                                      : 'bg-white hover:bg-accent/5 text-ink-faint hover:text-accent border-ink/5'
+                                  }`}
+                                  title="কেন এই খাবার?"
+                                >
+                                  <Info className="w-3 h-3" />
+                                </button>
+                              )}
+
+                              {/* Log Button */}
+                              {!isEditing && (
+                                <button
+                                  onClick={() => logFoodItem(slot.slot, j, food)}
+                                  disabled={loggingFoods[`${slot.slot}-${j}`] || loggedFoods[`${slot.slot}-${j}`]}
+                                  className={`p-1 rounded border transition-all ${
+                                    loggedFoods[`${slot.slot}-${j}`]
+                                      ? 'bg-emerald-500 text-white border-emerald-500'
+                                      : 'bg-white hover:bg-emerald-50 text-ink-faint hover:text-emerald-600 border-ink/5'
+                                  }`}
+                                  title={loggedFoods[`${slot.slot}-${j}`] ? 'লগ করা হয়েছে' : 'খাওয়া হিসেবে যোগ করুন'}
+                                >
+                                  {loggingFoods[`${slot.slot}-${j}`] ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+
+                              {/* Delete Button */}
+                              {isEditing && (
+                                <button
+                                  onClick={() => removeFoodItem(i, j)}
+                                  className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="বাদ দিন"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="font-bold text-ink-muted text-xs bg-white px-2 py-1 rounded-lg border border-ink/5 whitespace-nowrap">
-                              {food.calories || '?'} cal
-                            </div>
-                            {!isEditing && (
-                              <button
-                                onClick={() => logFoodItem(slot.slot, j, food)}
-                                disabled={loggingFoods[`${slot.slot}-${j}`] || loggedFoods[`${slot.slot}-${j}`]}
-                                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                                  loggedFoods[`${slot.slot}-${j}`]
-                                    ? 'bg-emerald-100 text-emerald-600 border-emerald-200'
-                                    : 'bg-white hover:bg-emerald-50 text-ink-faint hover:text-emerald-600 border-ink/5 hover:border-emerald-200'
-                                }`}
-                                title={loggedFoods[`${slot.slot}-${j}`] ? 'লগ করা হয়েছে' : 'লগ করুন'}
-                              >
-                                {loggingFoods[`${slot.slot}-${j}`] ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Check className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            )}
-                            {isEditing && (
-                              <button
-                                onClick={() => removeFoodItem(i, j)}
-                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="বাদ দিন"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
                         </div>
 
-                        {!isEditing && (
-                          <div className="mt-2.5 pt-2 border-t border-ink/5 flex justify-end">
-                            <button
-                              onClick={() => toggleFoodJustification(food.food_code || food.code || food.name_en || food.name_bn || '', food.name_bn || food.name_en || '')}
-                              className="text-[0.65rem] md:text-[0.7rem] font-bn font-bold text-accent hover:text-white flex items-center gap-1 bg-accent/5 hover:bg-accent px-2 py-1 rounded-lg border border-accent/10 transition-all cursor-pointer"
-                            >
-                              <Info className="w-3.5 h-3.5" />
-                              {justifications[food.food_code || food.code || food.name_en || food.name_bn || ''] ? 'বিশ্লেষণ বন্ধ করুন' : 'কেন এই খাবার? বিস্তারিত দেখুন'}
-                            </button>
-                          </div>
-                        )}
-
+                        {/* Collapsible Justification Panels */}
                         {justificationLoading[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
-                          <div className="mt-3 p-3 bg-white/50 rounded-xl text-xs font-bn text-ink-muted flex items-center gap-2 border border-ink/5">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" /> বিস্তারিত তৈরি করা হচ্ছে...
+                          <div className="p-2.5 bg-white/50 rounded-xl text-[11px] font-bn text-ink-muted flex items-center gap-1.5 border border-ink/5">
+                            <Loader2 className="w-3 h-3 animate-spin text-accent" /> বিশ্লেষণ লোড হচ্ছে...
                           </div>
                         )}
 
                         {justifications[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
-                          <div className="mt-3 p-4 bg-white rounded-xl border border-ink/5 text-[0.7rem] font-bn text-ink-muted leading-relaxed whitespace-pre-wrap shadow-inner relative">
-                            <p className="font-bold text-ink mb-1.5 flex items-center gap-1.5 text-xs">
+                          <div className="p-3 bg-accent/5 rounded-xl border border-accent/10 text-[11px] font-bn text-ink-muted leading-relaxed whitespace-pre-wrap shadow-inner relative">
+                            <p className="font-bold text-accent mb-1 flex items-center gap-1 text-[11px]">
                               <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
                               ডায়েটিশিয়ান বিশ্লেষণ:
                             </p>
                             {justifications[food.food_code || food.code || food.name_en || food.name_bn || '']}
                           </div>
                         )}
-
-                        {/* Shopping Sources */}
-                        <ShoppingSources
-                          foodName={food.name_en || food.name_bn || `food-${j}`}
-                          count={j % 2 === 0 ? 3 : 2}
-                          compact={false}
-                        />
                       </div>
                     ))}
 
                     {isEditing && (
                       addingFoodToSlot === i ? (
-                        <div className="col-span-1 md:col-span-2 flex flex-col items-start gap-2 p-3 bg-accent/5 border border-accent/20 rounded-2xl">
+                        <div className="col-span-1 md:col-span-2 flex flex-col items-start gap-1.5 p-2.5 bg-accent/5 border border-accent/20 rounded-xl">
                           <div className="flex w-full gap-2">
                             <input
                               type="text"
                               placeholder="খাবারের নাম খুঁজুন..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="flex-1 w-full bg-white px-3 py-2 rounded-xl border border-ink/10 text-sm font-bn outline-none focus:border-accent/50"
+                              className="flex-1 w-full bg-white px-3 py-1.5 rounded-lg border border-ink/10 text-xs font-bn outline-none focus:border-accent/40"
                               autoFocus
                             />
                             <button
                               onClick={() => { setAddingFoodToSlot(null); setSearchQuery(''); setSearchResults([]); }}
-                              className="p-2 text-ink-muted hover:bg-ink/5 rounded-xl transition-colors flex justify-center items-center"
+                              className="p-1.5 text-ink-muted hover:bg-ink/5 rounded-lg transition-colors flex justify-center items-center"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
 
                           {searchLoading && (
-                            <div className="text-xs text-ink-muted px-2 py-1 font-bn flex items-center gap-2">
+                            <div className="text-[10px] text-ink-muted px-2 py-0.5 font-bn flex items-center gap-1.5">
                               <Loader2 className="w-3 h-3 animate-spin" /> খুঁজছে...
                             </div>
                           )}
 
                           {searchResults.length > 0 && (
-                            <div className="flex flex-col gap-1 w-full max-h-48 overflow-y-auto mt-1">
+                            <div className="flex flex-col gap-1 w-full max-h-48 overflow-y-auto mt-0.5">
                               {searchResults.map((res) => (
                                 <button
                                   key={res.code}
@@ -749,13 +764,13 @@ export const MealPlan = () => {
                                     setSearchQuery('');
                                     setSearchResults([]);
                                   }}
-                                  className="text-left w-full p-3 bg-white hover:bg-cream rounded-xl text-sm font-bn border border-ink/5 flex justify-between items-center transition-colors"
+                                  className="text-left w-full p-2 bg-white hover:bg-cream rounded-lg text-xs font-bn border border-ink/5 flex justify-between items-center transition-colors"
                                 >
                                   <div className="flex flex-col">
                                     <span className="font-bold text-ink">{res.name_bn || res.name_en}</span>
-                                    <span className="text-[0.65rem] text-ink-faint">{res.food_group}</span>
+                                    <span className="text-[9px] text-ink-faint">{res.food_group}</span>
                                   </div>
-                                  <span className="text-xs font-bold text-accent shrink-0">
+                                  <span className="text-[10px] font-bold text-accent shrink-0">
                                     {res.calories || '?'} cal
                                   </span>
                                 </button>
@@ -763,8 +778,8 @@ export const MealPlan = () => {
                             </div>
                           )}
                           {searchQuery && !searchLoading && searchResults.length === 0 && (
-                            <div className="text-xs text-red-400 px-2 py-1 font-bn">
-                              কোনো খাবার পাওয়া যায়নি
+                            <div className="text-[10px] text-red-400 px-2 py-0.5 font-bn">
+                              কোনো খাবার পাওয়া যায়নি
                             </div>
                           )}
                         </div>
@@ -775,9 +790,9 @@ export const MealPlan = () => {
                             setSearchQuery('');
                             setSearchResults([]);
                           }}
-                          className="flex items-center justify-center gap-2 p-4 border border-dashed border-ink/20 rounded-2xl hover:border-accent hover:text-accent hover:bg-accent/5 transition-all text-ink-muted text-sm font-bn font-bold h-full min-h-[4rem]"
+                          className="flex items-center justify-center gap-1.5 p-3.5 border border-dashed border-ink/20 rounded-xl hover:border-accent hover:text-accent hover:bg-accent/5 transition-all text-ink-muted text-xs font-bn font-bold h-full min-h-[3.2rem]"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5" />
                           <span>নতুন খাবার যোগ করুন</span>
                         </button>
                       )
@@ -789,16 +804,14 @@ export const MealPlan = () => {
           })}
         </div>
 
-
-
         {/* Meal log (text / voice / photo) */}
         {p.plan_id !== tomorrowPlan?.plan_id && <MealLogSection key={trackingVersion} onTrackingUpdate={handleTrackingUpdate} />}
 
         {/* Feedback */}
         {showToggle && (
-          <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm">
-            <p className="font-bn text-sm font-bold text-ink-muted mb-4 text-center">এই প্ল্যান কেমন লাগলো?</p>
-            <div className="flex justify-center gap-3">
+          <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm max-w-sm mx-auto">
+            <p className="font-bn text-xs font-bold text-ink-muted mb-3 text-center">এই প্ল্যান কেমন লাগলো?</p>
+            <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -806,7 +819,7 @@ export const MealPlan = () => {
                   disabled={feedbackLoading}
                   className={`transition-all hover:scale-110 ${feedback >= star ? 'text-gold' : 'text-ink/20'}`}
                 >
-                  <Star className="w-7 h-7 fill-current" />
+                  <Star className="w-5.5 h-5.5 fill-current" />
                 </button>
               ))}
             </div>
