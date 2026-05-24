@@ -1,8 +1,7 @@
 import pandas as pd
 import os
 import re
-from sentence_transformers import SentenceTransformer, util
-import torch
+import difflib
 import google.generativeai as genai
 from neo4j import Driver
 
@@ -37,42 +36,34 @@ def load_data_for_mapping(file_name):
 
 def startup_load_models():
     """
-    Loads all AI models and lightweight mapping data into memory.
-    This is called once when the FastAPI app starts.
+    Loads lightweight mapping data into memory.
+    Replaced heavy SentenceTransformer/PyTorch with lightweight string similarity to fit in 512MB RAM.
     """
-    # 1. Load Sentence Transformer Model
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("✅ SentenceTransformer model loaded.")
-    
     # 2. Load disease data *only* for semantic matching
     disease_df = load_data_for_mapping('disease_nutrients.csv')
     if not disease_df.empty:
         disease_df.columns = disease_df.columns.str.lower().str.strip()
         predefined_diseases = disease_df['disease'].dropna().unique().tolist()
-        disease_embeddings = model.encode(predefined_diseases, convert_to_tensor=True)
-        print(f"✅ Embeddings created for {len(predefined_diseases)} diseases.")
+        print(f"✅ Predefined diseases loaded: {len(predefined_diseases)} items.")
     else:
         predefined_diseases = []
-        disease_embeddings = torch.Tensor()
 
     # 3. Load abbreviation data *only* for semantic matching
     abbreviations_df = load_data_for_mapping('nutrients_abbreviations.csv')
     if not abbreviations_df.empty:
         abbreviations_df.columns = [col.strip().lower() for col in abbreviations_df.columns]
         target_nutrient_corpus = abbreviations_df['name'].dropna().unique().tolist()
-        nutrient_embeddings = model.encode(target_nutrient_corpus, convert_to_tensor=True)
-        print(f"✅ Embeddings created for {len(target_nutrient_corpus)} target nutrients.")
+        print(f"✅ Target nutrient corpus loaded: {len(target_nutrient_corpus)} items.")
     else:
         target_nutrient_corpus = []
-        nutrient_embeddings = torch.Tensor()
 
-    # Return a dictionary holding all the loaded models and mapping data
+    # Return a dictionary holding all the loaded mapping data (preserving keys for compatibility)
     return {
-        "model": model,
+        "model": "lightweight_string_matcher",
         "predefined_diseases": predefined_diseases,
-        "disease_embeddings": disease_embeddings,
+        "disease_embeddings": None,
         "target_nutrient_corpus": target_nutrient_corpus,
-        "nutrient_embeddings": nutrient_embeddings
+        "nutrient_embeddings": None
     }
 
 # --- PHASE 2: RUNTIME LOGIC (runs on each API call) ---
@@ -80,20 +71,34 @@ def startup_load_models():
 # --- Bridge Functions (Text to Graph) ---
 
 def find_best_disease_match(user_input: str, ai_models: dict) -> str | None:
-    """Finds the closest disease node name from user's text."""
-    if (not user_input 
-        or not ai_models["predefined_diseases"] 
-        or ai_models["disease_embeddings"] is None):
+    """Finds the closest disease node name from user's text using lightweight text matching."""
+    if not user_input or not ai_models["predefined_diseases"]:
         return None
         
-    model = ai_models["model"]
-    disease_embeddings = ai_models["disease_embeddings"]
     predefined_diseases = ai_models["predefined_diseases"]
+    user_input_lower = user_input.lower().strip()
     
-    input_embedding = model.encode(user_input, convert_to_tensor=True)
-    cosine_scores = util.pytorch_cos_sim(input_embedding, disease_embeddings)
-    best_match_index = torch.argmax(cosine_scores).item()
-    return predefined_diseases[best_match_index]
+    # 1. Exact or substring match (case insensitive)
+    for disease in predefined_diseases:
+        disease_clean = disease.lower().strip()
+        if user_input_lower == disease_clean:
+            return disease
+            
+    # 2. Check if user input contains the disease name or vice versa
+    for disease in predefined_diseases:
+        disease_clean = disease.lower().strip()
+        if disease_clean in user_input_lower or user_input_lower in disease_clean:
+            return disease
+            
+    # 3. Fallback to difflib close matches for typo tolerance
+    matches = difflib.get_close_matches(user_input_lower, [d.lower() for d in predefined_diseases], n=1, cutoff=0.3)
+    if matches:
+        for d in predefined_diseases:
+            if d.lower() == matches[0]:
+                return d
+                
+    # 4. Final fallback
+    return predefined_diseases[0] if predefined_diseases else None
 
 def get_clinical_nutrients_from_graph(disease_name: str, driver: Driver) -> set:
     """Gets the required clinical nutrient names for a disease from the graph."""
@@ -103,40 +108,54 @@ def get_clinical_nutrients_from_graph(disease_name: str, driver: Driver) -> set:
             MATCH (d)-[:REQUIRES]->(n:Nutrient)
             RETURN n.name AS nutrient_name
         """, disease=disease_name)
-        # Return the count of nutrients as well, for the similarity query
         nutrients = {record["nutrient_name"] for record in result}
         return nutrients, len(nutrients)
 
 
 def map_clinical_to_scientific_nutrients(clinical_nutrients: set, ai_models: dict) -> set:
     """
-    **CRITICAL FUNCTION**
-    Cleans the nutrient list from the graph.
-    It maps ambiguous names ("Vitamin B") or junk ("Food Code")
-    to the correct, scientific names ("Vitamin B12 (Cobalamin)")
-    that exist in our RDA table.
+    Maps clinical/informal nutrient names ("Vitamin B") 
+    to correct, scientific names ("Vitamin B12 (Cobalamin)") using lightweight token matching.
     """
-    if (not clinical_nutrients 
-        or not ai_models["target_nutrient_corpus"] 
-        or ai_models["nutrient_embeddings"] is None):
+    if not clinical_nutrients or not ai_models["target_nutrient_corpus"]:
         return set()
 
-    model = ai_models["model"]
-    nutrient_embeddings = ai_models["nutrient_embeddings"]
     target_nutrient_corpus = ai_models["target_nutrient_corpus"]
-
     mapped_nutrients = set()
-    clinical_embeddings = model.encode(list(clinical_nutrients), convert_to_tensor=True)
-    cosine_scores = util.pytorch_cos_sim(clinical_embeddings, nutrient_embeddings)
-
-    for i in range(len(clinical_nutrients)):
-        # Find the best match in our "clean" nutrient list
-        best_match_index = torch.argmax(cosine_scores[i]).item()
+    
+    for clinical in clinical_nutrients:
+        clinical_lower = clinical.lower().strip()
         
-        # Only add it if the match is good (similarity > 0.5)
-        # This filters out junk like "Food Code"
-        if cosine_scores[i][best_match_index] > 0.5:
-            mapped_nutrients.add(target_nutrient_corpus[best_match_index])
+        best_match = None
+        best_score = 0.0
+        
+        # Tokenize the clinical term
+        clinical_tokens = set(re.findall(r'\w+', clinical_lower))
+        
+        for target in target_nutrient_corpus:
+            target_lower = target.lower().strip()
+            target_tokens = set(re.findall(r'\w+', target_lower))
+            
+            # Exact match
+            if clinical_lower == target_lower:
+                score = 1.0
+            # Substring match
+            elif clinical_lower in target_lower or target_lower in clinical_lower:
+                score = 0.85
+            # Token overlap Jaccard similarity
+            elif clinical_tokens and target_tokens:
+                intersection = clinical_tokens.intersection(target_tokens)
+                union = clinical_tokens.union(target_tokens)
+                score = len(intersection) / len(union)
+            else:
+                score = 0.0
+                
+            if score > best_score:
+                best_score = score
+                best_match = target
+                
+        if best_score > 0.4 and best_match:
+            mapped_nutrients.add(best_match)
                 
     return mapped_nutrients
 
