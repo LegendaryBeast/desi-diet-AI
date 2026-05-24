@@ -17,8 +17,10 @@ import {
   Apple,
   BarChart2,
   MessageSquare,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -39,6 +41,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const { profileData, logout } = useAuth();
+  const { isPro, subscribe, unsubscribe } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -126,6 +129,40 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   </div>
                 </div>
 
+                {/* Subscription Status */}
+                <div className={`p-4 rounded-2xl border mb-6 md:mb-8 ${
+                  isPro
+                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+                    : 'bg-cream/50 border-ink/5'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                        isPro ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white' : 'bg-ink/10 text-ink-muted'
+                      }`}>
+                        <Crown size={14} />
+                      </div>
+                      <div>
+                        <div className="font-bn font-bold text-sm text-ink">
+                          {isPro ? 'Pro Plan' : 'Free Plan'}
+                        </div>
+                        <div className="text-[0.55rem] uppercase tracking-wider text-ink-faint font-body font-bold">
+                          {isPro ? '৳500/month' : 'Limited'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => isPro ? unsubscribe() : subscribe()}
+                      className={`relative w-11 h-6 rounded-full transition-all duration-300 ${
+                        isPro ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-ink/15'
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${
+                        isPro ? 'left-[22px]' : 'left-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
                 {/* Navigation */}
                 <nav className="flex-grow space-y-1.5">
                   <p className="text-[0.55rem] uppercase tracking-[0.2em] text-ink-faint font-body font-bold px-4 mb-3">Health Dashboard</p>

@@ -15,6 +15,7 @@ import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -86,9 +87,11 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <SubscriptionProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </SubscriptionProvider>
   );
 }
 

@@ -15,6 +15,7 @@ const apiProxy = {
 export default defineConfig({
   plugins: [react()],
   server: {
+    port: 3421,
     proxy: {
       // Proxy all API calls to the FastAPI backend on port 8000
       '/auth': apiProxy,

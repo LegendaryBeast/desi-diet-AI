@@ -2,6 +2,7 @@
 
 import json
 import random
+import unicodedata
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from app.db import prisma
@@ -19,6 +20,384 @@ def _get_rag() -> KhadokGraphRAG:
     if _rag_engine is None:
         _rag_engine = KhadokGraphRAG()
     return _rag_engine
+
+
+# ── Emoji assignment ──────────────────────────────────────────────────────────
+# Two-layer lookup: (1) substring match on Bengali/English name, (2) food_group
+# default. Used to enrich both LLM-generated and fallback meal items so the UI
+# can show a glyph in front of every food.
+
+_NAME_EMOJI_RULES: List[tuple] = [
+    # (substrings_lower, emoji) — first match wins. Bengali + English variants.
+    (("ভাত", "চাল", "rice", "polao", "biryani", "khichuri", "খিচুড়ি", "পোলাও"), "🍚"),
+    (("রুটি", "আটা", "ময়দা", "roti", "bread", "naan", "নান", "porota", "পরোটা"), "🫓"),
+    (("সুজি", "সেমাই", "halwa", "halua", "হালুয়া", "vermicelli"), "🍮"),
+    (("oat", "cereal", "ওটস", "কর্নফ্লেক্স"), "🥣"),
+    (("ডিম", "egg"), "🥚"),
+    (("মুরগি", "chicken", "পোলট্রি"), "🍗"),
+    (("গরু", "beef"), "🥩"),
+    (("খাসি", "পাঁঠা", "mutton", "lamb", "goat"), "🍖"),
+    (("চিংড়ি", "shrimp", "prawn"), "🦐"),
+    (("কাঁকড়া", "crab"), "🦀"),
+    (("ইলিশ", "rui", "katla", "tilapia", "মাছ", "fish"), "🐟"),
+    (("দুধ", "milk"), "🥛"),
+    (("দই", "yogurt", "yoghurt", "curd"), "🥣"),
+    (("পনির", "ছানা", "cheese", "paneer"), "🧀"),
+    (("মাখন", "butter", "ঘি", "ghee"), "🧈"),
+    (("ডাল", "dal", "lentil", "মসুর", "মুগ"), "🍲"),
+    (("ছোলা", "chickpea", "chana", "মটর", "pea ", "peas"), "🫘"),
+    (("শাক", "spinach", "leafy", "kolmi", "kalmi", "পাতা"), "🥬"),
+    # Core Staples
+    (("ভাত", "চাল", "rice"), "🍚"),
+    (("রুটি", "আটা", "ময়দা", "সুজি", "সেমাই", "গম", "roti", "atta", "flour", "wheat", "semolina", "vermicelli"), "🍚"),
+    # Proteins
+    (("ডিম", "egg"), "🥚"),
+    (("মুরগি", "chicken", "poultry"), "🍗"),
+    (("মাছ", "fish", "pangas", "ruhi", "tilapia", "hilsa", "carp", "tengra", "mola"), "🐟"),
+    (("গরু", "খাসি", "মাংস", "ছাগল", "ভেড়া", "মহিষ", "beef", "mutton", "meat", "lamb", "pork"), "🥩"),
+    (("ডাল", "dal", "lentil", "pulse", "chola", "ছোলা", "peas"), "🍲"),
+    # Fruits, Vegetables & Leaves
+    (("শাক", "leafy", "spinach", "leaves", "পাতা", "leaf", "parsley", "coriander", "পুদিনা", "ধনে"), "🥬"),
+    (("আলু", "potato"), "🥔"),
+    (("টমেটো", "tomato"), "🍅"),
+    (("গাজর", "carrot"), "🥕"),
+    (("বেগুন", "eggplant", "brinjal", "aubergine"), "🍆"),
+    (("ফুলকপি", "cauliflower", "broccoli"), "🥦"),
+    (("বাঁধাকপি", "cabbage"), "🥦"),
+    (("শসা", "cucumber"), "🥒"),
+    (("মরিচ", "pepper", "chili", "chilli"), "🌶️"),
+    (("পেঁয়াজ", "onion", "রসুন", "garlic"), "🧅"),
+    (("ভুট্টা", "corn", "maize"), "🌽"),
+    (("মাশরুম", "mushroom"), "🍄"),
+    (("কলা", "banana"), "🍌"),
+    (("আপেল", "apple"), "🍎"),
+    (("কমলা", "orange", "tangerine"), "🍊"),
+    (("আম", "mango"), "🥭"),
+    (("পেয়ারা", "guava"), "🍐"),
+    (("আঙ্গুর", "grape"), "🍇"),
+    (("তরমুজ", "watermelon"), "🍉"),
+    (("আনারস", "pineapple"), "🍍"),
+    (("নারকেল", "coconut"), "🥥"),
+    (("খেজুর", "date "), "🍯"),
+    (("পেঁপে", "papaya"), "🍈"),
+    (("কাঁঠাল", "jackfruit"), "🥭"),
+    (("লেবু", "lemon", "lime"), "🍋"),
+    (("বাদাম", "almond", "nut", "peanut", "কাজু", "cashew"), "🥜"),
+    (("চা", "tea"), "🍵"),
+    (("কফি", "coffee"), "☕"),
+    (("জুস", "juice", "শরবত"), "🧃"),
+    (("পানি", "water"), "💧"),
+    (("মধু", "honey"), "🍯"),
+    (("চিনি", "sugar", "জাগেরি", "jaggery", "গুড়"), "🍬"),
+    (("তেল", "oil"), "🫒"),
+]
+
+
+def _get_cooked_name(raw_name_bn: str, raw_name_en: str, food_group_name: str) -> tuple:
+    """Convert raw DB ingredient names into realistic cooked Bangladeshi dish names.
+    
+    Shared by both the LLM validation path and the fallback plan builder so
+    the final output always shows practical, cooked meal names.
+    """
+    bn = raw_name_bn
+    en = raw_name_en
+    if "সিদ্ধ চাল" in raw_name_bn:
+        bn = "সিদ্ধ চালের ভাত"
+        en = "Cooked Parboiled Rice"
+    elif "আতপ চাল" in raw_name_bn:
+        bn = "আতপ চালের ভাত"
+        en = "Cooked Atap Rice"
+    elif "আটা" in raw_name_bn:
+        bn = "আটা রুটি"
+        en = "Atta Roti"
+    elif "ময়দা" in raw_name_bn:
+        bn = "ময়দা রুটি"
+        en = "White Flour Roti"
+    elif "সুজি" in raw_name_bn:
+        bn = "সুজির হালুয়া"
+        en = "Semolina Halwa"
+    elif "সেমাই" in raw_name_bn:
+        bn = "রান্না করা মিষ্টি সেমাই"
+        en = "Cooked Vermicelli"
+    elif "পোলট্রি মুরগির  ডিম" in raw_name_bn or "মুরগির ডিম" in raw_name_bn or "ডিম" in raw_name_bn:
+        bn = "সিদ্ধ মুরগির ডিম"
+        en = "Boiled Poultry Egg"
+    elif "পোলট্রি মুরগি" in raw_name_bn or "মুরগি" in raw_name_bn:
+        bn = "মুরগির মাংসের তরকারি (কম তেল)"
+        en = "Chicken Curry (Low Oil)"
+    elif "গরুর মাংস" in raw_name_bn or "গরুর" in raw_name_bn:
+        bn = "গরুর মাংসের তরকারি (কম চর্বি)"
+        en = "Beef Curry (Low Fat)"
+    elif "পাঁঠার মাংস" in raw_name_bn or "খাসি" in raw_name_bn:
+        bn = "খাসির মাংসের তরকারি"
+        en = "Mutton Curry"
+    elif "ডাল" in raw_name_bn:
+        bn = f"{raw_name_bn} (রান্না করা)"
+        en = f"Cooked {raw_name_en}"
+    elif "মটর" in raw_name_bn or "ছোলা" in raw_name_bn:
+        bn = f"{raw_name_bn}র তরকারি"
+        en = f"Cooked {raw_name_en}"
+    elif "মাছ" in raw_name_bn or food_group_name in ("Fish & Seafood", "Marine Fish", "Fresh Water Fish and Shellfish", "Marine Shellfish"):
+        bn = f"{raw_name_bn}র হালকা ঝোল / দো পেঁয়াজা"
+        en = f"{raw_name_en} Curry"
+    elif "কচু পাতা" in raw_name_bn:
+        bn = "কচু পাতার ভর্তা"
+        en = "Colocasia Leaf Bhorta"
+    elif "শাক" in raw_name_bn or food_group_name in ("Leafy Vegetables", "Green Leafy Vegetables"):
+        bn = f"{raw_name_bn} ভাজি"
+        en = f"Stir-fried {raw_name_en}"
+    elif food_group_name in ("Vegetables", "Other Vegetables", "Roots and Tubers", "Roots & Tubers"):
+        bn = f"{raw_name_bn}র তরকারি"
+        en = f"{raw_name_en} Curry"
+    return bn, en
+
+
+_GROUP_EMOJI: Dict[str, str] = {
+    "Cereals & Grains": "🍚",
+    "Cereals": "🍚",
+    "Grains": "🍚",
+    "Pulses & Legumes": "🍲",
+    "Legumes": "🍲",
+    "Fish & Seafood": "🐟",
+    "Meat & Poultry": "🍗",
+    "Eggs": "🥚",
+    "Dairy & Milk": "🥛",
+    "Dairy": "🥛",
+    "Vegetables": "🥗",
+    "Leafy Vegetables": "🥬",
+    "Fruits": "🍎",
+    "Nuts & Seeds": "🥜",
+    "Beverages": "🥤",
+    "Sweets": "🍬",
+    "Spices": "🌶️",
+    "Oils & Fats": "🫒",
+}
+
+
+def _emoji_for_item(item: Dict[str, Any]) -> str:
+    """Return a food emoji based on item name (BN+EN) or food_group fallback."""
+    name = f"{item.get('name_bn') or ''} {item.get('name_en') or ''}".lower()
+    for keys, emoji in _NAME_EMOJI_RULES:
+        if any(k.lower() in name for k in keys):
+            return emoji
+    group = item.get("food_group") or ""
+    return _GROUP_EMOJI.get(group, "🍽️")
+
+
+def _validate_emoji(item: Dict[str, Any]) -> str:
+    emoji_str = item.get("emoji")
+    if emoji_str and isinstance(emoji_str, str):
+        # Clean any extra spaces or text
+        emoji_str = emoji_str.strip()
+        # Find the first character that is classified as a symbol
+        for char in emoji_str:
+            if unicodedata.category(char) in ('So', 'Sk'):
+                return char
+    # If no valid emoji is found, fall back to our existing name-based lookup
+    return _emoji_for_item(item)
+
+
+def _ensure_item_emojis(plan_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Walk every meal item and fill in `emoji` and `amount` if missing/empty/invalid."""
+    for slot in plan_data.get("meals", []) or []:
+        for item in slot.get("items", []) or []:
+            item["emoji"] = _validate_emoji(item)
+            if "amount_g" in item and not item.get("amount"):
+                item["amount"] = f"{int(item['amount_g'])}g"
+    return plan_data
+
+
+def _parse_amount_g(amount: Any) -> float:
+    if not amount:
+        return 100.0
+    try:
+        return float(amount)
+    except Exception:
+        import re
+        match = re.search(r"\d+", str(amount))
+        return float(match.group()) if match else 100.0
+
+
+def _get_food_by_code(driver, code: str) -> Optional[Dict[str, Any]]:
+    query = """
+    MATCH (f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+    WHERE f.code = $code
+    RETURN f.code AS code,
+           f.name_en AS name_en,
+           coalesce(f.name_bn, f.name_en) AS name_bn,
+           f.energy_kcal AS calories,
+           f.protein_g AS protein,
+           f.fiber_g AS fiber,
+           fg.name_en AS food_group
+    """
+    try:
+        with driver.session() as session:
+            result = session.run(query, code=code).single()
+            if result:
+                rec = dict(result)
+                rec["calories"] = round(float(rec["calories"] or 0), 1)
+                rec["protein"] = round(float(rec["protein"] or 0), 2)
+                rec["fiber"] = round(float(rec["fiber"] or 0), 2)
+                return rec
+    except Exception as e:
+        print(f"⚠️ Failed to get food by code {code}: {e}")
+    return None
+
+
+def _find_closest_food_by_name(driver, name_en: str, name_bn: str) -> Optional[Dict[str, Any]]:
+    # Only search if we have non-empty search terms
+    en = (name_en or "").strip().lower()
+    bn = (name_bn or "").strip().lower()
+    if not en and not bn:
+        return None
+        
+    clauses = []
+    params = {}
+    
+    if en:
+        clauses.append("toLower(f.name_en) CONTAINS $en OR toLower($en) CONTAINS toLower(f.name_en)")
+        params["en"] = en
+    if bn:
+        clauses.append("toLower(f.name_bn) CONTAINS $bn OR toLower($bn) CONTAINS toLower(f.name_bn)")
+        params["bn"] = bn
+        
+    where_clause = " OR ".join(clauses)
+    
+    query = f"""
+    MATCH (f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+    WHERE {where_clause}
+    RETURN f.code AS code,
+           f.name_en AS name_en,
+           coalesce(f.name_bn, f.name_en) AS name_bn,
+           f.energy_kcal AS calories,
+           f.protein_g AS protein,
+           f.fiber_g AS fiber,
+           fg.name_en AS food_group
+    LIMIT 1
+    """
+    try:
+        with driver.session() as session:
+            result = session.run(query, **params).single()
+            if result:
+                rec = dict(result)
+                rec["calories"] = round(float(rec["calories"] or 0), 1)
+                rec["protein"] = round(float(rec["protein"] or 0), 2)
+                rec["fiber"] = round(float(rec["fiber"] or 0), 2)
+                return rec
+    except Exception as e:
+        print(f"⚠️ Failed to match food by name en={name_en}, bn={name_bn}: {e}")
+    return None
+
+
+def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods: List[Dict[str, Any]], driver, slot_pools: Dict[str, List[str]] = None) -> Dict[str, Any]:
+    """
+    Validate every suggested food in the plan against the database/safe foods list.
+    Corrects food codes, names, calories, and emoji fields.
+    """
+    safe_by_code = {f["code"]: f for f in safe_foods if f.get("code")}
+    
+    # Map slot to food dicts from safe_foods for fallback selections.
+    slot_to_safe_foods = {}
+    if slot_pools:
+        for slot, codes in slot_pools.items():
+            slot_to_safe_foods[slot] = [f for f in safe_foods if f.get("code") in codes]
+            
+    standard_fallbacks = {
+        "breakfast": {
+            "food_code": "A019",
+            "name_bn": "আটা রুটি",
+            "name_en": "Atta Roti",
+            "calories": 150.0,
+            "protein": 5.0,
+            "food_group": "Cereals & Grains"
+        },
+        "lunch": {
+            "food_code": "A018",
+            "name_bn": "সিদ্ধ চালের ভাত",
+            "name_en": "Cooked Parboiled Rice",
+            "calories": 300.0,
+            "protein": 6.0,
+            "food_group": "Cereals & Grains"
+        },
+        "dinner": {
+            "food_code": "A018",
+            "name_bn": "সিদ্ধ চালের ভাত",
+            "name_en": "Cooked Parboiled Rice",
+            "calories": 250.0,
+            "protein": 5.0,
+            "food_group": "Cereals & Grains"
+        },
+        "snack": {
+            "food_code": "F005",
+            "name_bn": "পাকা কলা",
+            "name_en": "Ripe Banana",
+            "calories": 90.0,
+            "protein": 1.0,
+            "food_group": "Fruits"
+        }
+    }
+
+    for meal in plan_data.get("meals", []) or []:
+        slot_name = meal.get("slot", "").lower()
+        items = meal.get("items", []) or []
+        sanitized_items = []
+        for item in items:
+            code = item.get("food_code") or item.get("code") or ""
+            name_en = item.get("name_en") or ""
+            name_bn = item.get("name_bn") or ""
+            
+            db_food = None
+            
+            # 1. Match by code in safe_foods
+            if code in safe_by_code:
+                db_food = safe_by_code[code]
+            else:
+                # 2. Match by code in database
+                db_food = _get_food_by_code(driver, code)
+                if not db_food:
+                    # 3. Match by name
+                    db_food = _find_closest_food_by_name(driver, name_en, name_bn)
+            
+            # 4. Fallback if still no match found
+            if not db_food:
+                pool = slot_to_safe_foods.get(slot_name) or slot_to_safe_foods.get("breakfast") or []
+                if pool:
+                    db_food = random.choice(pool)
+                else:
+                    db_food = standard_fallbacks.get(slot_name) or standard_fallbacks["breakfast"]
+                print(f"⚠️ Food '{name_en}' ({code}) not found. Falling back to '{db_food.get('name_en')}' ({db_food.get('code') or db_food.get('food_code')})")
+
+            resolved_code = db_food.get("code") or db_food.get("food_code") or ""
+            
+            # Recalculate portion-based calories
+            amount_g = _parse_amount_g(item.get("amount_g") or item.get("amount"))
+            kcal_per_100g = float(db_food.get("calories") or db_food.get("energy_kcal") or 0)
+            item_calories = round((kcal_per_100g * amount_g) / 100.0)
+            
+            item["food_code"] = resolved_code
+            if "code" in item:
+                item["code"] = resolved_code
+            
+            raw_bn = db_food.get("name_bn") or db_food.get("name_en") or ""
+            raw_en = db_food.get("name_en") or ""
+            raw_group = db_food.get("food_group") or ""
+            cooked_bn, cooked_en = _get_cooked_name(raw_bn, raw_en, raw_group)
+            item["name_en"] = cooked_en
+            item["name_bn"] = cooked_bn
+            item["calories"] = item_calories
+            item["food_group"] = raw_group
+            item["amount_g"] = amount_g
+            # Always set amount for frontend compatibility
+            item["amount"] = f"{int(amount_g)}g"
+            
+            # Validate and clean emoji
+            item["emoji"] = _validate_emoji(item)
+            
+            sanitized_items.append(item)
+            
+        meal["items"] = sanitized_items
+        
+    return plan_data
 
 
 def _get_popular_pairings(driver) -> List[Dict[str, Any]]:
@@ -350,6 +729,7 @@ CRITICAL RULES:
 6. DO NOT select only low-calorie vegetables. Include high-calorie staples (rice, roti, dal, fish, meat, eggs) to meet energy needs.
 7. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
 8. Explain WHY each food helps the user's specific condition.
+8b. For EVERY item, include an "emoji" field with a single appropriate food emoji (e.g. 🍚 rice, 🫓 roti, 🐟 fish, 🍗 chicken, 🥚 egg, 🥬 greens, 🍌 banana, 🥛 milk, 🍲 dal). Pick the most accurate single emoji for that food.
 9. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
 10. All numeric values must be integers.
 11. Lunch and dinner MUST include a staple grain (Rice/ভাত or Roti/রুটি) from the food list.
@@ -357,12 +737,14 @@ CRITICAL RULES:
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations!
 14. MEAL SLOT RULES: Follow the food-to-slot compatibility data below. Do NOT serve breakfast-only foods (fruits, nuts, milk) as lunch/dinner main items. Lunch and dinner should contain heavy foods: rice/roti + protein curry + dal + vegetable. Breakfast should be lighter: roti/bread + egg/dal + optional fruit.
 15. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
-  - For example, if you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
+  - If you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
+  - If you choose `আটা` (wheat flour), list it as `আটা রুটি` (atta roti).
   - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
   - If you choose `পোলট্রি মুরগি` (chicken), list it as `মুরগির মাংসের তরকারি (কম তেল)` (chicken curry).
   - If you choose a leafy vegetable like `লাল শাক` or `পালং শাক`, list it as `লাল শাক ভাজি` or `পালং শাকের তরকারি`.
   - If you choose lentils like `মসুর ডাল`, list it as `মসুর ডাল (রান্না করা)`.
   This makes the meal plan highly practical and realistic for daily eating.
+16. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
 """
 
     user_prompt = f"""{lang_instruction}
@@ -424,6 +806,7 @@ RESPONSE FORMAT (strict JSON, no text outside JSON):
           "name_en": "English Name",
           "amount_g": 200,
           "calories": {round(356*2)},
+          "emoji": "🍚",
           "why_bn": "কেন এই খাবার..."
         }}
       ]
@@ -548,18 +931,21 @@ CRITICAL RULES:
 6. Match the daily calorie target for EACH day. Calculate: round((kcal_per_100g × amount_g) / 100).
 7. Provide variety across the 7 days — do not repeat the exact same meals every day.
 8. Use authentic Bangladeshi food names in Bengali first, then English in brackets.
+8b. For EVERY item, include an "emoji" field with a single appropriate food emoji (e.g. 🍚 rice, 🫓 roti, 🐟 fish, 🍗 chicken, 🥚 egg, 🥬 greens, 🍌 banana, 🥛 milk, 🍲 dal).
 9. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
 10. All numeric values must be integers.
 11. Authentic Bengali lunch and dinner MUST include a staple grain: Rice (ভাত), Roti/Chapati (রুটি), or similar.
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations across the 7 days!
 14. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
-  - For example, if you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
+  - If you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
+  - If you choose `আটা` (wheat flour), list it as `আটা রুটি` (atta roti).
   - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
   - If you choose `পোলট্রি মুরগি` (chicken), list it as `মুরগির মাংসের তরকারি (কম তেল)` (chicken curry).
   - If you choose a leafy vegetable like `লাল শাক` or `পালং শাক`, list it as `লাল শাক ভাজি` or `পালং শাকের তরকারি`.
   - If you choose lentils like `মসুর ডাল`, list it as `মসুর ডাল (রান্না করা)`.
   This makes the meal plan highly practical and realistic for daily eating.
+15. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
 """
 
     dietary_context = ""
@@ -624,6 +1010,7 @@ RESPONSE FORMAT (strict JSON, follow exactly):
               "name_en": "English Name",
               "amount_g": 150,
               "calories": 195,
+              "emoji": "🍚",
               "why_bn": "কেন এই খাবার..."
             }}
           ]
@@ -788,90 +1175,40 @@ def _generate_fallback_meal_plan(
         grain_amt = max(30, min(300, round(grain_budget * 100 / grain_cal_per_100)))
         prot_amt = max(30, min(200, round(prot_budget * 100 / prot_cal_per_100)))
 
-        # Cooked naming mapping for realistic Bangladeshi meals
-        def get_cooked_name(raw_name_bn: str, raw_name_en: str, food_group_name: str) -> tuple:
-            bn = raw_name_bn
-            en = raw_name_en
-            if "সিদ্ধ চাল" in raw_name_bn:
-                bn = "সিদ্ধ চালের ভাত"
-                en = "Cooked Parboiled Rice"
-            elif "আতপ চাল" in raw_name_bn:
-                bn = "আতপ চালের ভাত"
-                en = "Cooked Atap Rice"
-            elif "আটা" in raw_name_bn:
-                bn = "আটা রুটি"
-                en = "Atta Roti"
-            elif "ময়দা" in raw_name_bn:
-                bn = "ময়দা রুটি"
-                en = "White Flour Roti"
-            elif "সুজি" in raw_name_bn:
-                bn = "সুজির হালুয়া"
-                en = "Semolina Halwa"
-            elif "সেমাই" in raw_name_bn:
-                bn = "রান্না করা মিষ্টি সেমাই"
-                en = "Cooked Vermicelli"
-            elif "পোলট্রি মুরগির  ডিম" in raw_name_bn or "মুরগির ডিম" in raw_name_bn or "ডিম" in raw_name_bn:
-                bn = "সিদ্ধ মুরগির ডিম"
-                en = "Boiled Poultry Egg"
-            elif "পোলট্রি মুরগি" in raw_name_bn or "মুরগি" in raw_name_bn:
-                bn = "মুরগির মাংসের তরকারি (কম তেল)"
-                en = "Chicken Curry (Low Oil)"
-            elif "গরুর মাংস" in raw_name_bn or "গরুর" in raw_name_bn:
-                bn = "গরুর মাংসের তরকারি (কম চর্বি)"
-                en = "Beef Curry (Low Fat)"
-            elif "পাঁঠার মাংস" in raw_name_bn or "খাসি" in raw_name_bn:
-                bn = "খাসির মাংসের তরকারি"
-                en = "Mutton Curry"
-            elif "ডাল" in raw_name_bn:
-                bn = f"{raw_name_bn} (রান্না করা)"
-                en = f"Cooked {raw_name_en}"
-            elif "মটর" in raw_name_bn or "ছোলা" in raw_name_bn:
-                bn = f"{raw_name_bn}র তরকারি"
-                en = f"Cooked {raw_name_en}"
-            elif "মাছ" in raw_name_bn or food_group_name == "Fish & Seafood":
-                bn = f"{raw_name_bn}র হালকা ঝোল / দো পেঁয়াজা"
-                en = f"{raw_name_en} Curry"
-            elif "কচু পাতা" in raw_name_bn:
-                bn = "কচু পাতার ভর্তা"
-                en = "Colocasia Leaf Bhorta"
-            elif "শাক" in raw_name_bn or food_group_name == "Leafy Vegetables":
-                bn = f"{raw_name_bn} ভাজি"
-                en = f"Stir-fried {raw_name_en}"
-            elif food_group_name == "Vegetables":
-                bn = f"{raw_name_bn}র তরকারি"
-                en = f"{raw_name_en} Curry"
-            return bn, en
 
         if grain:
-            g_bn, g_en = get_cooked_name(grain["name_bn"], grain["name_en"], "Cereals & Grains")
+            g_bn, g_en = _get_cooked_name(grain["name_bn"], grain["name_en"], "Cereals & Grains")
             items.append({
                 "food_code": grain["code"],
                 "name_bn": g_bn,
                 "name_en": g_en,
                 "amount_g": grain_amt,
                 "calories": round(grain_cal_per_100 * grain_amt / 100),
+                "food_group": grain.get("food_group"),
                 "why_bn": "শক্তির উৎস" if language == "bn" else "Energy source",
             })
 
         if protein:
-            p_bn, p_en = get_cooked_name(protein["name_bn"], protein["name_en"], protein.get("food_group", "Protein"))
+            p_bn, p_en = _get_cooked_name(protein["name_bn"], protein["name_en"], protein.get("food_group", "Protein"))
             items.append({
                 "food_code": protein["code"],
                 "name_bn": p_bn,
                 "name_en": p_en,
                 "amount_g": prot_amt,
                 "calories": round(prot_cal_per_100 * prot_amt / 100),
+                "food_group": protein.get("food_group"),
                 "why_bn": "প্রোটিনের উৎস" if language == "bn" else "Protein source",
             })
 
         if veg:
-            v_bn, v_en = get_cooked_name(veg["name_bn"], veg["name_en"], veg.get("food_group", "Vegetables"))
+            v_bn, v_en = _get_cooked_name(veg["name_bn"], veg["name_en"], veg.get("food_group", "Vegetables"))
             items.append({
                 "food_code": veg["code"],
                 "name_bn": v_bn,
                 "name_en": v_en,
                 "amount_g": veg_amt,
                 "calories": veg_cal,
+                "food_group": veg.get("food_group"),
                 "why_bn": "ভিটামিন ও আঁশ সমৃদ্ধ" if language == "bn" else "Rich in vitamins and fiber",
             })
 
@@ -901,7 +1238,7 @@ def _generate_fallback_meal_plan(
         f"Enable LLM service for more personalized plans."
     )
 
-    return {
+    fallback_plan = {
         "target_calories": targets["target_calories"],
         "macros": {
             "protein_g": targets["protein_g"],
@@ -916,6 +1253,9 @@ def _generate_fallback_meal_plan(
         "is_fallback": True,
         "actual_calories": total_cals,
     }
+    # 🎨 Always enrich fallback items with emoji as well
+    _ensure_item_emojis(fallback_plan)
+    return fallback_plan
 
 
 async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[str, Any]:
@@ -986,10 +1326,11 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
         llm_response = await llm_client.chat_completion(
             messages=messages,
             temperature=0.85,
-            max_tokens=1000,
+            max_tokens=4096,
             response_format={"type": "json_object"},
         )
         plan_data = json.loads(llm_response)
+        plan_data = _validate_and_sanitize_meal_plan_foods(plan_data, safe_foods, rag.get_neo4j_driver(), slot_pools)
     except Exception as e:
         print(f"LLM daily meal plan error: {e}")
         plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language)
@@ -1009,6 +1350,9 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
 
     # ✅ Scale portions proportionally so total calories always hit the target
     plan_data = _scale_plan_to_target(plan_data, targets["target_calories"])
+
+    # 🎨 Fill in emoji for every item (LLM may omit; helper provides fallback)
+    plan_data = _ensure_item_emojis(plan_data)
 
     return plan_data
 
@@ -1062,7 +1406,7 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
         llm_response = await llm_client.chat_completion(
             messages=messages,
             temperature=0.85,
-            max_tokens=1000,
+            max_tokens=4096,
             response_format={"type": "json_object"},
         )
         data = json.loads(llm_response)
@@ -1073,8 +1417,12 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
             p["day"] = i + 1
             p["condition_rules_applied"] = conditions
             p.setdefault("target_calories", targets["target_calories"])
+            # ✅ Validate and sanitize foods in weekly plan
+            _validate_and_sanitize_meal_plan_foods(p, safe_foods, rag.get_neo4j_driver(), slot_pools)
             # ✅ Scale each day's portions so calories hit the target
             _scale_plan_to_target(p, targets["target_calories"])
+            # 🎨 Fill in emoji on each item
+            _ensure_item_emojis(p)
             
         if not weekly_plans:
             raise ValueError("LLM returned empty weekly plan")

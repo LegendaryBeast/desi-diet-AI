@@ -14,7 +14,7 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
-    print("⚠️ WARNING: GEMINI_API_KEY not found in .env file. Will fall back to OpenRouter client.")
+    print("[!] WARNING: GEMINI_API_KEY not found in .env file. Will fall back to OpenRouter client.")
 else:
     genai.configure(api_key=GEMINI_API_KEY)
 

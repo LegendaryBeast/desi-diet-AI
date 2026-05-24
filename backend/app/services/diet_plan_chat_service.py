@@ -154,6 +154,19 @@ async def generate_plan_from_collected(
     plan_data.setdefault("condition_rules_applied", conditions)
     plan_data["_source"] = "diet_plan_chat"
 
+    # Validate, sanitize, scale, and add emojis
+    try:
+        from app.services.meal_plan_service import (
+            _validate_and_sanitize_meal_plan_foods,
+            _scale_plan_to_target,
+            _ensure_item_emojis
+        )
+        plan_data = _validate_and_sanitize_meal_plan_foods(plan_data, safe_foods, rag.get_neo4j_driver())
+        plan_data = _scale_plan_to_target(plan_data, targets["target_calories"])
+        plan_data = _ensure_item_emojis(plan_data)
+    except Exception as e:
+        print(f"Error sanitizing chat plan: {e}")
+
     # Upsert profile with collected data
     try:
         existing = await prisma.profile.find_unique(where={"userId": user_id})

@@ -1,5 +1,11 @@
 """Prisma database client singleton and lifespan management with Neo4j and SentenceTransformer initialization."""
 
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from prisma import Prisma
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -21,7 +27,7 @@ async def lifespan(app: FastAPI):
     """Initialize database and graph resources on startup."""
     # 1. Connect Prisma SQL
     await prisma.connect()
-    print("✅ Database connected via Prisma")
+    print("[OK] Database connected via Prisma")
     
     # 2. Connect Neo4j Graph
     neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
@@ -30,17 +36,17 @@ async def lifespan(app: FastAPI):
     try:
         app.state.neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=basic_auth(neo4j_user, neo4j_password))
         app.state.neo4j_driver.verify_connectivity()
-        print("✅ Successfully connected to Neo4j.")
+        print("[OK] Successfully connected to Neo4j.")
     except Exception as e:
-        print(f"❌ Failed to connect to Neo4j: {e}")
+        print(f"[ERROR] Failed to connect to Neo4j: {e}")
         app.state.neo4j_driver = None
         
     # 3. Load AI Models for RAG
     try:
         app.state.ai_models = startup_load_models()
-        print("✅ AI Models (SentenceTransformer) loaded successfully.")
+        print("[OK] AI Models (SentenceTransformer) loaded successfully.")
     except Exception as e:
-        print(f"❌ Failed to load AI Models: {e}")
+        print(f"[ERROR] Failed to load AI Models: {e}")
         app.state.ai_models = None
 
     yield
@@ -48,6 +54,6 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if app.state.neo4j_driver:
         app.state.neo4j_driver.close()
-        print("✅ Neo4j connection closed.")
+        print("[OK] Neo4j connection closed.")
     await prisma.disconnect()
-    print("✅ Database disconnected")
+    print("[OK] Database disconnected")

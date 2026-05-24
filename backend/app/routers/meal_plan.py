@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.db import prisma
 from app.dependencies import get_current_user
 from app.schemas import MealPlanResponse, MealPlanFeedbackRequest, MarkSlotCompleteRequest, MarkSlotCompleteResponse, EditMealPlanRequest
-from app.services.meal_plan_service import generate_daily_meal_plan, generate_weekly_meal_plan, save_meal_plan
+from app.services.meal_plan_service import generate_daily_meal_plan, generate_weekly_meal_plan, save_meal_plan, _ensure_item_emojis
 from app.utils import safe_dict, safe_list, to_json_string, from_json_string
 from datetime import datetime, timedelta
 import asyncio
@@ -250,6 +250,8 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
 
 async def _plan_to_response(plan) -> MealPlanResponse:
     plan_data = safe_dict(plan.planData)
+    # Ensure emojis are clean and populated (handles legacy or modified items)
+    plan_data = _ensure_item_emojis(plan_data)
     completed_slots = safe_list(from_json_string(plan.completedSlots)) if plan.completedSlots else []
     try:
         plan_data["micronutrient_targets"] = await _get_micronutrient_details(plan_data, plan.userId, completed_slots)

@@ -28,6 +28,172 @@ The project was built for the Infinity AI Buildfest Hackathon as a practical nut
 - [Contribution Guidelines](#contribution-guidelines)
 - [Known Limitations](#known-limitations)
 
+## Quick Start — Full Command List
+
+Complete step-by-step commands to start **every** service from scratch. Run each group in a **separate terminal**. Commands are shown for both **PowerShell (Windows)** and **Bash (Linux/macOS)**.
+
+### 0 — Prerequisites
+
+| Requirement | Version |
+| --- | --- |
+| Python | 3.11+ |
+| Node.js | 18+ |
+| Docker | Any recent version (for Neo4j) |
+| Groq / OpenAI API key | Set in `backend/.env` |
+
+### 1 — Start Neo4j (Terminal 1)
+
+```bash
+docker run -d ^
+  --name desidiet-neo4j ^
+  -p 7474:7474 ^
+  -p 7687:7687 ^
+  -e NEO4J_AUTH=neo4j/khadok2025 ^
+  neo4j:5
+```
+
+> **Linux / macOS** — replace `^` with `\`:
+> ```bash
+> docker run -d \
+>   --name desidiet-neo4j \
+>   -p 7474:7474 \
+>   -p 7687:7687 \
+>   -e NEO4J_AUTH=neo4j/khadok2025 \
+>   neo4j:5
+> ```
+
+Verify Neo4j is running:
+
+```
+http://localhost:7474
+```
+
+> [!NOTE]
+> If you already have a Neo4j Desktop instance running on the same ports, skip the Docker command and just make sure it is started with the credentials in `backend/.env`.
+
+### 2 — Backend Setup & Start (Terminal 2)
+
+#### 2a — Create virtual environment (first time only)
+
+**PowerShell (Windows):**
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**Bash (Linux/macOS):**
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+> [!TIP]
+> If `pip` cannot read `requirements.txt` (it is UTF-16 LE encoded), convert it first:
+> ```bash
+> iconv -f UTF-16LE -t UTF-8 requirements.txt > /tmp/req.txt && pip install -r /tmp/req.txt
+> ```
+
+#### 2b — Generate Prisma client & push schema (first time only)
+
+```bash
+python -m prisma generate
+python -m prisma db push
+```
+
+#### 2c — Migrate data into Neo4j graph (first time only)
+
+```bash
+python migrate_to_graph.py
+python migrate_food_compatibility.py
+```
+
+#### 2d — Start the FastAPI server
+
+**PowerShell (Windows):**
+```powershell
+.\venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Bash (Linux/macOS):**
+```bash
+source venv/bin/activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Verify the backend:
+
+```
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/docs
+```
+
+### 3 — Frontend Web App (Terminal 3)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The web app will be available at:
+
+```
+http://localhost:3421
+```
+
+### 4 — Mobile App (Terminal 4, optional)
+
+```bash
+cd mobile
+cp .env.example .env          # edit EXPO_PUBLIC_API_URL if needed
+npm install
+npm start                     # or: npx expo start
+```
+
+Other mobile launch options:
+
+```bash
+npm run android               # Android emulator
+npm run ios                   # iOS simulator
+npm run web                   # Web preview
+```
+
+> [!IMPORTANT]
+> For a **physical device**, edit `mobile/.env` and set `EXPO_PUBLIC_API_URL` to your computer's LAN IP, e.g. `http://192.168.1.10:8000`.
+
+### Port Reference
+
+| Service | URL | Default Port |
+| --- | --- | --- |
+| Neo4j Browser | `http://localhost:7474` | 7474 |
+| Neo4j Bolt | `bolt://localhost:7687` | 7687 |
+| FastAPI Backend | `http://127.0.0.1:8000` | 8000 |
+| Vite Web App | `http://localhost:3421` | 3421 |
+| Expo Mobile (Metro) | Shown in terminal | 8081 / 19006 |
+
+### Verification Checklist
+
+```bash
+# Backend health
+curl http://127.0.0.1:8000/health
+
+# Neo4j graph count (from Cypher browser or CLI)
+MATCH (n) RETURN count(n);
+
+# Frontend — open in browser
+http://localhost:3421
+
+# Swagger API docs
+http://127.0.0.1:8000/docs
+```
+
+---
+
 ## Project Goals
 
 DesiDiet is designed around four goals:

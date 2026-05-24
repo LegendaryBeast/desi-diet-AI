@@ -23,10 +23,17 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  Check,
+  Crown,
+  Lock,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
-import { mealPlanApi, type MealPlanResponse, foodsApi, type FoodSearchResponse } from '../lib/api';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { mealPlanApi, type MealPlanResponse, foodsApi, type FoodSearchResponse, mealTrackingApi } from '../lib/api';
+import { MealLogSection, type TrackingTotals } from '../components/meal/MealLogSection';
+import { ProModal } from '../components/ui/ProModal';
+import { ShoppingSources } from '../components/ui/ShoppingSources';
 
 const SLOT_ICONS: Record<string, React.ElementType> = {
   breakfast: Coffee,
@@ -59,6 +66,8 @@ interface MealItem {
   protein_g?: number;
   why_bn?: string;
   food_group?: string;
+  /** Single food emoji assigned by backend (LLM or category-based fallback). */
+  emoji?: string;
 }
 
 interface MealSlot {
@@ -87,6 +96,9 @@ interface PlanData {
 
 export const MealPlan = () => {
   const { profileData } = useAuth();
+  const { isPro } = useSubscription();
+  const [showProModal, setShowProModal] = useState(false);
+  const [proTrigger, setProTrigger] = useState<'regenerate' | 'tomorrow' | 'general'>('general');
   const [tab, setTab] = useState<Tab>('today');
   const [plan, setPlan] = useState<MealPlanResponse | null>(null);
   const [tomorrowPlan, setTomorrowPlan] = useState<MealPlanResponse | null>(null);
@@ -100,13 +112,51 @@ export const MealPlan = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingPlanData, setEditingPlanData] = useState<PlanData | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  
+
   const [addingFoodToSlot, setAddingFoodToSlot] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodSearchResponse[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [justifications, setJustifications] = useState<Record<string, string>>({});
   const [justificationLoading, setJustificationLoading] = useState<Record<string, boolean>>({});
+
+  const [loggingFoods, setLoggingFoods] = useState<Record<string, boolean>>({});
+  const [loggedFoods, setLoggedFoods] = useState<Record<string, boolean>>({});
+
+  // Tracked meal data (from MealLogSection / mealTrackingApi)
+  const [trackedCalories, setTrackedCalories] = useState(0);
+  const [trackedMacros, setTrackedMacros] = useState({ protein_g: 0, carbs_g: 0, fat_g: 0 });
+  // version counter to signal MealLogSection to re-fetch
+  const [trackingVersion, setTrackingVersion] = useState(0);
+
+  const handleTrackingUpdate = useCallback((totals: TrackingTotals) => {
+    setTrackedCalories(totals.totalCalories);
+    setTrackedMacros(totals.macros);
+  }, []);
+
+  const logFoodItem = async (slotName: string, itemIndex: number, food: MealItem) => {
+    const backendSlot = slotName.startsWith('snack') ? 'snack' : slotName;
+    const key = `${slotName}-${itemIndex}`;
+    setLoggingFoods((prev) => ({ ...prev, [key]: true }));
+    try {
+      const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+      const foodName = food.name_en || food.name_bn || '';
+      const inputStr = `${amountStr} of ${foodName}`;
+
+      await mealTrackingApi.log({
+        input: inputStr,
+        meal_slot: backendSlot,
+        language: 'bn',
+      });
+      setLoggedFoods((prev) => ({ ...prev, [key]: true }));
+      // Trigger MealLogSection to re-fetch tracked data
+      setTrackingVersion((v) => v + 1);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'খাবারটি লগ করতে সমস্যা হয়েছে');
+    } finally {
+      setLoggingFoods((prev) => ({ ...prev, [key]: false }));
+    }
+  };
 
   const isFuturePlan = (planDateStr: string) => {
     const planDate = new Date(planDateStr);
@@ -193,6 +243,12 @@ export const MealPlan = () => {
   }, []);
 
   const regenerateDaily = async (offset = 0) => {
+    // Free users cannot regenerate
+    if (!isPro) {
+      setProTrigger('regenerate');
+      setShowProModal(true);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -244,7 +300,7 @@ export const MealPlan = () => {
     const isComplete = (targetPlan.completed_slots || []).includes(slot);
     try {
       const res = await mealPlanApi.markSlotComplete(targetPlan.plan_id, slot, !isComplete);
-      
+
       // Update plan in state
       if (plan && plan.plan_id === targetPlan.plan_id) {
         setPlan(res);
@@ -298,10 +354,10 @@ export const MealPlan = () => {
   const saveEdits = async () => {
     if (!plan || !editingPlanData) return;
     setSavingEdit(true);
-    
+
     // Calculate new total calories
     const newUserCal = (editingPlanData.meals || []).reduce(
-      (sum, m) => sum + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 
+      (sum, m) => sum + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0),
       0
     );
 
@@ -331,18 +387,21 @@ export const MealPlan = () => {
     const isToday = showToggle && plan?.plan_id === p.plan_id;
     const pd = isToday && isEditing && editingPlanData ? editingPlanData : getPlanData(p);
     const meals = pd.meals || [];
-    const consumedCal = meals
+    // Calories from completed plan slots
+    const slotConsumedCal = meals
       .filter((m) => (p.completed_slots || []).includes(m.slot))
       .reduce((acc, m) => acc + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 0);
-    
+    // Add tracked (logged) calories for today's plan
+    const consumedCal = isToday ? slotConsumedCal + trackedCalories : slotConsumedCal;
+
     // Total calculation
     let totalCal = p.calorie_target || pd.target_calories || 0;
     const aiCal = p.ai_suggestion_cal;
     const userCal = p.user_choice_cal;
-    
+
     if (isToday && isEditing && editingPlanData) {
       totalCal = meals.reduce(
-        (sum, m) => sum + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 
+        (sum, m) => sum + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0),
         0
       );
     } else if (userCal) {
@@ -380,19 +439,40 @@ export const MealPlan = () => {
 
           <div className="flex-1 text-center lg:text-left">
             <h1 className="font-display text-3xl md:text-5xl font-black text-ink mb-3">
-              আজকের <em className="italic text-ink-muted">খাবার</em>
+              {p.plan_id === tomorrowPlan?.plan_id ? 'আগামীকালের' : 'আজকের'} <em className="italic text-ink-muted">খাবার</em>
             </h1>
             <p className="font-bn text-sm text-ink-muted mb-6">
               {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { icon: Flame, label: 'লক্ষ্য', val: `${totalCal} kcal`, color: 'text-ink' },
-                { icon: Zap, label: 'শর্করা', val: targets ? `${targets.carbs_g}g` : '--', color: 'text-accent' },
-                { icon: Utensils, label: 'প্রোটিন', val: targets ? `${targets.protein_g}g` : '--', color: 'text-forest' },
-                { icon: Droplet, label: 'চর্বি', val: targets ? `${targets.fat_g}g` : '--', color: 'text-gold' },
-              ].map((item, i) => (
+              {(() => {
+                // Calculate consumed macros from completed slots
+                const slotMacros = meals
+                  .filter((m) => (p.completed_slots || []).includes(m.slot))
+                  .reduce((acc, m) => {
+                    (m.items || []).forEach((item) => {
+                      acc.protein_g += item.protein_g || 0;
+                      acc.carbs_g += 0; // carbs not always on item
+                      acc.fat_g += 0;
+                    });
+                    return acc;
+                  }, { protein_g: 0, carbs_g: 0, fat_g: 0 });
+
+                // For today's plan, add tracked macros
+                const consumedMacros = isToday ? {
+                  protein_g: Math.round(slotMacros.protein_g + trackedMacros.protein_g),
+                  carbs_g: Math.round(slotMacros.carbs_g + trackedMacros.carbs_g),
+                  fat_g: Math.round(slotMacros.fat_g + trackedMacros.fat_g),
+                } : slotMacros;
+
+                return [
+                  { icon: Flame, label: 'গৃহীত/লক্ষ্য', val: `${consumedCal}/${totalCal}`, unit: 'kcal', color: 'text-ink' },
+                  { icon: Zap, label: 'শর্করা', val: targets ? `${consumedMacros.carbs_g}/${targets.carbs_g}` : '--', unit: 'g', color: 'text-accent' },
+                  { icon: Utensils, label: 'প্রোটিন', val: targets ? `${consumedMacros.protein_g}/${targets.protein_g}` : '--', unit: 'g', color: 'text-forest' },
+                  { icon: Droplet, label: 'চর্বি', val: targets ? `${consumedMacros.fat_g}/${targets.fat_g}` : '--', unit: 'g', color: 'text-gold' },
+                ];
+              })().map((item, i) => (
                 <div key={i} className="bg-cream/50 p-4 rounded-2xl border border-ink/5">
                   <div className="flex items-center gap-2 text-ink-faint mb-1 justify-center lg:justify-start">
                     <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
@@ -402,7 +482,7 @@ export const MealPlan = () => {
                 </div>
               ))}
             </div>
-            
+
             {isToday && (
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 {aiCal && (
@@ -430,9 +510,19 @@ export const MealPlan = () => {
                     <button
                       onClick={() => regenerateDaily(tab === 'today' ? 0 : 1)}
                       disabled={loading}
-                      className="text-xs font-bn font-bold px-4 py-2 bg-accent text-white rounded-xl hover:bg-accent/80 transition-colors flex items-center gap-2 shadow-sm shadow-accent/20"
+                      className={`text-xs font-bn font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm ${
+                        isPro
+                          ? 'bg-accent text-white hover:bg-accent/80 shadow-accent/20'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-orange-500/20 hover:shadow-lg'
+                      }`}
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> পুনরায় তৈরি করুন
+                      {isPro ? (
+                        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                      ) : (
+                        <Crown className="w-3.5 h-3.5" />
+                      )}
+                      পুনরায় তৈরি করুন
+                      {!isPro && <span className="text-[0.5rem] bg-white/20 px-1.5 py-0.5 rounded font-black uppercase">Pro</span>}
                     </button>
                     <button onClick={() => setIsEditing(true)} className="text-xs font-bn font-bold px-4 py-2 border border-ink/10 text-ink rounded-xl hover:bg-ink/5 transition-colors flex items-center gap-2">
                       <Edit2 className="w-3.5 h-3.5" /> কাস্টমাইজ
@@ -557,9 +647,8 @@ export const MealPlan = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
-                className={`bg-white rounded-[2rem] p-6 md:p-8 border transition-all group shadow-sm ${
-                  isDone ? 'border-green-200 bg-green-50/30' : 'border-ink/5 hover:border-accent/10'
-                }`}
+                className={`bg-white rounded-[2rem] p-6 md:p-8 border transition-all group shadow-sm ${isDone ? 'border-green-200 bg-green-50/30' : 'border-ink/5 hover:border-accent/10'
+                  }`}
               >
                 <div className="flex flex-col lg:flex-row gap-6">
                   {/* Slot info */}
@@ -576,11 +665,10 @@ export const MealPlan = () => {
                     {showToggle && !isFuturePlan(p.plan_date) && (
                       <button
                         onClick={() => toggleSlotForPlan(p, slot.slot)}
-                        className={`mt-3 lg:mt-4 text-xs font-bn font-bold px-3 py-1.5 rounded-xl transition-all ${
-                          isDone
+                        className={`mt-3 lg:mt-4 text-xs font-bn font-bold px-3 py-1.5 rounded-xl transition-all ${isDone
                             ? 'bg-green-500 text-white hover:bg-red-400'
                             : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
-                        }`}
+                          }`}
                       >
                         {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
                       </button>
@@ -596,7 +684,10 @@ export const MealPlan = () => {
                       >
                         <div className="flex items-start justify-between w-full">
                           <div className="flex-1 pr-3">
-                            <div className="font-bn text-ink font-bold text-sm">{food.name_bn || food.name_en}</div>
+                            <div className="font-bn text-ink font-bold text-sm flex items-center gap-2">
+                              <span className="text-xl leading-none" aria-hidden>{food.emoji || '🍽️'}</span>
+                              <span>{food.name_bn || food.name_en}</span>
+                            </div>
                             <div className="flex flex-wrap items-center gap-2 mt-0.5">
                               {(food.amount_g || food.amount) && (
                                 <div className="font-bn text-[0.7rem] text-accent font-bold bg-accent/5 px-2 py-0.5 rounded-lg border border-accent/10 mt-1 inline-block">
@@ -609,6 +700,24 @@ export const MealPlan = () => {
                             <div className="font-bold text-ink-muted text-xs bg-white px-2 py-1 rounded-lg border border-ink/5 whitespace-nowrap">
                               {food.calories || '?'} cal
                             </div>
+                            {!isEditing && (
+                              <button
+                                onClick={() => logFoodItem(slot.slot, j, food)}
+                                disabled={loggingFoods[`${slot.slot}-${j}`] || loggedFoods[`${slot.slot}-${j}`]}
+                                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                  loggedFoods[`${slot.slot}-${j}`]
+                                    ? 'bg-emerald-100 text-emerald-600 border-emerald-200'
+                                    : 'bg-white hover:bg-emerald-50 text-ink-faint hover:text-emerald-600 border-ink/5 hover:border-emerald-200'
+                                }`}
+                                title={loggedFoods[`${slot.slot}-${j}`] ? 'লগ করা হয়েছে' : 'লগ করুন'}
+                              >
+                                {loggingFoods[`${slot.slot}-${j}`] ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
                             {isEditing && (
                               <button
                                 onClick={() => removeFoodItem(i, j)}
@@ -635,7 +744,7 @@ export const MealPlan = () => {
 
                         {justificationLoading[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
                           <div className="mt-3 p-3 bg-white/50 rounded-xl text-xs font-bn text-ink-muted flex items-center gap-2 border border-ink/5">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" /> विश्लेषण তৈরি করা হচ্ছে...
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" /> বিস্তারিত তৈরি করা হচ্ছে...
                           </div>
                         )}
 
@@ -648,9 +757,16 @@ export const MealPlan = () => {
                             {justifications[food.food_code || food.code || food.name_en || food.name_bn || '']}
                           </div>
                         )}
+
+                        {/* Shopping Sources */}
+                        <ShoppingSources
+                          foodName={food.name_en || food.name_bn || `food-${j}`}
+                          count={j % 2 === 0 ? 3 : 2}
+                          compact={false}
+                        />
                       </div>
                     ))}
-                    
+
                     {isEditing && (
                       addingFoodToSlot === i ? (
                         <div className="col-span-1 md:col-span-2 flex flex-col items-start gap-2 p-3 bg-accent/5 border border-accent/20 rounded-2xl">
@@ -670,13 +786,13 @@ export const MealPlan = () => {
                               <X className="w-4 h-4" />
                             </button>
                           </div>
-                          
+
                           {searchLoading && (
                             <div className="text-xs text-ink-muted px-2 py-1 font-bn flex items-center gap-2">
                               <Loader2 className="w-3 h-3 animate-spin" /> খুঁজছে...
                             </div>
                           )}
-                          
+
                           {searchResults.length > 0 && (
                             <div className="flex flex-col gap-1 w-full max-h-48 overflow-y-auto mt-1">
                               {searchResults.map((res) => (
@@ -741,6 +857,9 @@ export const MealPlan = () => {
 
 
 
+        {/* Meal log (text / voice / photo) */}
+        {p.plan_id !== tomorrowPlan?.plan_id && <MealLogSection key={trackingVersion} onTrackingUpdate={handleTrackingUpdate} />}
+
         {/* Feedback */}
         {showToggle && (
           <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm">
@@ -777,24 +896,36 @@ export const MealPlan = () => {
         </button>
       )}
     >
+      {/* Pro Upgrade Modal */}
+      <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger={proTrigger} />
+
       <div className="max-w-5xl mx-auto space-y-8 pb-20">
         {/* Tab Selector */}
         <div className="flex justify-center">
           <div className="flex bg-white p-1.5 rounded-2xl border border-ink/5 shadow-sm gap-1">
             {[
-              { id: 'today' as Tab, label: 'আজকের', icon: Flame },
-              { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays },
-              { id: 'history' as Tab, label: 'ইতিহাস', icon: History },
-            ].map(({ id, label, icon: Icon }) => (
+              { id: 'today' as Tab, label: 'আজকের', icon: Flame, locked: false },
+              { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
+              { id: 'history' as Tab, label: 'ইতিহাস', icon: History, locked: false },
+            ].map(({ id, label, icon: Icon, locked }) => (
               <button
                 key={id}
-                onClick={() => setTab(id)}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bn text-sm font-bold transition-all ${
-                  tab === id ? 'bg-ink text-cream shadow-xl' : 'text-ink-muted hover:text-ink'
-                }`}
+                onClick={() => {
+                  if (locked) {
+                    setProTrigger('tomorrow');
+                    setShowProModal(true);
+                    return;
+                  }
+                  setTab(id);
+                }}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bn text-sm font-bold transition-all ${tab === id ? 'bg-ink text-cream shadow-xl' : 'text-ink-muted hover:text-ink'
+                  } ${locked ? 'opacity-60' : ''}`}
               >
-                <Icon className="w-4 h-4" />
+                {locked ? <Lock className="w-3.5 h-3.5" /> : <Icon className="w-4 h-4" />}
                 {label}
+                {locked && (
+                  <span className="text-[0.5rem] bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">Pro</span>
+                )}
               </button>
             ))}
           </div>
@@ -841,7 +972,16 @@ export const MealPlan = () => {
                         <h3 className="font-bn font-bold text-lg text-ink">
                           {new Date(tomorrowPlan.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </h3>
-                        <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-xl">{tomorrowPlan.calorie_target} kcal</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-xl">{tomorrowPlan.calorie_target} kcal</span>
+                          <button
+                            onClick={() => regenerateDaily(1)}
+                            disabled={loading}
+                            className="text-xs font-bn font-bold px-4 py-2 bg-accent text-white rounded-xl hover:bg-accent/80 transition-colors flex items-center gap-2 shadow-sm shadow-accent/20"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> পুনরায় তৈরি করুন
+                          </button>
+                        </div>
                       </div>
                       {renderMealCard(tomorrowPlan, true)}
                     </div>
@@ -865,23 +1005,23 @@ export const MealPlan = () => {
                       const pd = getPlanData(p);
                       const meals = pd.meals || [];
                       const planCompletedSlots = p.completed_slots || [];
-                      
+
                       const planConsumedCal = meals
                         .filter((m) => planCompletedSlots.includes(m.slot))
                         .reduce((acc, m) => acc + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 0);
-                      
+
                       let planTotalCal = p.calorie_target || pd.target_calories || 0;
                       if (p.user_choice_cal) {
                         planTotalCal = p.user_choice_cal;
                       } else if (p.ai_suggestion_cal) {
                         planTotalCal = p.ai_suggestion_cal;
                       }
-                      
+
                       const planPct = planTotalCal > 0 ? Math.min(100, Math.round((planConsumedCal / planTotalCal) * 100)) : 0;
 
                       return (
                         <div key={p.plan_id} className="bg-white rounded-[1.5rem] border border-ink/5 overflow-hidden hover:border-accent/20 hover:shadow-md transition-all">
-                          <div 
+                          <div
                             onClick={() => setExpandedPlanId(isExpanded ? null : p.plan_id)}
                             className="p-5 flex items-center justify-between cursor-pointer select-none"
                           >
@@ -898,7 +1038,7 @@ export const MealPlan = () => {
                                 </p>
                               </div>
                             </div>
-                            
+
                             <div className="flex items-center gap-4">
                               <div className="text-right hidden sm:block">
                                 {p.feedback ? (
@@ -923,7 +1063,7 @@ export const MealPlan = () => {
 
                           <AnimatePresence>
                             {isExpanded && (
-                              <motion.div 
+                              <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
@@ -935,10 +1075,10 @@ export const MealPlan = () => {
                                     <Utensils className="w-4 h-4 text-accent" />
                                     <span className="font-bn font-bold text-xs text-ink">খাবারের সারসংক্ষেপ (Meal Summary)</span>
                                   </div>
-                                  
+
                                   <div className="flex items-center gap-2 w-full sm:w-48">
                                     <div className="w-full bg-cream rounded-full h-1.5 overflow-hidden border border-ink/5">
-                                      <div 
+                                      <div
                                         className="h-full bg-accent transition-all duration-500 rounded-full"
                                         style={{ width: `${planPct}%` }}
                                       />
@@ -954,13 +1094,12 @@ export const MealPlan = () => {
                                     const slotCal = (slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0);
 
                                     return (
-                                      <div 
+                                      <div
                                         key={slot.slot + idx}
-                                        className={`p-3.5 rounded-2xl border transition-all ${
-                                          isDone 
-                                            ? 'bg-green-50/20 border-green-200' 
+                                        className={`p-3.5 rounded-2xl border transition-all ${isDone
+                                            ? 'bg-green-50/20 border-green-200'
                                             : 'bg-white border-ink/5'
-                                        }`}
+                                          }`}
                                       >
                                         <div className="flex items-start justify-between gap-3">
                                           <div className="flex items-start gap-3">
@@ -972,9 +1111,9 @@ export const MealPlan = () => {
                                                 <h4 className="font-bn font-bold text-xs text-ink leading-tight">{slot.slot_bn || slot.slot}</h4>
                                                 <span className="font-bn text-[0.62rem] text-ink-faint font-bold">{slotCal} kcal</span>
                                               </div>
-                                              
+
                                               <p className="font-bn text-[0.68rem] text-ink-muted mt-1 leading-relaxed">
-                                                {(slot.items || []).map((item) => `${item.name_bn || item.name_en || ''} (${item.amount || ''})`).join(', ') || 'কোনো খাবার নেই'}
+                                                {(slot.items || []).map((item) => `${item.emoji ? item.emoji + ' ' : ''}${item.name_bn || item.name_en || ''} (${item.amount || ''})`).join(', ') || 'কোনো খাবার নেই'}
                                               </p>
                                             </div>
                                           </div>
@@ -985,11 +1124,10 @@ export const MealPlan = () => {
                                                 e.stopPropagation();
                                                 await toggleSlotForPlan(p, slot.slot);
                                               }}
-                                              className={`text-[0.62rem] shrink-0 font-bn font-bold px-2.5 py-1 rounded-xl transition-all ${
-                                                isDone
+                                              className={`text-[0.62rem] shrink-0 font-bn font-bold px-2.5 py-1 rounded-xl transition-all ${isDone
                                                   ? 'bg-green-500 text-white hover:bg-red-400'
                                                   : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
-                                              }`}
+                                                }`}
                                             >
                                               {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
                                             </button>

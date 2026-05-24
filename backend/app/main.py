@@ -1,5 +1,12 @@
 """FastAPI application entry point containing both Q1 journal endpoints and production routes."""
 
+# Force UTF-8 stdout/stderr so emoji print() calls don't crash on Windows cp1252
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings

@@ -275,7 +275,9 @@ export const chatApi = {
     history: ChatHistoryItem[],
     onToken: (token: string) => void,
     onDone: () => void,
-    onError: (err: string) => void
+    onError: (err: string) => void,
+    options?: { imageDataUrl?: string },
+    onMealLogged?: (meal: MealTrackingResponse) => void,
   ): (() => void) => {
     const token = getToken();
     const ctrl = new AbortController();
@@ -294,7 +296,12 @@ export const chatApi = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ message, language, history }),
+      body: JSON.stringify({
+        message,
+        language,
+        history,
+        ...(options?.imageDataUrl ? { image_data_url: options.imageDataUrl } : {}),
+      }),
       signal: ctrl.signal,
     })
       .then(async (res) => {
@@ -325,6 +332,7 @@ export const chatApi = {
               try {
                 const data = JSON.parse(line.slice(6));
                 if (data.token) onToken(data.token);
+                if (data.meal_logged && onMealLogged) onMealLogged(data.meal_logged);
                 if (data.done) finish();
                 if (data.error) onError(data.error);
               } catch { /* ignore parse errors */ }
@@ -337,6 +345,7 @@ export const chatApi = {
           try {
             const data = JSON.parse(buffer.slice(6));
             if (data.token) onToken(data.token);
+            if (data.meal_logged && onMealLogged) onMealLogged(data.meal_logged);
             if (data.done) finish();
             if (data.error) onError(data.error);
           } catch { /* ignore parse errors */ }
@@ -443,7 +452,57 @@ export const chatApi = {
 
     return () => ctrl.abort();
   },
+
+  /**
+   * Mint an OpenAI Realtime ephemeral session via our backend.
+   * The browser will then open a WebRTC peer connection directly to OpenAI.
+   */
+  realtimeSession: (opts: { voice?: string; language?: string } = {}) =>
+    apiFetch<RealtimeSession>('/chat/realtime/session', {
+      method: 'POST',
+      body: JSON.stringify({
+        voice: opts.voice ?? 'alloy',
+        language: opts.language ?? '',
+      }),
+    }),
+
+  /** Transcribe a recorded audio Blob to text via OpenAI Whisper / GPT-4o-transcribe. */
+  transcribe: async (audio: Blob, language?: string): Promise<{ text: string }> => {
+    const token = getToken();
+    const ext = audio.type.includes('webm') ? 'webm'
+      : audio.type.includes('mp4') ? 'mp4'
+      : audio.type.includes('ogg') ? 'ogg'
+      : audio.type.includes('wav') ? 'wav'
+      : 'webm';
+    const form = new FormData();
+    form.append('file', audio, `recording.${ext}`);
+    if (language) form.append('language', language);
+
+    const res = await fetch(`${BASE_URL}/chat/transcribe`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      let detail = 'Transcription failed';
+      try { detail = (await res.json()).detail || detail; } catch { /* ignore */ }
+      throw new ApiError(res.status, detail);
+    }
+    return res.json();
+  },
 };
+
+export interface RealtimeSession {
+  /** GA shape: top-level ephemeral bearer (e.g. "ek_..."). */
+  value: string;
+  expires_at: number;
+  session: {
+    id?: string;
+    model: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
 
 // ─── Foods ────────────────────────────────────────────────────────────────────
 
@@ -612,6 +671,32 @@ export const mealTrackingApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  /** Identify foods from a photo with vision LLM and create a meal log entry. */
+  logFromImage: async (
+    file: Blob | File,
+    opts: { meal_slot?: string; language?: string; note?: string } = {},
+  ): Promise<MealTrackingResponse> => {
+    const token = getToken();
+    const form = new FormData();
+    const filename = (file as File).name || 'meal-photo.jpg';
+    form.append('file', file, filename);
+    if (opts.meal_slot) form.append('meal_slot', opts.meal_slot);
+    if (opts.language) form.append('language', opts.language);
+    if (opts.note) form.append('note', opts.note);
+
+    const res = await fetch(`${BASE_URL}/meal-tracking/from-image`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      let detail = 'Image meal log failed';
+      try { detail = (await res.json()).detail || detail; } catch { /* ignore */ }
+      throw new ApiError(res.status, detail);
+    }
+    return res.json();
+  },
 
   today: () => apiFetch<MealTrackingListItem[]>('/meal-tracking/today'),
 };

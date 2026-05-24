@@ -162,6 +162,10 @@ class ChatRequest(BaseModel):
     message: str
     language: str = Field(default="bn")
     history: List[ChatHistoryItem] = Field(default_factory=list, description="Last N turns for multi-turn context")
+    image_data_url: Optional[str] = Field(
+        default=None,
+        description="Optional base64 data-URL (e.g. 'data:image/jpeg;base64,...') for vision input",
+    )
 
 
 class DietPlanChatRequest(BaseModel):
