@@ -228,7 +228,7 @@ export const ProfileWizard = () => {
               value={form.nameEn}
               onChange={(e) => update({ nameEn: e.target.value })}
               placeholder="Name in English..."
-              className="w-full bg-cream border border-ink/10 focus:border-accent/30 rounded-lg p-2.5 text-center font-body text-xs outline-none transition-all"
+              className="w-full bg-cream border border-ink/10 focus:border-accent/30 rounded-lg p-2.5 text-center font-body text-sm outline-none transition-all"
             />
           </div>
         );

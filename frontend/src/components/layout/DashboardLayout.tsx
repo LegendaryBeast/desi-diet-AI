@@ -166,19 +166,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               key={item.path}
               to={item.path}
               onClick={() => closeSidebar && setSidebarOpen(false)}
-              className={`flex items-center gap-3 p-2 rounded-xl transition-all group border border-transparent ${
+              className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group border border-transparent ${
                 isActive
                   ? 'bg-ink text-cream shadow-md shadow-ink/5'
                   : 'text-ink-muted hover:bg-cream hover:text-ink hover:border-ink/5'
               }`}
             >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
                 isActive ? 'bg-accent text-cream' : 'bg-cream group-hover:bg-ink group-hover:text-cream'
               }`}>
-                <item.icon size={14} />
+                <item.icon size={16} />
               </div>
-              <span className="font-bn text-xs font-bold flex-1">{item.label}</span>
-              {isActive && <ChevronRight size={12} className="opacity-40" />}
+              <span className="font-bn text-sm font-bold flex-1">{item.label}</span>
+              {isActive && <ChevronRight size={13} className="opacity-40" />}
             </Link>
           );
         })}
@@ -187,16 +187,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <div className="pt-4 mt-auto border-t border-ink/5 space-y-1">
         <button
           onClick={() => i18n.changeLanguage(isBn ? 'en' : 'bn')}
-          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-cream transition-colors text-ink-muted hover:text-ink font-bold text-xs"
+          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-cream transition-colors text-ink-muted hover:text-ink font-bold text-sm"
         >
-          <Languages size={15} />
+          <Languages size={16} />
           <span>{isBn ? 'Switch to English' : 'বাংলায় যান'}</span>
         </button>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-red-50 text-red-500 transition-colors font-bold text-xs"
+          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-red-50 text-red-500 transition-colors font-bold text-sm"
         >
-          <LogOut size={15} />
+          <LogOut size={16} />
           <span>{isBn ? 'লগ আউট' : 'Log Out'}</span>
         </button>
       </div>
@@ -274,7 +274,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </header>
 
         {/* Content Stream */}
-        <main className={`flex-1 relative z-10 scroll-smooth ${noPadding ? 'overflow-hidden flex flex-col' : 'overflow-y-auto p-4 md:p-6 lg:p-8 pb-20 lg:pb-8'}`}>
+        <main className={`flex-1 relative z-10 scroll-smooth ${noPadding ? 'overflow-hidden flex flex-col' : 'overflow-y-auto p-5 md:p-7 lg:p-8 pb-20 lg:pb-8'}`}>
           {children}
         </main>
 
