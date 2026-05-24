@@ -370,16 +370,27 @@ async def generate_plan_logic(
     print(f"\n--- New GraphRAG Request ---")
     print(f"User Input Disease: '{user_profile.disease}'")
 
-    # 1. Match disease (Text -> Graph Node)
-    matched_disease = find_best_disease_match(user_profile.disease, ai_models)
-    if not matched_disease: return "Could not identify a matching health condition."
-    print(f"🔍 Best Disease Match: '{matched_disease}'")
+    # 1. Match disease (Text -> Graph Node) (supports comma-separated list of multiple conditions)
+    diseases = [d.strip() for d in user_profile.disease.split(",") if d.strip()]
+    
+    clinical_nutrients = set()
+    matched_diseases_list = []
+    
+    for d_text in diseases:
+        matched_d = find_best_disease_match(d_text, ai_models)
+        if matched_d:
+            matched_diseases_list.append(matched_d)
+            # 2. Get clinical nutrients (Graph Query)
+            cond_nutrients, _ = get_clinical_nutrients_from_graph(matched_d, neo4j_driver)
+            clinical_nutrients.update(cond_nutrients)
 
-    # 2. Get clinical nutrients (Graph Query)
-    # **UPDATED:** Now also gets the *count* of nutrients
-    clinical_nutrients, nutrient_count = get_clinical_nutrients_from_graph(matched_disease, neo4j_driver)
-    if not clinical_nutrients: return f"No specific nutrient recommendations found for '{matched_disease}'."
-    print(f"🌿 Clinical Nutrients Required ({nutrient_count}): {', '.join(clinical_nutrients)}")
+    if not clinical_nutrients:
+        return f"Could not identify a matching health condition for: '{user_profile.disease}'."
+
+    matched_disease = ", ".join(matched_diseases_list)
+    nutrient_count = len(clinical_nutrients)
+    print(f"🔍 Best Disease Match: '{matched_disease}'")
+    print(f"🌿 Combined Clinical Nutrients Required ({nutrient_count}): {', '.join(clinical_nutrients)}")
 
     # 3. **FIXED: Re-enabled the AI "Sanitizer" Step**
     # This cleans the list from the graph, mapping "Vitamin B" -> "Vitamin B12"

@@ -289,21 +289,29 @@ def get_rag_recommended_foods(
         return None
 
     try:
-        # 1. Semantic disease matching
-        matched_disease = find_best_disease_match(disease_text, ai_models)
-        if not matched_disease:
-            print(f"⚠️ RAG: Could not match disease '{disease_text}'")
-            return None
-        print(f"🔍 RAG: Best disease match: '{matched_disease}'")
+        # 1. Semantic disease matching (supports comma-separated list of multiple conditions)
+        diseases = [d.strip() for d in disease_text.split(",") if d.strip()]
+        
+        clinical_nutrients = set()
+        matched_diseases_list = []
+        
+        for d_text in diseases:
+            matched_d = find_best_disease_match(d_text, ai_models)
+            if matched_d:
+                matched_diseases_list.append(matched_d)
+                # 2. Get clinical nutrients from graph
+                cond_nutrients, _ = get_clinical_nutrients_from_graph(matched_d, neo4j_driver)
+                clinical_nutrients.update(cond_nutrients)
 
-        # 2. Get clinical nutrients from graph
-        clinical_nutrients, nutrient_count = get_clinical_nutrients_from_graph(
-            matched_disease, neo4j_driver
-        )
         if not clinical_nutrients:
-            print(f"⚠️ RAG: No nutrients found for '{matched_disease}'")
+            print(f"⚠️ RAG: No nutrients found for diseases: '{disease_text}'")
             return None
-        print(f"🌿 RAG: Clinical nutrients ({nutrient_count}): {', '.join(clinical_nutrients)}")
+
+        matched_disease = ", ".join(matched_diseases_list)
+        nutrient_count = len(clinical_nutrients)
+        print(f"🔍 RAG: Matched diseases: '{matched_disease}'")
+        print(f"🌿 RAG: Combined Clinical nutrients ({nutrient_count}): {', '.join(clinical_nutrients)}")
+
 
         # 3. Map clinical → scientific nutrients
         scientific_nutrients = map_clinical_to_scientific_nutrients(

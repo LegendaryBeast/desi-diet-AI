@@ -30,6 +30,81 @@ const steps = [
   { id: 'result', q: 'প্রোফাইল সংরক্ষণ হচ্ছে...', sub: 'আমাদের এআই আপনার জন্য বিশ্লেষণ করছে' },
 ];
 
+const ALL_DISEASES = [
+  { id: 'Diabetes', labelBn: 'ডায়াবেটিস', labelEn: 'Diabetes' },
+  { id: 'Hypertension', labelBn: 'উচ্চ রক্তচাপ', labelEn: 'Hypertension' },
+  { id: 'Obesity', labelBn: 'স্থূলতা', labelEn: 'Obesity' },
+  { id: 'Gastric', labelBn: 'গ্যাস্ট্রিক', labelEn: 'Gastric' },
+  { id: 'Thyroid Disorders', labelBn: 'থাইরয়েড সমস্যা', labelEn: 'Thyroid Disorders' },
+  { id: 'Anemia', labelBn: 'রক্তশূন্যতা', labelEn: 'Anemia' },
+  { id: 'Kidney Disease', labelBn: 'কিডনি রোগ', labelEn: 'Kidney Disease' },
+  { id: 'Arthritis', labelBn: 'বাতের ব্যথা', labelEn: 'Arthritis' },
+  { id: 'Asthma', labelBn: 'অ্যাজমা', labelEn: 'Asthma' },
+  { id: 'Migraine', labelBn: 'মাইগ্রেন', labelEn: 'Migraine' },
+  { id: 'Depression', labelBn: 'হতাশা', labelEn: 'Depression' },
+  { id: 'Anxiety', labelBn: 'দুশ্চিন্তা', labelEn: 'Anxiety' },
+  { id: 'Insomnia', labelBn: 'অনিদ্রা', labelEn: 'Insomnia' },
+  { id: 'Tonsillitis', labelBn: 'টনসিল', labelEn: 'Tonsillitis' },
+  { id: 'Common Cold', labelBn: 'সর্দি-কাশি', labelEn: 'Common Cold' },
+  { id: 'Flu', labelBn: 'ইনফ্লুয়েঞ্জা', labelEn: 'Flu' },
+  { id: 'COVID-19', labelBn: 'কোভিড-১৯', labelEn: 'COVID-19' },
+  { id: 'Sinusitis', labelBn: 'সাইনাস', labelEn: 'Sinusitis' },
+  { id: 'Strep Throat', labelBn: 'গলা ব্যথা', labelEn: 'Strep Throat' },
+  { id: 'Diarrhea', labelBn: 'ডায়রিয়া', labelEn: 'Diarrhea' },
+  { id: 'Constipation', labelBn: 'কোষ্ঠকাঠিন্য', labelEn: 'Constipation' },
+  { id: 'Urinary Tract Infection (UTI)', labelBn: 'ইউটিআই', labelEn: 'UTI' },
+  { id: 'Malaria', labelBn: 'ম্যালেরিয়া', labelEn: 'Malaria' },
+  { id: 'Dengue Fever', labelBn: 'ডেঙ্গু জ্বর', labelEn: 'Dengue Fever' },
+  { id: 'Typhoid', labelBn: 'টাইফয়েড', labelEn: 'Typhoid' },
+  { id: 'Gastroenteritis', labelBn: 'গ্যাস্ট্রোএন্টারাইটিস', labelEn: 'Gastroenteritis' },
+  { id: 'Food Poisoning', labelBn: 'ফুড পয়জনিং', labelEn: 'Food Poisoning' },
+  { id: 'Allergies (food/seasonal)', labelBn: 'অ্যালার্জি', labelEn: 'Allergies' },
+  { id: 'Bronchitis', labelBn: 'ব্রঙ্কাইটিস', labelEn: 'Bronchitis' },
+  { id: 'Pneumonia', labelBn: 'নিউমোনিয়া', labelEn: 'Pneumonia' },
+  { id: 'Meningitis', labelBn: 'মেনিনজাইটিস', labelEn: 'Meningitis' },
+  { id: 'Hepatitis A', labelBn: 'হেপাটাইটিস এ', labelEn: 'Hepatitis A' },
+  { id: 'Hepatitis B', labelBn: 'হেপাটাইটিস বি', labelEn: 'Hepatitis B' },
+  { id: 'Chickenpox', labelBn: 'জলবসন্ত', labelEn: 'Chickenpox' },
+  { id: 'Measles', labelBn: 'হাম', labelEn: 'Measles' },
+  { id: 'Mumps', labelBn: 'মাম্পস', labelEn: 'Mumps' },
+  { id: 'Skin Infection', labelBn: 'ত্বকের ইনফেকশন', labelEn: 'Skin Infection' },
+  { id: 'Ringworm', labelBn: 'দাদ', labelEn: 'Ringworm' },
+  { id: 'Scabies', labelBn: 'পাঁচড়া', labelEn: 'Scabies' },
+  { id: 'Eczema', labelBn: 'একজিমা', labelEn: 'Eczema' },
+  { id: 'Psoriasis', labelBn: 'সোরিয়াসিস', labelEn: 'Psoriasis' },
+  { id: 'Osteoporosis', labelBn: 'অস্টিওপরোসিস', labelEn: 'Osteoporosis' },
+  { id: 'Tuberculosis (TB)', labelBn: 'যক্ষ্মা', labelEn: 'Tuberculosis' },
+  { id: 'Leprosy', labelBn: 'কুষ্ঠরোগ', labelEn: 'Leprosy' },
+  { id: 'Filariasis', labelBn: 'ফাইলেরিয়াসিস', labelEn: 'Filariasis' },
+  { id: 'Cholera', labelBn: 'কলেরা', labelEn: 'Cholera' },
+  { id: 'Dysentery', labelBn: 'আমাশয়', labelEn: 'Dysentery' },
+  { id: 'Heat Stroke', labelBn: 'হিট স্ট্রোক', labelEn: 'Heat Stroke' },
+  { id: 'Dehydration', labelBn: 'পানিশূন্যতা', labelEn: 'Dehydration' },
+  { id: 'Snake Bite', labelBn: 'সাপের কামড়', labelEn: 'Snake Bite' },
+  { id: 'Scorpion Sting', labelBn: 'বিচ্ছুর হুল', labelEn: 'Scorpion Sting' },
+  { id: 'Insect Bite Allergy', labelBn: 'পোকার কামড় অ্যালার্জি', labelEn: 'Insect Bite Allergy' },
+  { id: 'Burns', labelBn: 'পুড়ে যাওয়া', labelEn: 'Burns' },
+  { id: 'Wounds', labelBn: 'ক্ষত', labelEn: 'Wounds' },
+  { id: 'Sprains', labelBn: 'মচকানো', labelEn: 'Sprains' },
+  { id: 'Fractures', labelBn: 'হাড় ভাঙা', labelEn: 'Fractures' },
+  { id: 'Headache', labelBn: 'মাথা ব্যথা', labelEn: 'Headache' },
+  { id: 'Epilepsy', labelBn: 'মৃগীরোগ', labelEn: 'Epilepsy' },
+  { id: 'Stroke', labelBn: 'স্ট্রোক', labelEn: 'Stroke' },
+  { id: 'Parkinson’s Disease', labelBn: 'পারকিনসন্স', labelEn: 'Parkinson’s Disease' },
+  { id: 'Alzheimer’s Disease', labelBn: 'আলঝেইমার্স', labelEn: 'Alzheimer’s Disease' },
+  { id: 'Schizophrenia', labelBn: 'সিজোফ্রেনিয়া', labelEn: 'Schizophrenia' },
+  { id: 'Malnutrition', labelBn: 'অপুষ্টি', labelEn: 'Malnutrition' },
+  { id: 'Goiter', labelBn: 'গলগণ্ড', labelEn: 'Goiter' },
+  { id: 'Night Blindness', labelBn: 'রাতকানা', labelEn: 'Night Blindness' },
+  { id: 'Scurvy', labelBn: 'স্কার্ভি', labelEn: 'Scurvy' },
+  { id: 'Rickets', labelBn: 'রিকেটস', labelEn: 'Rickets' },
+  { id: 'Osteomalacia', labelBn: 'অস্টিওম্যালাশিয়া', labelEn: 'Osteomalacia' },
+  { id: 'Beriberi', labelBn: 'বেরিবেরি', labelEn: 'Beriberi' },
+  { id: 'Pellagra', labelBn: 'পেলাগ্রা', labelEn: 'Pellagra' },
+  { id: 'Kwashiorkor', labelBn: 'কোয়াশিয়রকর', labelEn: 'Kwashiorkor' },
+  { id: 'Marasmus', labelBn: 'ম্যারাসমাস', labelEn: 'Marasmus' },
+];
+
 interface ProfileFormData {
   nameBn: string;
   nameEn: string;
@@ -48,6 +123,8 @@ export const ProfileWizard = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const existingProfile = profileData?.profile;
 
@@ -272,47 +349,147 @@ export const ProfileWizard = () => {
           </div>
         );
 
-      case 'conditions':
+      case 'conditions': {
+        const popularDiseases = [
+          { id: 'Diabetes', labelBn: 'ডায়াবেটিস' },
+          { id: 'Hypertension', labelBn: 'উচ্চ রক্তচাপ' },
+          { id: 'Obesity', labelBn: 'স্থূলতা' },
+          { id: 'Gastric', labelBn: 'গ্যাস্ট্রিক' },
+          { id: 'Thyroid Disorders', labelBn: 'থাইরয়েড' },
+          { id: 'Anemia', labelBn: 'রক্তশূন্যতা' },
+        ];
+
+        const filteredDiseases = ALL_DISEASES.filter(
+          (d) =>
+            d.labelBn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            d.labelEn.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-md mx-auto">
-            {[
-              { id: 'diabetes', label: 'ডায়াবেটিস' },
-              { id: 'hypertension', label: 'উচ্চ রক্তচাপ' },
-              { id: 'kidney', label: 'কিডনি রোগ' },
-              { id: 'heart', label: 'হৃদরোগ' },
-              { id: 'gastric', label: 'গ্যাস্ট্রিক' },
-              { id: 'obesity', label: 'স্থূলতা' },
-              { id: 'thyroid', label: 'থাইরয়েড' },
-              { id: 'anemia', label: 'রক্তশূন্যতা' },
-              { id: 'none', label: 'কিছুই নেই' },
-            ].map((c) => {
-              const isSelected = form.conditions.includes(c.id);
-              return (
+          <div className="w-full max-w-md mx-auto space-y-4 font-bn">
+            {/* Selected Conditions Tags */}
+            <div className="flex flex-wrap gap-1.5 min-h-[42px] p-2.5 bg-white/70 rounded-xl border border-ink/5">
+              {form.conditions.length === 0 ? (
+                <span className="text-ink-faint text-xs py-1 px-1">কোনো সমস্যা নির্বাচিত করা হয়নি</span>
+              ) : (
+                form.conditions.map((condId) => {
+                  const cond = ALL_DISEASES.find((d) => d.id === condId) || {
+                    labelBn: condId,
+                    labelEn: condId,
+                  };
+                  return (
+                    <span
+                      key={condId}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent text-cream rounded-full text-xs font-bold shadow-sm"
+                    >
+                      {cond.labelBn}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newConditions = form.conditions.filter((x) => x !== condId);
+                          update({ conditions: newConditions });
+                        }}
+                        className="hover:text-red-300 transition-colors font-sans text-xs ml-0.5"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Search Box */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="সমস্যা খুঁজুন (যেমন: মাইগ্রেন, হাঁপানি)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsDropdownOpen(true);
+                }}
+                onFocus={() => setIsDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                className="w-full bg-white border border-ink/10 focus:border-accent/40 rounded-xl p-2.5 text-center font-bn text-xs outline-none shadow-sm transition-all"
+              />
+
+              {isDropdownOpen && searchQuery.trim() !== '' && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-ink/10 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredDiseases.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-ink-faint">কোনো রোগ খুঁজে পাওয়া যায়নি</div>
+                  ) : (
+                    filteredDiseases.map((d) => {
+                      const isSelected = form.conditions.includes(d.id);
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => {
+                            const newConditions = isSelected
+                              ? form.conditions.filter((x) => x !== d.id)
+                              : [...form.conditions, d.id];
+                            update({ conditions: newConditions });
+                            setSearchQuery('');
+                          }}
+                          className={`w-full text-left px-3.5 py-2 text-xs border-b border-ink/5 hover:bg-accent/5 flex justify-between items-center transition-colors ${
+                            isSelected ? 'bg-accent/5 font-bold text-accent' : 'text-ink'
+                          }`}
+                        >
+                          <div>
+                            <span className="font-bn font-bold">{d.labelBn}</span>
+                            <span className="text-[0.65rem] text-ink-faint ml-2">({d.labelEn})</span>
+                          </div>
+                          {isSelected && <span className="text-[10px] text-accent font-sans">✓</span>}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Suggestions */}
+            <div className="space-y-1.5">
+              <label className="block text-[0.62rem] font-bold text-ink-faint uppercase tracking-wider">জনপ্রিয় রোগসমূহ (Quick Select)</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {popularDiseases.map((c) => {
+                  const isSelected = form.conditions.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const newConditions = isSelected
+                          ? form.conditions.filter((x) => x !== c.id)
+                          : [...form.conditions, c.id];
+                        update({ conditions: newConditions });
+                      }}
+                      className={`p-2 rounded-lg border text-center transition-all font-bn text-[11px] font-bold ${
+                        isSelected
+                          ? 'border-accent bg-accent text-cream shadow-sm'
+                          : 'border-ink/5 bg-white text-ink-muted hover:border-accent/20'
+                      }`}
+                    >
+                      {c.labelBn}
+                    </button>
+                  );
+                })}
                 <button
-                  key={c.id}
+                  type="button"
                   onClick={() => {
-                    if (c.id === 'none') {
-                      update({ conditions: [] });
-                      next();
-                    } else {
-                      const newConditions = isSelected
-                        ? form.conditions.filter((x) => x !== c.id)
-                        : [...form.conditions, c.id];
-                      update({ conditions: newConditions });
-                    }
+                    update({ conditions: [] });
+                    next();
                   }}
-                  className={`p-2 rounded-lg border transition-all font-bn text-xs font-bold ${
-                    isSelected
-                      ? 'border-accent bg-accent text-cream shadow-sm'
-                      : 'border-ink/5 bg-white text-ink-muted hover:border-accent/20'
-                  }`}
+                  className="p-2 rounded-lg border text-center transition-all font-bn text-[11px] font-bold border-ink/10 bg-cream text-ink-muted hover:border-ink/20"
                 >
-                  {c.label}
+                  কিছুই নেই (None)
                 </button>
-              );
-            })}
+              </div>
+            </div>
           </div>
         );
+      }
 
       case 'result':
         return (
