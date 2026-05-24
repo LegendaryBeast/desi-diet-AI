@@ -26,7 +26,7 @@ export default {
       fontFamily: {
         display: ['Playfair Display', 'Georgia', 'serif'],
         body: ['Space Grotesk', 'sans-serif'],
-        bn: ['Hind Siliguri', 'sans-serif'],
+        bn: ['Noto Sans Bengali', 'Hind Siliguri', 'sans-serif'],
       },
       animation: {
         'marquee': 'marquee 30s linear infinite',

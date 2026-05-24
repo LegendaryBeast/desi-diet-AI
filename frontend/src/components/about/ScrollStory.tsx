@@ -26,27 +26,55 @@ const getChapters = (t: any) => [
 const ChapterVisualContainer = ({ index, scrollYProgress, total, chapters }: { index: number, scrollYProgress: any, total: number, chapters: any[] }) => {
   const opacity = useTransform(
     scrollYProgress,
-    [index / total, (index + 0.4) / total, (index + 0.6) / total, (index + 1) / total],
+    [
+      (index - 0.5) / total,
+      index / total,
+      index === total - 1 ? 2 : (index + 0.5) / total,
+      index === total - 1 ? 2 : (index + 1) / total
+    ],
     [0, 1, 1, 0]
   );
 
   const scale = useTransform(
     scrollYProgress,
-    [index / total, (index + 0.5) / total, (index + 1) / total],
+    [
+      (index - 0.5) / total,
+      index / total,
+      (index + 1) / total
+    ],
     [1.1, 1, 0.95]
   );
 
   return (
     <motion.div 
       style={{ opacity, scale }}
-      className="absolute inset-0 z-0 transition-all duration-700 ease-out"
+      className="absolute inset-0 z-0"
     >
-      <img 
-        src={chapters[index].image} 
-        alt={chapters[index].title}
-        className="w-full h-full object-cover grayscale-[20%] brightness-[85%]"
-      />
-      <div className="absolute inset-0 bg-ink/20" />
+      {index === 0 ? (
+        <motion.div
+          initial={{ scale: 1.1, opacity: 0 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="w-full h-full relative"
+        >
+          <img 
+            src={chapters[index].image} 
+            alt={chapters[index].title}
+            className="w-full h-full object-cover grayscale-[20%] brightness-[85%]"
+          />
+          <div className="absolute inset-0 bg-ink/20" />
+        </motion.div>
+      ) : (
+        <>
+          <img 
+            src={chapters[index].image} 
+            alt={chapters[index].title}
+            className="w-full h-full object-cover grayscale-[20%] brightness-[85%]"
+          />
+          <div className="absolute inset-0 bg-ink/20" />
+        </>
+      )}
     </motion.div>
   );
 };
@@ -54,26 +82,33 @@ const ChapterVisualContainer = ({ index, scrollYProgress, total, chapters }: { i
 const ChapterText = ({ chapter, index, scrollYProgress, total }: { chapter: any, index: number, scrollYProgress: any, total: number }) => {
   const opacity = useTransform(
     scrollYProgress,
-    [index / total, (index + 0.2) / total, (index + 0.8) / total, (index + 1) / total],
+    [
+      (index - 0.3) / total,
+      index / total,
+      index === total - 1 ? 2 : (index + 0.7) / total,
+      index === total - 1 ? 2 : (index + 1) / total
+    ],
     [0, 1, 1, 0]
   );
 
   const y = useTransform(
     scrollYProgress,
-    [index / total, (index + 0.2) / total, (index + 0.8) / total, (index + 1) / total],
-    [100, 0, 0, -100]
+    [
+      (index - 0.3) / total,
+      index / total,
+      index === total - 1 ? 2 : (index + 0.7) / total,
+      index === total - 1 ? 2 : (index + 1) / total
+    ],
+    [50, 0, 0, -50]
   );
 
-  return (
-    <motion.div 
-      style={{ opacity, y }}
-      className="absolute inset-0 flex flex-col justify-center px-6 md:px-12 lg:px-24 pointer-events-none transition-all duration-700 ease-out"
-    >
+  const content = (
+    <>
       <span className="font-display text-[8rem] md:text-[15rem] font-black text-ink/5 absolute top-1/2 left-0 -translate-y-1/2 select-none leading-none z-0">
         0{index + 1}
       </span>
       <div className="relative z-10">
-        <h2 className="font-display text-4xl md:text-8xl font-black text-ink leading-[0.85] mb-6 uppercase tracking-tighter">
+        <h2 className="font-display text-[clamp(2.5rem,4vw,4.5rem)] font-black text-ink leading-[0.85] mb-6 uppercase tracking-tighter break-words hyphens-auto">
           {chapter.title.split(' ').map((word: string, i: number) => (
             <React.Fragment key={i}>
               {i === 1 ? <span className="italic text-accent">{word}</span> : word}{' '}
@@ -88,6 +123,27 @@ const ChapterText = ({ chapter, index, scrollYProgress, total }: { chapter: any,
           {chapter.desc}
         </p>
       </div>
+    </>
+  );
+
+  return (
+    <motion.div 
+      style={{ opacity, y }}
+      className="absolute inset-0 flex flex-col justify-center px-6 md:px-12 lg:px-24 pointer-events-none"
+    >
+      {index === 0 ? (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative w-full h-full flex flex-col justify-center"
+        >
+          {content}
+        </motion.div>
+      ) : (
+        content
+      )}
     </motion.div>
   );
 };
@@ -95,20 +151,30 @@ const ChapterText = ({ chapter, index, scrollYProgress, total }: { chapter: any,
 const ProgressIndicator = ({ index, scrollYProgress, total }: { index: number, scrollYProgress: any, total: number }) => {
   const width = useTransform(
     scrollYProgress,
-    [index / total, (index + 0.1) / total, (index + 0.9) / total, (index + 1) / total],
+    [
+      (index - 0.5) / total,
+      index / total,
+      index === total - 1 ? 2 : (index + 0.5) / total,
+      index === total - 1 ? 2 : (index + 1) / total
+    ],
     [12, 40, 40, 12]
   );
 
   const backgroundColor = useTransform(
     scrollYProgress,
-    [index / total, (index + 0.1) / total, (index + 0.9) / total, (index + 1) / total],
+    [
+      (index - 0.5) / total,
+      index / total,
+      index === total - 1 ? 2 : (index + 0.5) / total,
+      index === total - 1 ? 2 : (index + 1) / total
+    ],
     ["#1A171420", "#C8472A", "#C8472A", "#1A171420"]
   );
 
   return (
     <motion.div 
       style={{ width, backgroundColor }}
-      className="h-1 rounded-full transition-all duration-500 ease-out"
+      className="h-1 rounded-full transition-all duration-300 ease-out"
     />
   );
 };

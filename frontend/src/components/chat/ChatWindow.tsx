@@ -19,6 +19,7 @@ import {
   ImagePlus,
   X,
   Crown,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -35,6 +36,45 @@ interface Message {
   imageDataUrl?: string;
   loggedMeal?: MealTrackingResponse;
 }
+
+const renderFormattedText = (text: string) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, lineIndex) => {
+    let content = line;
+    let isHeader = false;
+    let headerLevel = 0;
+    const headerMatch = content.match(/^(#{1,6})\s+(.*)$/);
+    if (headerMatch) {
+      isHeader = true;
+      headerLevel = headerMatch[1].length;
+      content = headerMatch[2];
+    }
+    const isBullet = content.trim().startsWith('-');
+    if (isBullet) content = content.replace(/^\s*-\s*/, '');
+    const parts = content.split('**');
+    const formattedLine = parts.map((part, partIndex) => {
+      if (partIndex % 2 === 1) return <strong key={partIndex} className="font-bold text-accent">{part}</strong>;
+      return part;
+    });
+    if (isHeader) {
+      const cls = headerLevel === 3
+        ? "text-xs md:text-sm font-bold text-ink mt-3 mb-1.5 block border-b border-ink/5 pb-0.5"
+        : "text-sm md:text-base font-bold text-ink mt-4 mb-2 block border-b border-ink/5 pb-0.5";
+      return <span key={lineIndex} className={cls}>{formattedLine}</span>;
+    }
+    if (isBullet) {
+      return (
+        <span key={lineIndex} className="pl-3 py-0.5 flex items-start gap-1.5 leading-relaxed block text-ink-muted">
+          <span className="text-accent shrink-0 mt-2 text-[0.45rem]">•</span>
+          <span className="flex-1">{formattedLine}</span>
+        </span>
+      );
+    }
+    if (content.trim() === '') return <span key={lineIndex} className="h-1.5 block" />;
+    return <span key={lineIndex} className="block leading-relaxed">{formattedLine}</span>;
+  });
+};
 
 export const ChatWindow = () => {
   const { t, i18n } = useTranslation();
@@ -558,7 +598,9 @@ export const ChatWindow = () => {
                         className="max-h-64 rounded-2xl mb-3 border border-white/10 shadow-md"
                       />
                     )}
-                    <div className="relative z-10 whitespace-pre-wrap">{msg.text}</div>
+                    <div className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed">
+                      {msg.type === 'user' ? msg.text : renderFormattedText(msg.text)}
+                    </div>
                     {msg.loggedMeal && (
                       <div className="mt-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-3 text-ink text-left">
                         <div className="flex items-center justify-between">

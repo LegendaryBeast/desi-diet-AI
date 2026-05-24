@@ -35,17 +35,19 @@ def _profile_to_response(profile) -> ProfileResponse:
     )
 
 
-def _calculate_targets_from_profile(profile) -> NutritionTargetsResponse:
+def _calculate_targets_from_profile(profile, current_weight: float = None) -> NutritionTargetsResponse:
     if not profile.weightKg or not profile.heightCm or not profile.gender or not profile.activityLevel:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Profile incomplete — weight, height, gender, and activity level are required",
         )
 
+    weight = current_weight if current_weight is not None else profile.weightKg
+
     targets = calculate_targets({
         "gender": profile.gender,
         "height_cm": profile.heightCm,
-        "weight_kg": profile.weightKg,
+        "weight_kg": weight,
         "activity_level": profile.activityLevel,
         "age": profile.age,
         "goal": profile.goal,
@@ -143,6 +145,15 @@ async def get_profile(current_user=Depends(get_current_user)):
         )
 
     profile_resp = _profile_to_response(profile)
-    targets = _calculate_targets_from_profile(profile)
+    
+    current_weight = profile.weightKg
+    latest_log = await prisma.healthlog.find_first(
+        where={"userId": current_user.id},
+        order={"logDate": "desc"},
+    )
+    if latest_log and latest_log.weightKg:
+        current_weight = latest_log.weightKg
+
+    targets = _calculate_targets_from_profile(profile, current_weight)
 
     return ProfileWithTargetsResponse(profile=profile_resp, targets=targets)

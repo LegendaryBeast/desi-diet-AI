@@ -1,179 +1,156 @@
 import { motion } from 'framer-motion';
-import type { Variants } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../ui/Button';
+import { ShieldCheck, Sparkles, ChevronRight, BookOpen, Utensils } from 'lucide-react';
 
 export const Hero = () => {
-  const { t } = useTranslation();
-  const { profileData, isLoggedIn } = useAuth();
-  
-  const dailyTarget = isLoggedIn && profileData?.targets?.target_calories 
-    ? profileData.targets.target_calories 
-    : 1950;
+  const { isLoggedIn } = useAuth();
 
-  const reveal: Variants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.9, ease: "easeOut" }
-    }
-  };
+  const badges = [
+    { icon: BookOpen, label: 'NDG 2025 অনুসারী' },
+    { icon: ShieldCheck, label: 'WHO নির্দেশিকা' },
+    { icon: Utensils, label: '৩২০+ দেশীয় খাবার' },
+  ];
 
   return (
-    <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden pt-12 lg:pt-0" id="home">
-      <div className="flex flex-col justify-center lg:justify-end p-6 md:p-12 lg:p-24 pb-12 lg:pb-20 relative z-10">
-        <motion.div 
-          variants={reveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="flex items-center gap-4 text-[0.6rem] lg:text-[0.7rem] tracking-[0.18em] uppercase text-ink-muted mb-6 lg:mb-8"
+    <section className="min-h-screen relative overflow-hidden flex flex-col justify-center bg-cream" id="home">
+      {/* Soft background gradients */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent/5 blur-[120px] rounded-full -translate-y-1/3 translate-x-1/3 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-forest/5 blur-[100px] rounded-full translate-y-1/3 -translate-x-1/3 pointer-events-none" />
+
+      {/* Dot grid */}
+      <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{
+        backgroundImage: 'radial-gradient(circle, #1A1714 1px, transparent 1px)',
+        backgroundSize: '32px 32px'
+      }} />
+
+      <div className="relative z-10 px-6 md:px-12 lg:px-24 pt-32 pb-20 max-w-[1400px] mx-auto w-full">
+        {/* Eyebrow badge row */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-wrap gap-2 md:gap-3 mb-10"
         >
-          <div className="w-6 lg:w-10 h-px bg-ink-muted" />
-          {t('hero.eyebrow')}
+          {badges.map((b, i) => (
+            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-ink/8 rounded-full text-[0.65rem] md:text-[0.7rem] tracking-wider uppercase text-ink-muted font-body shadow-sm">
+              <b.icon size={10} className="text-accent" />
+              {b.label}
+            </span>
+          ))}
         </motion.div>
-        
-        <motion.h1 
-          variants={reveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          transition={{ delay: 0.1 }}
-          className="font-display text-[clamp(2.5rem,10vw,6rem)] font-black leading-[0.9] tracking-tight mb-4"
-        >
-          <span className="font-bn text-[clamp(2rem,8vw,4.5rem)] font-bold block leading-[1] text-accent mb-2">{t('hero.title_bn')}</span>
-          <div className="leading-tight">
-            {t('hero.title_en_1')}<br />
-            <em className="italic text-ink-muted font-normal">{t('hero.title_en_2')}</em><br />
-            {t('hero.title_en_3')}
+
+        {/* Main headline */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-12 lg:gap-20 items-end">
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+            >
+              <span className="font-bn text-[clamp(1rem,3vw,1.3rem)] font-medium text-accent block mb-3 tracking-wide">
+                বাংলাদেশের প্রথম AI-চালিত পুষ্টি সহকারী
+              </span>
+              <h1 className="font-display text-[clamp(3rem,8vw,7rem)] font-black leading-[0.9] tracking-tight text-ink">
+                Desi<em className="italic text-accent">Diet</em>
+                <span className="block font-bn text-[clamp(1.8rem,5vw,4rem)] font-bold text-ink mt-2 leading-tight">
+                  আপনার স্বাস্থ্য, <br className="hidden sm:block" />আপনার পরিকল্পনা।
+                </span>
+              </h1>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="mt-8 font-bn text-[0.95rem] md:text-[1.05rem] leading-[1.8] text-ink-muted max-w-[560px]"
+            >
+              ডায়াবেটিস, উচ্চরক্তচাপ, কিডনি রোগসহ ৭০+ রোগের জন্য বিশেষজ্ঞ-অনুমোদিত ডায়েট পরিকল্পনা।
+              বাংলাদেশের জাতীয় পুষ্টি নির্দেশিকা (NDG), WHO এবং ICMR গাইডলাইন অনুসরণ করে তৈরি।
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+            >
+              <Link to={isLoggedIn ? '/dashboard' : '/profile'}>
+                <button className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-ink text-cream rounded-2xl font-bn font-bold text-sm md:text-base hover:bg-accent transition-all duration-300 shadow-xl shadow-ink/10 active:scale-[0.98]">
+                  <Sparkles size={16} className="group-hover:animate-pulse" />
+                  {isLoggedIn ? 'ড্যাশবোর্ডে যান' : 'বিনামূল্যে শুরু করুন'}
+                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </Link>
+              <Link to="/conditions" className="inline-flex items-center justify-center gap-1.5 px-6 py-4 border border-ink/10 rounded-2xl font-bn text-sm text-ink-muted hover:text-ink hover:border-ink/25 transition-all bg-white/60 backdrop-blur-sm">
+                রোগভিত্তিক ডায়েট দেখুন
+              </Link>
+            </motion.div>
+
+            {/* Trust signals */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="mt-10 flex items-center gap-2 text-[0.65rem] md:text-[0.7rem] text-ink-faint font-body tracking-wider uppercase"
+            >
+              <div className="flex -space-x-2">
+                {['#C8472A','#2C5530','#B8933E','#5C574F'].map((c, i) => (
+                  <div key={i} className="w-6 h-6 rounded-full border-2 border-cream" style={{ background: c }} />
+                ))}
+              </div>
+              <span className="ml-1">নির্ভরযোগ্য পুষ্টিবিদ-অনুমোদিত প্রযুক্তি</span>
+            </motion.div>
           </div>
-        </motion.h1>
 
-        <motion.p 
-          variants={reveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          transition={{ delay: 0.2 }}
-          className="mt-6 lg:mt-10 max-w-[500px] lg:max-w-[340px] text-[0.9rem] lg:text-[0.95rem] leading-[1.6] lg:leading-[1.7] text-ink-muted font-bn"
-        >
-          {t('hero.desc')}
-        </motion.p>
-
-        <motion.div 
-          variants={reveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-          className="mt-10 lg:mt-12 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 lg:gap-6"
-        >
-          <Link to="/profile" className="w-full sm:w-auto">
-            <Button variant="primary" className="w-full sm:w-auto bg-ink text-cream hover:bg-accent px-10 py-5 lg:py-4 text-base lg:text-sm font-bold interactive shadow-xl">
-              {t('hero.cta_primary')}
-            </Button>
-          </Link>
-          <Link to="/about" className="text-[0.8rem] lg:text-[0.8rem] tracking-[0.1em] uppercase text-ink-muted hover:text-ink transition-colors flex items-center justify-center gap-2 group interactive py-4 sm:py-2 px-4 border border-ink/5 sm:border-none rounded-xl">
-            {t('hero.cta_ghost')} <span className="group-hover:translate-x-2 transition-transform">→</span>
-          </Link>
-        </motion.div>
-
-        <motion.div 
-          variants={reveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="inline-flex items-center gap-3 px-4 py-2 border border-cream-dark text-[0.6rem] lg:text-[0.68rem] tracking-[0.1em] uppercase text-ink-faint mt-10 self-start bg-white/50 backdrop-blur-sm"
-        >
-          <div className="w-1.5 h-1.5 rounded-full bg-forest animate-pulse" />
-          {t('hero.badge')}
-        </motion.div>
-      </div>
-
-      <div className="relative overflow-hidden bg-cream-dark lg:h-full h-[45vh] md:h-[55vh]">
-        <div className="absolute inset-0 flex items-center justify-center p-8 lg:p-12">
-          {/* Inspiration SVG */}
-          <motion.svg 
-            initial={{ y: 20, opacity: 0, scale: 0.8 }}
-            animate={{ y: [-15, 0, -15], opacity: 1, scale: 1 }}
-            transition={{ 
-              y: { duration: 6, repeat: Infinity, ease: "easeInOut" },
-              opacity: { duration: 1 },
-              scale: { duration: 1.2, ease: "easeOut" }
-            }}
-            className="w-full h-full max-w-[280px] md:max-w-[400px] lg:max-w-[480px] aspect-square drop-shadow-[0_35px_35px_rgba(0,0,0,0.15)]" 
-            viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg"
+          {/* Right: Stats card cluster */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="hidden lg:flex flex-col gap-4 min-w-[280px]"
           >
-            <ellipse cx="210" cy="340" rx="160" ry="30" fill="#D4C9B0" opacity="0.6"/>
-            <path d="M80 220 Q80 340 210 340 Q340 340 340 220" fill="#E8DFC8"/>
-            <ellipse cx="210" cy="220" rx="130" ry="30" fill="#EDE6D6"/>
-            <ellipse cx="210" cy="215" rx="110" ry="40" fill="#F5EDD4"/>
-            <g transform="translate(155,160) rotate(-8)">
-              <ellipse cx="55" cy="25" rx="65" ry="22" fill="#B87A5A"/>
-              <path d="M120 25 L148 8 L148 42 Z" fill="#B87A5A"/>
-              <circle cx="18" cy="20" r="4" fill="#2A1A0E" opacity="0.6"/>
-              <path d="M30 15 Q55 8 80 15" stroke="#8B5A3A" strokeWidth="1.5" fill="none" opacity="0.5"/>
-              <path d="M30 25 Q55 20 80 25" stroke="#8B5A3A" strokeWidth="1.5" fill="none" opacity="0.5"/>
-            </g>
-            <g transform="translate(260,165)">
-              <ellipse cx="20" cy="20" rx="22" ry="16" fill="#6B9B4E" transform="rotate(-20)"/>
-              <ellipse cx="45" cy="15" rx="18" ry="14" fill="#5A8A3D" transform="rotate(15)"/>
-              <ellipse cx="30" cy="35" rx="16" ry="12" fill="#7BAE5E" transform="rotate(-5)"/>
-            </g>
-            <g fill="#C49A3A" opacity="0.7">
-              <ellipse cx="165" cy="205" rx="5" ry="4"/>
-              <ellipse cx="185" cy="198" rx="4" ry="3.5"/>
-              <ellipse cx="205" cy="210" rx="5" ry="4"/>
-              <ellipse cx="225" cy="202" rx="4" ry="3.5"/>
-              <ellipse cx="245" cy="208" rx="5" ry="4"/>
-            </g>
-            <g opacity="0.25" stroke="#8B7355" strokeWidth="2" fill="none" strokeLinecap="round">
-              <motion.path 
-                animate={{ opacity: [0.1, 0.4, 0.1] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                d="M180 130 Q175 115 182 100 Q189 85 184 70" 
-              />
-              <motion.path 
-                animate={{ opacity: [0.1, 0.4, 0.1] }}
-                transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
-                d="M210 125 Q205 108 212 93 Q219 78 214 63" 
-              />
-              <motion.path 
-                animate={{ opacity: [0.1, 0.4, 0.1] }}
-                transition={{ duration: 3, repeat: Infinity, delay: 1 }}
-                d="M240 130 Q235 113 242 98 Q249 83 244 68" 
-              />
-            </g>
-            <circle cx="210" cy="280" r="155" stroke="#D4C9B0" strokeWidth="1" fill="none" opacity="0.4" strokeDasharray="4 8"/>
-          </motion.svg>
+            {[
+              { num: '৩২০+', label: 'দেশীয় খাবার ডেটাবেস', sub: 'ক্যালোরি, প্রোটিন, ফ্যাট, কার্বসহ' },
+              { num: '৭০+', label: 'রোগভিত্তিক ডায়েট নিয়ম', sub: 'বিশেষজ্ঞ-যাচাইকৃত প্রোটোকল' },
+              { num: '১০০%', label: 'AI-ব্যক্তিগতকৃত', sub: 'আপনার স্বাস্থ্য তথ্য ভিত্তিক' },
+            ].map((s, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 + i * 0.1 }}
+                className="bg-white border border-ink/5 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)]"
+              >
+                <div className="font-display text-3xl font-black text-ink mb-1">{s.num}</div>
+                <div className="font-bn font-bold text-sm text-ink mb-0.5">{s.label}</div>
+                <div className="font-bn text-[0.68rem] text-ink-faint">{s.sub}</div>
+              </motion.div>
+            ))}
+
+            {/* NDG badge */}
+            <div className="flex items-center gap-3 bg-forest/8 border border-forest/15 rounded-2xl p-4 mt-1">
+              <div className="w-10 h-10 bg-forest rounded-xl flex items-center justify-center text-cream shrink-0">
+                <BookOpen size={18} />
+              </div>
+              <div>
+                <div className="font-body font-bold text-[0.7rem] text-forest tracking-wider uppercase">NDG 2025 অনুমোদিত</div>
+                <div className="font-bn text-[0.65rem] text-ink-muted mt-0.5">জাতীয় পুষ্টি নির্দেশিকা অনুসরণ</div>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Floating tags - Hidden on very small screens, responsive positioning */}
-        <motion.div 
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="absolute bottom-10 left-6 md:bottom-20 md:left-8 bg-white border border-ink/5 p-3 md:p-4 px-5 md:px-6 font-bn text-[0.75rem] md:text-[0.85rem] text-ink-muted shadow-2xl rounded-2xl z-20"
+        {/* Scroll hint */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-ink-faint"
         >
-          <strong className="block text-ink text-[1.1rem] md:text-[1.3rem] font-black tracking-tight leading-tight mb-1">{dailyTarget} kcal</strong>
-          {t('hero.todays_goal')}
+          <div className="w-px h-10 bg-gradient-to-b from-transparent to-ink/20" />
+          <span className="text-[0.58rem] tracking-widest uppercase font-body">স্ক্রোল করুন</span>
         </motion.div>
-
-        <div className="absolute bottom-6 right-6 md:bottom-12 md:right-8 w-20 h-20 md:w-28 md:h-28 flex items-center justify-center">
-          <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 rounded-full border border-dashed border-ink opacity-20"
-          />
-          <div className="font-bn text-[0.6rem] md:text-[0.7rem] text-center leading-[1.3] text-ink-muted bg-white/90 backdrop-blur-md w-14 h-14 md:w-20 md:h-20 rounded-full flex flex-col items-center justify-center border border-ink/10 shadow-xl z-10">
-            <span className="font-display font-black text-[0.6rem] md:text-[0.7rem] text-accent block mb-0.5">NDG</span>
-            2025<br />ENC
-          </div>
-        </div>
       </div>
     </section>
   );
