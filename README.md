@@ -378,7 +378,16 @@ Generated or local-only folders such as `frontend/node_modules`, `frontend/dist`
 
 ## Data and Knowledge Graph
 
+### Data Sources
+
+The project compiles and references the following data sources to build its Neo4j knowledge graph:
+
+1. **National Dietary Guidelines for Bangladesh** (`NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf`): The official guidelines which provide local dietary targets, safety rules, and regional eating habit recommendations.
+2. **Explainable GraphRAG Research Reference** (`frai-9-1808444.pdf`): *Dindukurthi V, Jain D, Tripathi A, Obbineni JM and Kandasamy I (2026) An explainable graph retrieval augmented generation framework for personalized nutrition recommendation. Front. Artif. Intell. 9:1808444. doi: 10.3389/frai.2026.1808444*. A core research and dietary reference document used to map nutritional values, food composition rules, and medical condition criteria.
+3. **Food Composition Table for Bangladesh**: *Institute of Nutrition and Food Science, Centre for Advanced Research in Sciences, University of Dhaka, Dhaka-1000, Bangladesh*. The authoritative nutritional database used for mapping macro and micro-nutrients of local Bangladeshi foods.
+
 ### Important data files
+
 
 | File | Purpose |
 | --- | --- |
@@ -989,6 +998,14 @@ The system uses Bangladeshi food names, Bengali UI copy, local dietary patterns,
 ### Explainability
 
 Food safety and recommendations are explainable through graph data, not only generated prose. The app can justify a food choice, classify safe/caution/avoid, and show why a plan matches a user's conditions.
+
+### Business Model & Monetization
+
+DesiDiet uses a **Freemium** subscription model combined with **Affiliate Marketing**:
+- **7-Day Premium Trial:** Users receive full access to all premium features for the first 7 days.
+- **Free Tier:** After the trial, users have limited access (e.g., 10 chatbot messages, generation of only the current day's meal plan with basic macronutrient details). Advanced features like reports, medicine reminders, and detailed micronutrient tracking are locked.
+- **Premium Tier:** For a subscription fee of **300 BDT per month**, users unlock full access to all features.
+- **Brand Promotion / Affiliate Revenue:** Meal plans and food recommendations integrate with local grocery and food delivery platforms like **Foodpanda, Shwapno, and Chaldal**. This serves as a strong B2B monetization channel through brand promotion and affiliate commissions.
 
 ### Full product loop
 

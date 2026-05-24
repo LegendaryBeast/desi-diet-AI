@@ -203,6 +203,7 @@ def migrate_foods(driver, food_df, mapper):
         
         print(f"  → Nutrient columns detected: {len(nutrient_codes_in_db)}")
         
+        nutrient_rels = []
         for _, row in food_df.iterrows():
             # Primary English name
             name_en = row.get('name', '')
@@ -281,7 +282,7 @@ def migrate_foods(driver, food_df, mapper):
                 MERGE (f)-[:BELONGS_TO]->(fg)
             """, grup=food_group, code=food_code, name_en=name_en)
             
-            # Now create CONTAINS_NUTRIENT relationships
+            # Collect CONTAINS_NUTRIENT relationships for batch inserting
             for col_code in nutrient_codes_in_db:
                 value = row[col_code]
                 if pd.notna(value):
@@ -299,22 +300,29 @@ def migrate_foods(driver, food_df, mapper):
                     if not nutrient_name:
                         continue
 
+                    nutrient_rels.append({
+                        "food_code": food_code,
+                        "food_name_en": name_en,
+                        "nutrient_name": nutrient_name,
+                        "amount_mg": amount_mg
+                    })
                     
-                    # Match food by code (preferred) or name_en
-                    if food_code:
-                        session.run("""
-                            MATCH (f:Food {code: $food_code})
-                            MATCH (n:Nutrient {name: $nutrient})
-                            MERGE (f)-[r:CONTAINS_NUTRIENT]->(n)
-                            SET r.amount_mg = $amount
-                        """, food_code=food_code, nutrient=nutrient_name, amount=amount_mg)
-                    else:
-                        session.run("""
-                            MATCH (f:Food {name_en: $name_en})
-                            MATCH (n:Nutrient {name: $nutrient})
-                            MERGE (f)-[r:CONTAINS_NUTRIENT]->(n)
-                            SET r.amount_mg = $amount
-                        """, name_en=name_en, nutrient=nutrient_name, amount=amount_mg)
+        # Batch insert relationships to prevent thousands of network round-trips
+        batch_size = 5000
+        total_rels = len(nutrient_rels)
+        print(f"  → Prepared {total_rels} nutrient relationships. Writing to Neo4j in batches of {batch_size}...")
+        for i in range(0, total_rels, batch_size):
+            batch = nutrient_rels[i:i+batch_size]
+            session.run("""
+                UNWIND $batch AS item
+                MATCH (f:Food)
+                WHERE (item.food_code <> '' AND f.code = item.food_code) 
+                   OR (item.food_code = '' AND f.name_en = item.food_name_en)
+                MATCH (n:Nutrient {name: item.nutrient_name})
+                MERGE (f)-[r:CONTAINS_NUTRIENT]->(n)
+                SET r.amount_mg = item.amount_mg
+            """, batch=batch)
+            print(f"    Uploaded relationships {i} to {min(i+batch_size, total_rels)}")
                     
     print(f"✅ Migrated {len(food_df)} BD foods with name_en/name_bn/name_original/code properties, macros, and FoodGroups.")
 # --- END BD DATASET FOOD MIGRATION ---
@@ -371,9 +379,9 @@ def main():
     # Load all data
     disease_df = load_data('disease_nutrients.csv')
     # Load the Bangladeshi food dataset (has 'name', 'lang', 'lang_bn' columns)
-    food_df = load_data('BD_food_details.csv')
+    food_df = load_data('bd_food_nutrients.csv')
     if food_df.empty:
-        print("❌ BD_food_details.csv not found or empty. Aborting food migration.")
+        print("❌ bd_food_nutrients.csv not found or empty. Aborting food migration.")
     rda_df = load_data('Indian_RDA.csv')
     pairings_df = load_data('food_pairings.csv')
     

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Khadok-Bangla AI",
-    "slug": "khadok-bangla-ai",
-    "scheme": "khadok",
+    "name": "Pusti AI",
+    "slug": "pusti-ai",
+    "scheme": "pusti",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.khadokbanglaai"
+      "bundleIdentifier": "com.anonymous.pustiai"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.khadokbanglaai"
+      "package": "com.anonymous.pustiai"
     },
     "web": {
       "favicon": "./assets/favicon.png"

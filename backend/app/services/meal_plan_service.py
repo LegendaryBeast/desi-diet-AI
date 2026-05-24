@@ -717,7 +717,7 @@ def _build_meal_plan_prompt(
 
 
 
-    system_prompt = """You are Khadok-Bangla AI, a Bangladeshi clinical nutrition assistant.
+    system_prompt = """You are Pusti AI, a Bangladeshi clinical nutrition assistant.
 Your task is to format a personalized daily meal plan using ONLY the graph-validated foods provided below.
 
 CRITICAL RULES:
@@ -920,7 +920,7 @@ def _build_weekly_meal_plan_prompt(
             pairings_lines.append(f"- {p['f1_bn']} ({p['f1_en']}) pairs well with {p['f2_bn']} ({p['f2_en']}) [Popularity weight: {p['popularity']}, Type: {p['pairing_type']}, Slot: {p['meal_slot']}]")
         pairings_section = "\nPOPULAR FOOD COMBINATIONS & PAIRINGS (highly recommended to combine these foods together inside a meal slot):\n" + "\n".join(pairings_lines) + "\n"
 
-    system_prompt = """You are Khadok-Bangla AI, a Bangladeshi clinical nutrition assistant.
+    system_prompt = """You are Pusti AI, a Bangladeshi clinical nutrition assistant.
 Your task is to format a personalized 7-DAY weekly meal plan using ONLY the graph-validated foods provided below.
 
 CRITICAL RULES:

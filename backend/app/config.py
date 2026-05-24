@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """All app settings loaded from environment variables."""
 
     # App
-    app_name: str = Field(default="Khadok-Bangla AI", alias="APP_NAME")
+    app_name: str = Field(default="Pusti AI", alias="APP_NAME")
     cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
 
     # Database

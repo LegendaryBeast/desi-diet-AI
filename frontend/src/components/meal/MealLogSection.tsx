@@ -274,23 +274,23 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
       {todayLogs.length > 0 && (
         <div className="grid grid-cols-4 gap-2 md:gap-3 bg-cream/50 p-3 md:p-4 rounded-2xl">
           <div className="text-center">
-            <div className="font-display text-lg md:text-2xl font-black text-ink">{todayTotal}</div>
+            <div className="font-body text-lg md:text-2xl font-bold text-ink">{todayTotal}</div>
             <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">kcal</div>
           </div>
           <div className="text-center">
-            <div className="font-display text-lg md:text-2xl font-black text-ink">
+            <div className="font-body text-lg md:text-2xl font-bold text-ink">
               {Math.round(todayMacros.protein_g)}g
             </div>
             <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">protein</div>
           </div>
           <div className="text-center">
-            <div className="font-display text-lg md:text-2xl font-black text-ink">
+            <div className="font-body text-lg md:text-2xl font-bold text-ink">
               {Math.round(todayMacros.carbs_g)}g
             </div>
             <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">carbs</div>
           </div>
           <div className="text-center">
-            <div className="font-display text-lg md:text-2xl font-black text-ink">
+            <div className="font-body text-lg md:text-2xl font-bold text-ink">
               {Math.round(todayMacros.fat_g)}g
             </div>
             <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">fat</div>
@@ -490,7 +490,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
             className="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3"
           >
             <div className="flex items-center justify-between">
-              <div className="font-display font-black text-ink flex items-center gap-2">
+              <div className="font-body font-bold text-ink flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" />
                 Logged · {lastResult.total_calories} kcal
               </div>
@@ -554,7 +554,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                       {(log.meal_slot || 'snack')} · {time}
                     </div>
                   </div>
-                  <div className="font-display font-black text-ink shrink-0">
+                  <div className="font-body font-bold text-ink shrink-0">
                     {log.total_calories}
                     <span className="text-[0.6rem] text-ink-faint font-body ml-1">kcal</span>
                   </div>

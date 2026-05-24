@@ -19,7 +19,7 @@ from app.models.schemas import UserProfile as JournalUserProfile, DietPlanRespon
 from app.logic.planner import generate_plan_logic
 
 app = FastAPI(
-    title="Khadok-Bangla Personalized AI Nutrition API (GraphRAG Q1 Version)",
+    title="Pusti Personalized AI Nutrition API (GraphRAG Q1 Version)",
     description="Backend API serving DesiDiet React frontend and implementing Neo4j GraphRAG planning.",
     version="2.0.0",
     lifespan=lifespan,
@@ -79,7 +79,7 @@ async def health_check():
 @app.get("/", tags=["Root"])
 async def root():
     return {
-        "message": "Khadok-Bangla AI API (GraphRAG Q1 Version)",
+        "message": "Pusti AI API (GraphRAG Q1 Version)",
         "docs": "/docs",
         "health": "/health",
     }

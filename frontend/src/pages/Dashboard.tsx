@@ -60,7 +60,7 @@ export const Dashboard = () => {
 
   const targets = profileData?.targets;
   const profile = profileData?.profile;
-  const userName = profile?.name_bn || user?.phone || user?.email || 'ব্যবহারকারী';
+  const userName = profile?.name_bn || profile?.name_en || user?.phone || user?.email || 'ব্যবহারকারী';
 
   let calorieTarget = targets?.target_calories || 2000;
   let consumedCal = 0;

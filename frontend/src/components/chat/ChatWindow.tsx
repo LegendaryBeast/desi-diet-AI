@@ -457,16 +457,16 @@ export const ChatWindow = () => {
       {/* Pro Upgrade Modal */}
       <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger="chat_limit" />
 
-      <div className="flex-1 flex flex-col relative max-w-6xl mx-auto w-full min-h-0">
+      <div className="flex-1 flex flex-col relative max-w-4xl mx-auto w-full min-h-0">
         {/* Soft Background Glows */}
-        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[300px] md:w-[800px] h-[300px] md:h-[600px] bg-accent/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[400px] bg-accent/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none" />
 
         {/* API Error Banner */}
         {apiError && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="m-4 p-3 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-bn z-20"
+            className="m-3 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-500 text-sm font-bn z-20"
           >
             <WifiOff className="w-4 h-4 shrink-0" />
             <span>{apiError}</span>
@@ -478,7 +478,7 @@ export const ChatWindow = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="m-4 p-3 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-bn z-20"
+            className="m-3 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-500 text-sm font-bn z-20"
           >
             <Mic className="w-4 h-4 shrink-0" />
             <span>{voiceError}</span>
@@ -489,7 +489,7 @@ export const ChatWindow = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="m-4 p-3 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 text-sm font-bn z-20"
+            className="m-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3 text-emerald-700 text-sm font-bn z-20"
           >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -503,38 +503,38 @@ export const ChatWindow = () => {
         <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
         {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-12 md:p-8 md:pb-24 space-y-6 md:space-y-10 scroll-smooth relative z-10">
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-6 md:p-6 md:pb-8 space-y-4 md:space-y-5 scroll-smooth relative z-10">
           <AnimatePresence initial={false}>
             {messages.length === 0 ? (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="h-full flex flex-col items-center justify-center text-center py-10"
+                className="h-full flex flex-col items-center justify-center text-center py-6 md:py-10"
               >
                 {/* Brand Icon */}
                 <motion.div
-                  initial={{ scale: 0.8 }}
+                  initial={{ scale: 0.9 }}
                   animate={{ scale: 1 }}
-                  className="w-12 h-12 md:w-20 md:h-20 bg-ink rounded-2xl md:rounded-[2rem] flex items-center justify-center text-cream mb-4 md:mb-8 shadow-2xl relative overflow-hidden group"
+                  className="w-12 h-12 md:w-16 md:h-16 bg-ink rounded-2xl flex items-center justify-center text-cream mb-4 md:mb-6 shadow-xl relative overflow-hidden group"
                 >
                   <div className="absolute inset-0 bg-gradient-to-tr from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <MessageSquare size={32} className="relative z-10" />
+                  <MessageSquare size={24} className="relative z-10" />
                 </motion.div>
 
-                <div className="space-y-2 md:space-y-4 mb-6 md:mb-16 px-4">
-                  <h4 className="text-ink-muted font-bn text-sm md:text-xl opacity-60">
+                <div className="space-y-1.5 md:space-y-2 mb-6 md:mb-8 px-4">
+                  <h4 className="text-ink-muted font-bn text-xs md:text-sm opacity-65">
                     {t('chat.greeting_user', { name: displayName })}
                   </h4>
-                  <h3 className="font-display text-2xl md:text-4xl lg:text-5xl font-black text-ink tracking-tight leading-tight">
+                  <h3 className="font-display text-xl md:text-3xl font-black text-ink tracking-tight leading-tight">
                     {t('chat.how_can_i_help')}
                   </h3>
-                  <p className="font-bn text-[0.75rem] md:text-base text-ink-faint max-w-md mx-auto">
+                  <p className="font-bn text-xs md:text-sm text-ink-faint max-w-sm mx-auto opacity-75">
                     {t('chat.description_short')}
                   </p>
                 </div>
 
                 {/* Suggestion Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 w-full max-w-4xl px-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full px-4 max-w-3xl">
                   {[
                     { icon: Layout, title: t('chat.suggestions.title1'), sub: t('chat.suggestions.sub1'), label: 'Meal Plan' },
                     { icon: Activity, title: t('chat.suggestions.title2'), sub: t('chat.suggestions.sub2'), label: 'Health Status' },
@@ -544,17 +544,14 @@ export const ChatWindow = () => {
                       key={i}
                       onClick={() => send(btn.title)}
                       disabled={isStreaming}
-                      className="p-4 md:p-8 bg-white border border-ink/5 rounded-2xl md:rounded-[2.5rem] text-center sm:text-left hover:border-accent/20 hover:shadow-2xl transition-all group shadow-sm disabled:opacity-50 flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0"
+                      className="p-3.5 md:p-4 bg-white border border-ink/5 rounded-2xl text-left hover:border-accent/20 hover:shadow-md hover:translate-y-[-1px] transition-all group shadow-sm disabled:opacity-50 flex items-center gap-3"
                     >
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-cream rounded-xl md:rounded-2xl flex items-center justify-center text-ink group-hover:bg-accent group-hover:text-cream transition-colors shrink-0 sm:mb-6">
-                        <btn.icon size={18} className="md:w-5 md:h-5" />
+                      <div className="w-9 h-9 bg-cream rounded-xl flex items-center justify-center text-ink group-hover:bg-accent group-hover:text-cream transition-colors shrink-0">
+                        <btn.icon size={16} />
                       </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-bn font-bold text-sm md:text-xl text-ink mb-0.5 md:mb-2">{btn.title}</div>
-                        <div className="font-bn text-xs text-ink-muted opacity-60">{btn.sub}</div>
-                      </div>
-                      <div className="hidden sm:block text-[0.6rem] uppercase tracking-widest text-ink-faint font-body font-bold border-t border-ink/5 pt-4 w-full mt-4">
-                        {btn.label}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bn font-bold text-xs md:text-sm text-ink truncate">{btn.title}</div>
+                        <div className="font-bn text-[0.68rem] text-ink-muted opacity-60 truncate">{btn.sub}</div>
                       </div>
                     </button>
                   ))}
@@ -564,64 +561,64 @@ export const ChatWindow = () => {
               messages.map((msg) => (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.99 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 md:gap-4`}
+                  transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 md:gap-3`}
                 >
                   {msg.type === 'ai' && (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-xl mb-1 transform -rotate-6 border-2 border-white/10"
+                      className="w-8 h-8 rounded-xl bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-md mb-0.5 transform -rotate-3 border border-white/10"
                     >
-                      <Bot size={16} className="md:w-6 md:h-6" />
+                      <Bot size={15} />
                     </motion.div>
                   )}
-                  <div className={`relative p-4 md:p-7 lg:p-9 rounded-[1.5rem] md:rounded-[2.8rem] font-bn leading-relaxed text-sm md:text-lg max-w-[92%] md:max-w-[80%] lg:max-w-[70%] shadow-lg transition-all duration-300 ${
+                  <div className={`relative p-3 px-4 md:p-4 md:px-5 rounded-2xl md:rounded-[1.5rem] font-bn leading-relaxed text-sm md:text-base max-w-[88%] md:max-w-[75%] shadow-sm transition-all duration-300 ${
                     msg.type === 'user'
-                      ? 'bg-ink text-cream rounded-br-none shadow-ink/30'
+                      ? 'bg-ink text-cream rounded-br-none shadow-ink/10'
                       : 'bg-white border border-ink/5 text-ink rounded-tl-none ring-1 ring-ink/5'
                   }`}>
                     {/* Loading dots when empty */}
                     {msg.type === 'ai' && msg.text === '' && (
-                      <div className="flex gap-1.5 py-2 px-1">
-                        <div className="w-2 h-2 bg-ink/20 rounded-full animate-pulse" />
-                        <div className="w-2 h-2 bg-ink/20 rounded-full animate-pulse delay-75" />
-                        <div className="w-2 h-2 bg-ink/20 rounded-full animate-pulse delay-150" />
+                      <div className="flex gap-1.5 py-1 px-0.5">
+                        <div className="w-1.5 h-1.5 bg-ink/20 rounded-full animate-pulse" />
+                        <div className="w-1.5 h-1.5 bg-ink/20 rounded-full animate-pulse delay-75" />
+                        <div className="w-1.5 h-1.5 bg-ink/20 rounded-full animate-pulse delay-150" />
                       </div>
                     )}
                     {msg.imageDataUrl && (
                       <img
                         src={msg.imageDataUrl}
                         alt="attached"
-                        className="max-h-64 rounded-2xl mb-3 border border-white/10 shadow-md"
+                        className="max-h-48 rounded-xl mb-2.5 border border-white/10 shadow-sm"
                       />
                     )}
-                    <div className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed">
+                    <div className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed text-sm md:text-[0.95rem]">
                       {msg.type === 'user' ? msg.text : renderFormattedText(msg.text)}
                     </div>
                     {msg.loggedMeal && (
-                      <div className="mt-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-3 text-ink text-left">
+                      <div className="mt-3 p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-2 text-ink text-left">
                         <div className="flex items-center justify-between">
-                          <div className="font-display font-black text-sm flex items-center gap-2">
-                            <span className="relative flex h-2 w-2">
+                          <div className="font-display font-black text-xs flex items-center gap-1.5">
+                            <span className="relative flex h-1.5 w-1.5">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                             </span>
                             {isBn ? 'খাবারটি লগ করা হয়েছে!' : 'Meal Logged Successfully!'}
                           </div>
-                          <span className="bg-emerald-500 text-cream font-bold text-[0.65rem] px-2 py-0.5 rounded-full">
+                          <span className="bg-emerald-500 text-cream font-bold text-[0.6rem] px-2 py-0.5 rounded-full">
                             {msg.loggedMeal.total_calories} kcal
                           </span>
                         </div>
                         
                         {msg.loggedMeal.parsed_items.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1">
                             {msg.loggedMeal.parsed_items.map((item, idx) => (
                               <span
                                 key={idx}
-                                className="px-2.5 py-1 bg-white border border-emerald-100/60 rounded-full text-xs font-bn font-bold text-ink-muted flex items-center gap-1 shadow-sm"
+                                className="px-2 py-0.5 bg-white border border-emerald-100/60 rounded-full text-[0.65rem] font-bn font-bold text-ink-muted flex items-center gap-1 shadow-sm"
                               >
                                 {item.name}
                                 {item.amount_g ? ` · ${Math.round(item.amount_g)}g` : ''}
@@ -631,23 +628,23 @@ export const ChatWindow = () => {
                           </div>
                         )}
                         
-                        <div className="grid grid-cols-3 gap-2 bg-white/60 p-2.5 rounded-xl text-center text-[0.7rem] border border-emerald-100/30">
+                        <div className="grid grid-cols-3 gap-1.5 bg-white/60 p-2 rounded-lg text-center text-[0.65rem] border border-emerald-100/30">
                           <div>
                             <div className="font-body font-black text-ink-muted">{Math.round(msg.loggedMeal.macros.protein_g || 0)}g</div>
-                            <div className="text-[0.55rem] uppercase tracking-widest text-ink-faint font-bold">{isBn ? 'প্রোটিন' : 'Protein'}</div>
+                            <div className="text-[0.5rem] uppercase tracking-widest text-ink-faint font-bold">{isBn ? 'প্রোটিন' : 'Protein'}</div>
                           </div>
                           <div>
                             <div className="font-body font-black text-ink-muted">{Math.round(msg.loggedMeal.macros.carbs_g || 0)}g</div>
-                            <div className="text-[0.55rem] uppercase tracking-widest text-ink-faint font-bold">{isBn ? 'কার্বস' : 'Carbs'}</div>
+                            <div className="text-[0.5rem] uppercase tracking-widest text-ink-faint font-bold">{isBn ? 'কার্বস' : 'Carbs'}</div>
                           </div>
                           <div>
                             <div className="font-body font-black text-ink-muted">{Math.round(msg.loggedMeal.macros.fat_g || 0)}g</div>
-                            <div className="text-[0.55rem] uppercase tracking-widest text-ink-faint font-bold">{isBn ? 'ফ্যাট' : 'Fat'}</div>
+                            <div className="text-[0.5rem] uppercase tracking-widest text-ink-faint font-bold">{isBn ? 'ফ্যাট' : 'Fat'}</div>
                           </div>
                         </div>
 
                         {msg.loggedMeal.ai_feedback && (
-                          <div className="text-xs text-ink-muted border-t border-emerald-100/50 pt-2 font-bn">
+                          <div className="text-[0.7rem] text-ink-muted border-t border-emerald-100/50 pt-1.5 font-bn">
                             <strong>{isBn ? 'পরামর্শ:' : 'Insight:'}</strong> {msg.loggedMeal.ai_feedback}
                           </div>
                         )}
@@ -655,9 +652,9 @@ export const ChatWindow = () => {
                     )}
                     {/* Streaming cursor */}
                     {msg.type === 'ai' && isStreaming && msg.text !== '' && (
-                      <span className="inline-block w-0.5 h-5 bg-accent ml-1 animate-pulse" />
+                      <span className="inline-block w-0.5 h-4 bg-accent ml-1 animate-pulse" />
                     )}
-                    <div className={`text-[0.6rem] md:text-[0.65rem] mt-2 md:mt-4 font-body font-black uppercase tracking-[0.2em] opacity-40 flex items-center gap-2 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`text-[0.55rem] mt-1.5 font-body font-black uppercase tracking-[0.15em] opacity-45 flex items-center gap-1.5 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                       {msg.type === 'ai' && <div className="w-1 h-1 bg-accent rounded-full animate-ping" />}
                       {msg.time}
                     </div>
@@ -672,17 +669,17 @@ export const ChatWindow = () => {
                 initial={{ opacity: 0, y: 10, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="flex flex-col gap-2"
+                className="flex flex-col gap-1.5"
               >
-                <div className="flex justify-start items-end gap-2 md:gap-4">
-                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-xl mb-1 transform -rotate-6">
-                    <Bot size={16} className="md:w-6 md:h-6" />
+                <div className="flex justify-start items-end gap-2 md:gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-md mb-0.5 transform -rotate-3">
+                    <Bot size={15} />
                   </div>
-                  <div className="p-5 md:p-6 bg-white border border-ink/5 rounded-[1.8rem] md:rounded-[2.2rem] rounded-tl-none shadow-xl flex items-center gap-1.5 ring-1 ring-ink/5">
+                  <div className="p-3.5 px-4 bg-white border border-ink/5 rounded-2xl rounded-tl-none shadow-md flex items-center gap-1 ring-1 ring-ink/5">
                     {[0, 1, 2].map((dot) => (
                       <motion.div
                         key={dot}
-                        className="w-2 h-2 md:w-2.5 md:h-2.5 bg-accent/40 rounded-full"
+                        className="w-1.5 h-1.5 bg-accent/40 rounded-full"
                         animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
                         transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.15, ease: 'easeInOut' }}
                       />
@@ -692,9 +689,9 @@ export const ChatWindow = () => {
                 <motion.div
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="ml-10 md:ml-16 flex items-center gap-2"
+                  className="ml-10 md:ml-12 flex items-center gap-1.5"
                 >
-                  <span className="text-[0.65rem] md:text-xs font-bn font-bold text-accent tracking-wider uppercase flex items-center gap-1.5">
+                  <span className="text-[0.6rem] font-bn font-bold text-accent tracking-wider uppercase flex items-center gap-1">
                     {t('chat.ai_name')}
                     <span className="animate-pulse">{t('chat.typing')}</span>
                   </span>
@@ -702,28 +699,28 @@ export const ChatWindow = () => {
               </motion.div>
             )}
           </AnimatePresence>
-          <div ref={messagesEndRef} className="h-6 md:h-8 shrink-0" />
+          <div ref={messagesEndRef} className="h-4 md:h-6 shrink-0" />
         </div>
 
         {/* Scroll to bottom button */}
         {messages.length > 3 && (
           <button
             onClick={scrollToBottom}
-            className="absolute bottom-32 right-6 p-3 bg-white border border-ink/10 rounded-2xl shadow-xl text-ink-muted hover:text-accent transition-all z-20"
+            className="absolute bottom-28 right-4 p-2.5 bg-white border border-ink/10 rounded-xl shadow-md text-ink-muted hover:text-accent transition-all z-20"
           >
-            <ChevronDown size={18} />
+            <ChevronDown size={16} />
           </button>
         )}
 
         {/* Free tier message counter */}
         {!isPro && (
-          <div className="mx-4 md:mx-8 mb-0 z-30">
-            <div className={`flex items-center justify-between px-4 py-2 rounded-t-2xl border border-b-0 text-xs font-bn font-bold ${
+          <div className="px-4 md:px-6 mb-0 z-30 w-full max-w-4xl mx-auto">
+            <div className={`flex items-center justify-between px-4 py-1.5 rounded-t-xl border border-b-0 text-[0.7rem] font-bn font-bold ${
               canSendMessage
                 ? 'bg-amber-50 border-amber-200 text-amber-700'
                 : 'bg-red-50 border-red-200 text-red-600'
             }`}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>
                   {canSendMessage
@@ -733,9 +730,9 @@ export const ChatWindow = () => {
               </div>
               <button
                 onClick={() => setShowProModal(true)}
-                className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[0.62rem] rounded-lg font-black hover:shadow-lg transition-all flex items-center gap-1"
+                className="px-2.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[0.58rem] rounded font-black hover:shadow transition-all flex items-center gap-0.5"
               >
-                <Crown className="w-3 h-3" />
+                <Crown className="w-2.5 h-2.5" />
                 Pro তে আপগ্রেড
               </button>
             </div>
@@ -743,27 +740,27 @@ export const ChatWindow = () => {
         )}
 
         {/* Input Bar */}
-        <div className="p-4 md:p-8 bg-white/90 backdrop-blur-xl border-t border-ink/5 z-30 shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+        <div className="p-3 md:p-4 bg-white/90 backdrop-blur-xl border-t border-ink/5 z-30 shrink-0 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.03)]">
           {/* Pending image preview chip */}
           {pendingImage && (
-            <div className="max-w-5xl mx-auto mb-3 flex items-center gap-3">
+            <div className="max-w-4xl mx-auto mb-2 flex items-center gap-2 px-2">
               <div className="relative inline-block">
                 <img
                   src={pendingImage.dataUrl}
                   alt={pendingImage.name}
-                  className="h-20 w-20 object-cover rounded-2xl border border-ink/10 shadow-sm"
+                  className="h-14 w-14 object-cover rounded-xl border border-ink/10 shadow-sm"
                 />
                 <button
                   onClick={() => { setPendingImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-ink text-cream rounded-full flex items-center justify-center shadow-lg hover:bg-red-500 transition-colors"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-ink text-cream rounded-full flex items-center justify-center shadow hover:bg-red-500 transition-colors"
                   aria-label="Remove attached image"
                   title="Remove image"
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               </div>
-              <div className="text-xs font-body text-ink-muted truncate max-w-[60%]">
-                <div className="font-black uppercase tracking-widest text-[0.6rem] text-accent mb-1">Attached</div>
+              <div className="text-[0.65rem] font-body text-ink-muted truncate max-w-[60%]">
+                <div className="font-black uppercase tracking-wider text-[0.55rem] text-accent mb-0.5">Attached</div>
                 <div className="truncate">{pendingImage.name}</div>
               </div>
             </div>
@@ -781,19 +778,19 @@ export const ChatWindow = () => {
             }}
           />
 
-          <div className="max-w-5xl mx-auto flex items-center gap-3 md:gap-5">
+          <div className="max-w-4xl mx-auto flex items-center gap-2 md:gap-3 px-1">
             <button
               aria-label="View history"
               onClick={() => setMessages([])}
-              className="p-4 md:p-5 bg-ink text-cream rounded-[1.2rem] md:rounded-[1.5rem] shadow-2xl hover:bg-accent transition-all shrink-0 group relative overflow-hidden"
+              className="p-3 bg-ink text-cream rounded-xl md:rounded-2xl shadow hover:bg-accent transition-all shrink-0 group relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform" />
-              <History size={22} className="relative z-10" />
+              <History size={18} className="relative z-10" />
             </button>
 
-            <div className="flex-1 bg-white border border-ink/10 rounded-full flex items-center px-4 md:px-8 py-1 md:py-2 shadow-2xl shadow-ink/5 focus-within:border-accent/60 focus-within:ring-4 ring-accent/5 transition-all duration-500">
-              <div className="text-accent mr-3 md:mr-5 hidden sm:block opacity-60">
-                <FileText size={20} />
+            <div className="flex-1 bg-white border border-ink/10 rounded-full flex items-center px-3.5 md:px-5 py-0.5 shadow-sm focus-within:border-accent/40 focus-within:ring-4 ring-accent/5 transition-all duration-300">
+              <div className="text-accent mr-2.5 hidden sm:block opacity-50 shrink-0">
+                <FileText size={16} />
               </div>
               <input
                 type="text"
@@ -807,55 +804,55 @@ export const ChatWindow = () => {
                   : voiceState === 'live' ? '🎙️ Listening — speak naturally'
                   : t('chat.input_placeholder')
                 }
-                className="flex-1 bg-transparent py-3 md:py-5 font-bn text-sm md:text-xl focus:outline-none placeholder:text-ink/30 disabled:opacity-50"
+                className="flex-1 bg-transparent py-2.5 md:py-3 font-bn text-xs md:text-sm focus:outline-none placeholder:text-ink/25 disabled:opacity-50"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isStreaming || voiceState !== 'idle'}
                 aria-label="Attach image"
                 title="Attach image"
-                className={`ml-1 md:ml-2 p-2.5 md:p-3 rounded-full transition-all shrink-0 ${
+                className={`p-1.5 md:p-2 rounded-full transition-all shrink-0 ${
                   pendingImage
-                    ? 'bg-accent text-white shadow-lg shadow-accent/40'
+                    ? 'bg-accent text-white shadow shadow-accent/20'
                     : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                 } disabled:opacity-30 disabled:hover:bg-cream disabled:hover:text-ink-muted`}
               >
-                <ImagePlus size={18} />
+                <ImagePlus size={15} />
               </button>
               <button
                 onClick={voiceState === 'idle' ? startVoiceSession : stopVoiceSession}
                 disabled={isStreaming || voiceState === 'connecting'}
                 aria-label={voiceState === 'idle' ? 'Start voice conversation' : 'End voice conversation'}
                 title={voiceState === 'idle' ? 'Voice conversation' : 'End voice conversation'}
-                className={`ml-1 md:ml-2 p-2.5 md:p-3 rounded-full transition-all shrink-0 ${
+                className={`ml-1 p-1.5 md:p-2 rounded-full transition-all shrink-0 ${
                   voiceState === 'live'
-                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40'
+                    ? 'bg-red-500 text-white animate-pulse shadow shadow-red-500/20'
                     : voiceState === 'connecting'
                     ? 'bg-amber-400 text-white'
                     : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                 } disabled:opacity-30 disabled:hover:bg-cream disabled:hover:text-ink-muted`}
               >
-                {voiceState === 'connecting' ? <Loader2 size={18} className="animate-spin" />
-                  : voiceState === 'live' ? <Square size={18} />
-                  : <Mic size={18} />}
+                {voiceState === 'connecting' ? <Loader2 size={15} className="animate-spin" />
+                  : voiceState === 'live' ? <Square size={15} />
+                  : <Mic size={15} />}
               </button>
               <button
                 onClick={() => send()}
                 disabled={(!input.trim() && !pendingImage) || isStreaming || voiceState !== 'idle'}
                 aria-label="Send message"
-                className="ml-2 px-4 md:px-10 py-2 md:py-4 bg-accent text-white rounded-full font-bn font-black text-sm md:text-xl flex items-center gap-2 hover:bg-ink hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100 transition-all shadow-xl shadow-accent/20 shrink-0"
+                className="ml-1.5 px-3 md:px-4 py-1.5 bg-accent text-white rounded-full font-bn font-bold text-xs md:text-[0.8rem] flex items-center gap-1.5 hover:bg-ink hover:scale-102 active:scale-98 disabled:opacity-20 disabled:scale-100 transition-all shadow shrink-0"
               >
                 <span className="hidden md:inline">{t('chat.send')}</span>
-                <Send size={18} className={input.trim() ? 'animate-pulse' : ''} />
+                <Send size={13} className={input.trim() ? 'animate-pulse' : ''} />
               </button>
             </div>
           </div>
-          <div className="flex flex-col md:flex-row justify-center items-center gap-2 mt-4 md:mt-6">
-            <p className="text-[0.6rem] md:text-[0.7rem] uppercase tracking-[0.3em] text-ink-faint font-body font-black opacity-40">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-1.5 mt-3 md:mt-4 opacity-50">
+            <p className="text-[0.55rem] md:text-[0.6rem] uppercase tracking-[0.2em] text-ink-faint font-body font-black">
               {t('chat.footer_secure')}
             </p>
-            <span className="hidden md:block text-ink-faint opacity-20">•</span>
-            <p className="text-[0.6rem] md:text-[0.7rem] uppercase tracking-[0.3em] text-ink-faint font-body font-black opacity-40">
+            <span className="hidden md:block text-ink-faint">•</span>
+            <p className="text-[0.55rem] md:text-[0.6rem] uppercase tracking-[0.2em] text-ink-faint font-body font-black">
               {t('chat.footer_disclaimer')}
             </p>
           </div>

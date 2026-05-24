@@ -27,6 +27,7 @@ import {
   Crown,
   Lock,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -96,6 +97,7 @@ interface PlanData {
 
 export const MealPlan = () => {
   const { profileData } = useAuth();
+  const navigate = useNavigate();
   const { isPro } = useSubscription();
   const [showProModal, setShowProModal] = useState(false);
   const [proTrigger, setProTrigger] = useState<'regenerate' | 'tomorrow' | 'general'>('general');
@@ -534,102 +536,34 @@ export const MealPlan = () => {
           </div>
         </header>
 
-        {/* Micronutrients checklist target */}
+        {/* Compact Micronutrients Summary Call-to-action */}
         {p.plan_data && (p.plan_data as any).micronutrient_targets && (p.plan_data as any).micronutrient_targets.length > 0 && (() => {
-          const allNutrients: any[] = (p.plan_data as any).micronutrient_targets;
-
-          // Group nutrients into categories
-          const VITAMIN_NAMES = [
-            "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-            "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-            "Pantothenic acid (B5)", "Biotin (B7)"
-          ];
-          const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
-          const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
-
-          const vitamins = allNutrients.filter(n => VITAMIN_NAMES.includes(n.name));
-          const minerals = allNutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-          const fatty = allNutrients.filter(n => FATTY_NAMES.includes(n.name));
-
-          const groups = [
-            { id: 'vitamins', label: 'ভিটামিন', labelEn: 'Vitamins', items: vitamins, color: 'bg-amber-500', light: 'bg-amber-50', border: 'border-amber-200' },
-            { id: 'minerals', label: 'খনিজ', labelEn: 'Minerals', items: minerals, color: 'bg-blue-500', light: 'bg-blue-50', border: 'border-blue-200' },
-            { id: 'fats', label: 'ফ্যাটি অ্যাসিড', labelEn: 'Fatty Acids', items: fatty, color: 'bg-green-500', light: 'bg-green-50', border: 'border-green-200' },
-          ];
-
-          const NutrientCard = ({ nut, accentColor }: { nut: any; accentColor: string }) => {
-            let barColor = accentColor;
-            if (nut.percentage >= 100) barColor = "bg-green-500";
-            else if (nut.percentage >= 50) barColor = "bg-amber-500";
-            else if (nut.percentage > 0) barColor = accentColor;
-            else barColor = "bg-ink/10";
-
-            return (
-              <div className="bg-white p-3.5 rounded-2xl border border-ink/5 hover:border-accent/20 hover:shadow-sm transition-all flex flex-col justify-between space-y-2.5">
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bn font-bold text-xs text-ink leading-tight truncate">{nut.name_bn}</h3>
-                    <span className="text-[0.6rem] text-ink-faint uppercase font-bold tracking-wider truncate block">{nut.name}</span>
-                  </div>
-                  <span className={`font-display text-xs font-black shrink-0 px-1.5 py-0.5 rounded-lg ${nut.percentage >= 100 ? 'text-green-700 bg-green-50' : nut.percentage >= 50 ? 'text-amber-700 bg-amber-50' : 'text-ink-muted bg-cream'}`}>
-                    {nut.percentage}%
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="w-full bg-cream rounded-full h-1.5 overflow-hidden border border-ink/5">
-                    <div
-                      className={`h-full ${barColor} transition-all duration-700 rounded-full`}
-                      style={{ width: `${Math.min(100, nut.percentage)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between items-center text-[0.62rem] font-bn text-ink-faint">
-                    <span>গৃহীত: <b className="text-ink-muted">{nut.consumed} {nut.unit}</b></span>
-                    <span>লক্ষ্য: <b className="text-ink-muted">{nut.target} {nut.unit}</b></span>
-                  </div>
-                </div>
-              </div>
-            );
-          };
+          const targets = (p.plan_data as any).micronutrient_targets;
+          const total = targets.length;
+          const completed = targets.filter((n: any) => n.percentage >= 100).length;
+          const pct = Math.round((completed / total) * 100) || 0;
 
           return (
-            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-ink/5 space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="w-1.5 h-5 bg-accent rounded-full" />
-                <h2 className="font-display text-lg md:text-xl font-black text-ink">
-                  পুষ্টি উপাদান ট্র্যাকার (Micronutrient Tracker)
-                </h2>
-              </div>
-
-              {/* Summary pills */}
-              <div className="flex flex-wrap gap-2">
-                {groups.map(g => {
-                  const met = g.items.filter(n => n.percentage >= 100).length;
-                  return (
-                    <div key={g.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${g.border} ${g.light}`}>
-                      <div className={`w-2 h-2 rounded-full ${g.color}`} />
-                      <span className="font-bn text-xs font-bold text-ink">{g.label}</span>
-                      <span className="text-xs text-ink-faint">({met}/{g.items.length} পূর্ণ)</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Groups */}
-              {groups.map(g => g.items.length > 0 && (
-                <div key={g.id} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${g.color}`} />
-                    <h3 className="font-display font-black text-sm text-ink">{g.label} <span className="text-ink-faint font-normal">({g.labelEn})</span></h3>
-                    <div className="flex-1 h-px bg-ink/5" />
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-                    {g.items.map((nut, i) => (
-                      <NutrientCard key={i} nut={nut} accentColor={g.color} />
-                    ))}
-                  </div>
+            <div className="bg-white p-6 rounded-[2.2rem] border border-ink/5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-xl bg-accent/5 flex items-center justify-center text-accent shrink-0">
+                  <Droplet className="w-5 h-5 animate-pulse" />
                 </div>
-              ))}
+                <div>
+                  <h3 className="font-display font-black text-sm text-ink">
+                    পুষ্টি উপাদান ট্র্যাকার (Micronutrient Tracker)
+                  </h3>
+                  <p className="font-bn text-xs text-ink-muted mt-0.5">
+                    আজকের ভিটামিন ও মিনারেল গ্রহণের মাত্রা: <b className="text-accent font-body font-bold">{completed}/{total}</b> সম্পূর্ণ ({pct}%)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/micronutrients')}
+                className="w-full sm:w-auto px-5 py-2.5 bg-ink text-cream hover:bg-accent rounded-xl font-bn font-bold text-xs transition-colors shadow-sm"
+              >
+                বিস্তারিত ট্র্যাকিং দেখুন
+              </button>
             </div>
           );
         })()}

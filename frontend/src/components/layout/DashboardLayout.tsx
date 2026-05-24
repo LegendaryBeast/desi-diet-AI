@@ -18,6 +18,7 @@ import {
   BarChart2,
   MessageSquare,
   Crown,
+  Droplet,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -70,6 +71,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     { path: '/', label: isBn ? 'হোমপেজ' : 'Home', icon: Home },
     { path: '/chat', label: isBn ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant', icon: MessageSquare },
     { path: '/meal-plan', label: isBn ? 'আজকের মিল প্ল্যান' : 'Meal Plan', icon: Layout },
+    { path: '/micronutrients', label: isBn ? 'পুষ্টি উপাদান' : 'Micronutrients', icon: Droplet },
     { path: '/health-log', label: isBn ? 'স্বাস্থ্য লগ' : 'Health Log', icon: Activity },
     { path: '/medicine', label: isBn ? 'ওষুধের রিমাইন্ডার' : 'Medicine', icon: Pill },
     { path: '/foods', label: isBn ? 'খাবারের তালিকা' : 'Foods', icon: Apple },

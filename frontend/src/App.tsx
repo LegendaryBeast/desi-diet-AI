@@ -12,6 +12,7 @@ import { FoodsPage } from './pages/FoodsPage';
 import { ReportPage } from './pages/ReportPage';
 import { Conditions } from './pages/Conditions';
 import { Dashboard } from './pages/Dashboard';
+import { Micronutrients } from './pages/Micronutrients';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
@@ -22,14 +23,14 @@ import { useLocation } from 'react-router-dom';
 
 const ConditionalNav = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Nav />;
 };
 
 const ConditionalFooter = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Footer />;
 };
@@ -78,6 +79,7 @@ function AppRoutes() {
               <Route path="/medicine" element={<ProtectedRoute><MedicinePage /></ProtectedRoute>} />
               <Route path="/foods" element={<ProtectedRoute><FoodsPage /></ProtectedRoute>} />
               <Route path="/report" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
+              <Route path="/micronutrients" element={<ProtectedRoute><Micronutrients /></ProtectedRoute>} />
             </Routes>
           </main>
           <ConditionalFooter />

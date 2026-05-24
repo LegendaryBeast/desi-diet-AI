@@ -14,8 +14,8 @@ export const useUserProfile = () => {
 
   // Build local-format profile for backward compat
   const profile = {
-    nameBn: p?.name_bn || 'অতিথি',
-    nameEn: p?.name_en || 'Guest',
+    nameBn: p?.name_bn || p?.name_en || 'অতিথি',
+    nameEn: p?.name_en || p?.name_bn || 'Guest',
     age: p?.age || 0,
     gender: (p?.gender as 'male' | 'female') || 'male',
     weightKg: p?.weight_kg || 0,
