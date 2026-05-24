@@ -413,39 +413,38 @@ export const MealPlan = () => {
     const pct = totalCal > 0 ? Math.min(100, Math.round((consumedCal / totalCal) * 100)) : 0;
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Header */}
-        <header className="flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-white p-5 md:p-6.5 rounded-3xl shadow-sm border border-ink/5">
-          {/* Circular Progress */}
-          <div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
+        <header className="flex items-center gap-4 bg-white p-3.5 rounded-2xl shadow-sm border border-ink/5">
+          {/* Circular Progress — compact */}
+          <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-cream" />
+              <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-cream" />
               <circle
                 cx="50" cy="50" r="40"
-                stroke="currentColor" strokeWidth="8" fill="transparent"
+                stroke="currentColor" strokeWidth="10" fill="transparent"
                 strokeDasharray={`${2 * Math.PI * 40}`}
                 strokeDashoffset={`${2 * Math.PI * 40 * (1 - pct / 100)}`}
                 className="text-accent transition-all duration-700"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="font-display text-2xl font-black text-ink leading-none">{pct}%</span>
-              <div className="font-bn text-[0.62rem] text-ink-muted mt-0.5 leading-tight font-bold">
-                <span className="text-accent">{consumedCal}</span> / {totalCal} <br />
-                <span className="uppercase tracking-wider">kcal</span>
-              </div>
+              <span className="font-bold text-sm text-ink leading-none">{pct}%</span>
+              <span className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-bold">kcal</span>
             </div>
           </div>
 
-          <div className="flex-1 text-center lg:text-left">
-            <h1 className="font-display text-2xl md:text-3xl font-black text-ink mb-1.5">
-              {p.plan_id === tomorrowPlan?.plan_id ? 'আগামীকালের' : 'আজকের'} <em className="italic text-ink-muted">খাবার</em>
-            </h1>
-            <p className="font-bn text-xs text-ink-muted mb-4">
-              {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="font-bn text-sm font-black text-ink">
+                {p.plan_id === tomorrowPlan?.plan_id ? 'আগামীকালের' : 'আজকের'} খাবার
+              </h1>
+              <span className="text-[0.5rem] text-ink-faint font-body font-bold uppercase tracking-wider">
+                {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+            </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {(() => {
                 // Calculate consumed macros from completed slots
                 const slotMacros = meals
@@ -579,20 +578,20 @@ export const MealPlan = () => {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className={`bg-white rounded-2xl p-4.5 md:p-5 border transition-all group shadow-sm ${
+                className={`bg-white rounded-xl p-3 border transition-all group shadow-sm ${
                   isDone ? 'border-green-200 bg-green-50/20' : 'border-ink/5 hover:border-accent/10'
                 }`}
               >
-                <div className="flex flex-col lg:flex-row gap-4.5">
-                  {/* Slot info */}
-                  <div className="lg:w-36 flex lg:flex-col items-center lg:items-start justify-between border-b lg:border-b-0 lg:border-r border-ink/5 pb-3 lg:pb-0 lg:pr-5">
-                    <div className="flex items-center gap-3 lg:flex-col lg:items-start">
-                      <div className={`p-2.5 rounded-xl ${isDone ? 'bg-green-100 text-green-600' : 'bg-cream'} transition-colors`}>
-                        {isDone ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <SlotIcon className={`w-5 h-5 ${slotColor}`} />}
+                <div className="flex flex-col gap-2">
+                  {/* Slot header row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg ${isDone ? 'bg-green-100 text-green-600' : 'bg-cream'} transition-colors`}>
+                        {isDone ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <SlotIcon className={`w-3.5 h-3.5 ${slotColor}`} />}
                       </div>
-                      <div className="mt-0 lg:mt-2.5">
-                        <div className="font-bn text-sm font-bold text-ink leading-snug">{slot.slot_bn || slot.slot}</div>
-                        <div className="font-body text-[0.62rem] uppercase tracking-wider text-ink-faint font-bold mt-0.5">
+                      <div>
+                        <div className="font-bn text-xs font-bold text-ink">{slot.slot_bn || slot.slot}</div>
+                        <div className="font-body text-[0.5rem] uppercase tracking-wider text-ink-faint font-bold">
                           {(slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0)} kcal
                         </div>
                       </div>
@@ -600,36 +599,36 @@ export const MealPlan = () => {
                     {showToggle && !isFuturePlan(p.plan_date) && (
                       <button
                         onClick={() => toggleSlotForPlan(p, slot.slot)}
-                        className={`mt-0 lg:mt-3 text-[10px] font-bn font-bold px-2.5 py-1 rounded-lg transition-all ${
+                        className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-md transition-all ${
                           isDone
                             ? 'bg-green-500 text-white hover:bg-red-400'
                             : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                         }`}
                       >
-                        {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
+                        {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়ানি'}
                       </button>
                     )}
                   </div>
 
                   {/* Food items */}
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {(slot.items || []).map((food, j) => (
-                      <div key={j} className="flex flex-col gap-1.5">
+                      <div key={j} className="flex flex-col gap-1">
                         {/* Food Card Row */}
-                        <div className="flex items-center justify-between p-3 bg-cream/20 hover:bg-cream/40 rounded-xl border border-ink/5 transition-all shadow-sm group/item relative">
+                        <div className="flex items-center justify-between p-2 bg-cream/20 hover:bg-cream/30 rounded-lg border border-ink/5 transition-all group/item">
                           {/* Left: Food Info */}
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                            <span className="text-xl w-8.5 h-8.5 flex items-center justify-center bg-white rounded-lg shrink-0 border border-ink/5" aria-hidden>
+                          <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
+                            <span className="text-base w-7 h-7 flex items-center justify-center bg-white rounded-md shrink-0 border border-ink/5" aria-hidden>
                               {food.emoji || '🍽️'}
                             </span>
                             <div className="min-w-0">
-                              <h4 className="font-bn font-bold text-ink text-xs md:text-sm truncate leading-tight">
+                              <h4 className="font-bn font-bold text-ink text-xs truncate leading-tight">
                                 {food.name_bn || food.name_en}
                               </h4>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-1 mt-0.5">
                                 {food.amount_g || food.amount ? (
-                                  <span className="text-[10px] text-accent font-bold font-bn">
-                                    {food.amount_g || food.amount} গ্রাম
+                                  <span className="text-[0.58rem] text-accent font-bold font-bn">
+                                    {food.amount_g || food.amount}g
                                   </span>
                                 ) : null}
                                 <ShoppingSources
@@ -642,8 +641,8 @@ export const MealPlan = () => {
                           </div>
 
                           {/* Right: Calories & Actions */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] font-bold font-sans px-2 py-0.5 bg-white text-ink-muted rounded border border-ink/5 whitespace-nowrap">
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[0.55rem] font-bold font-body px-1.5 py-0.5 bg-white text-ink-muted rounded border border-ink/5 whitespace-nowrap">
                               {food.calories || '?'} cal
                             </span>
 
@@ -846,10 +845,10 @@ export const MealPlan = () => {
       {/* Pro Upgrade Modal */}
       <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger={proTrigger} />
 
-      <div className="max-w-5xl mx-auto space-y-8 pb-20">
+      <div className="max-w-4xl mx-auto space-y-4 pb-20">
         {/* Tab Selector */}
         <div className="flex justify-center">
-          <div className="flex bg-white p-1.5 rounded-2xl border border-ink/5 shadow-sm gap-1">
+          <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
             {[
               { id: 'today' as Tab, label: 'আজকের', icon: Flame, locked: false },
               { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
@@ -865,10 +864,10 @@ export const MealPlan = () => {
                   }
                   setTab(id);
                 }}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bn text-sm font-bold transition-all ${tab === id ? 'bg-ink text-cream shadow-xl' : 'text-ink-muted hover:text-ink'
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bn text-xs font-bold transition-all ${tab === id ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
                   } ${locked ? 'opacity-60' : ''}`}
               >
-                {locked ? <Lock className="w-3.5 h-3.5" /> : <Icon className="w-4 h-4" />}
+                {locked ? <Lock className="w-3 h-3" /> : <Icon className="w-3.5 h-3.5" />}
                 {label}
                 {locked && (
                   <span className="text-[0.5rem] bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">Pro</span>
