@@ -124,7 +124,7 @@ def _get_nutrient_unit_and_val(name: str, db_val_mg: float):
 
 @router.get("/health-summary")
 async def get_health_summary(
-    days: int = Query(7, ge=3, le=10),
+    days: int = Query(7, ge=3, le=30),
     weight_kg: Optional[float] = Query(None),
     current_user=Depends(get_current_user)
 ):
@@ -264,7 +264,7 @@ async def get_health_summary(
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
         "Vitamin B12", "Pantothenic acid (B5)", "Biotin (B7)", "Choline",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Copper (Cu)", "Selenium (Se)", "Iodine (I)", "Manganese (Mn)", "Chromium (Cr)",
+        "Sodium (Na)", "Copper (Cu)", "Selenium (Se)", "Iodine (I)", "Manganese (Mn)", "Chromium (Cr)",
         "Molybdenum (Mo)", "Chloride (Cl)", "Potassium (K)",
         "Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids",
     ]
@@ -272,7 +272,8 @@ async def get_health_summary(
     NUTRIENT_NAMES_BN = {
         "Calcium (Ca)": "ক্যালসিয়াম (Calcium)", "Iron (Fe)": "আয়রন (Iron)",
         "Magnesium (Mg)": "ম্যাগনেসিয়াম (Magnesium)", "Phosphorus (P)": "ফসফরাস (Phosphorus)",
-        "Copper (Cu)": "কপার (Copper)", "Selenium (Se)": "সিলেনিয়াম (Selenium)",
+        "Sodium (Na)": "সোডিয়াম (Sodium)", "Copper (Cu)": "কপার (Copper)",
+        "Selenium (Se)": "সিলেনিয়াম (Selenium)",
         "Iodine (I)": "আয়োডিন (Iodine)", "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
         "Chromium (Cr)": "ক্রোমিয়াম (Chromium)", "Molybdenum (Mo)": "মলিবডেনাম (Molybdenum)",
         "Chloride (Cl)": "ক্লোরাইড (Chloride)", "Potassium (K)": "পটাশিয়াম (Potassium)",
@@ -385,6 +386,152 @@ async def get_health_summary(
     else:
         pie_data = []
 
+    # ─── Clinical Insights Engine ─────────────────────────────────────────────
+    import os
+    import csv
+    clinical_insights = []
+    conditions = safe_list(profile.medicalConditions)
+
+    # Load disease nutrients CSV mapping
+    disease_map = {}
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        csv_path = os.path.join(base_dir, "data", "disease_nutrients.csv")
+        if os.path.exists(csv_path):
+            with open(csv_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    disease_map[row["Disease"].lower()] = {
+                        "recommended": row["Recommended_Nutrients"],
+                        "notes": row["Notes"],
+                        "references": row["References"]
+                    }
+    except Exception as ex:
+        print(f"Error loading disease CSV: {ex}")
+
+    daily_protein_consumed = total_protein / days if days > 0 else 0
+    daily_carbs_consumed = total_carbs / days if days > 0 else 0
+    daily_fiber_consumed = total_fiber / days if days > 0 else 0
+    micro_averages = {m["name"].lower(): m for m in micronutrient_targets}
+
+    # Nutrient resolution map
+    NUTRIENT_RESOLVER = {
+        "protein": ("macro", "protein_g", "প্রোটিন", "g"),
+        "carbohydrates": ("macro", "carbs_g", "শর্করা", "g"),
+        "carbs": ("macro", "carbs_g", "শর্করা", "g"),
+        "fiber": ("macro", "fiber_g", "আঁশ", "g"),
+        "calcium": ("micro", "Calcium (Ca)", "ক্যালসিয়াম", "mg"),
+        "iron": ("micro", "Iron (Fe)", "আয়রন", "mg"),
+        "zinc": ("micro", "Zinc (Zn)", "জিঙ্ক", "mg"),
+        "sodium": ("micro", "Sodium (Na)", "সোডিয়াম", "mg"),
+        "potassium": ("micro", "Potassium (K)", "পটাসিয়াম", "mg"),
+        "vitamin c": ("micro", "Ascorbic acids (C)", "ভিটামিন সি", "mg"),
+        "vitamin a": ("micro", "Vitamin A", "ভিটামিন এ", "mcg"),
+        "vitamin d": ("micro", "Vitamin D", "ভিটামিন ডি", "mcg"),
+        "vitamin b12": ("micro", "Vitamin B12", "ভিটামিন বি১২", "mcg"),
+        "iodine": ("micro", "Iodine (I)", "আয়োডিন", "mcg"),
+    }
+
+    # 1. Direct Aggregation Comparison Engine
+    for cond in conditions:
+        cond_lower = cond.lower().strip()
+        if cond_lower in disease_map:
+            match = disease_map[cond_lower]
+            rec_nutrients_str = match["recommended"]
+            notes_str = match["notes"]
+            ref_str = match["references"]
+            
+            # Split and clean the list of recommended nutrients
+            rec_list = [r.strip().lower() for r in rec_nutrients_str.split(",") if r.strip()]
+            
+            for rec_item in rec_list:
+                resolved_key = None
+                for key in NUTRIENT_RESOLVER:
+                    if key in rec_item:
+                        resolved_key = key
+                        break
+                        
+                if not resolved_key:
+                    continue
+                    
+                nut_type, backend_key, label_bn, unit = NUTRIENT_RESOLVER[resolved_key]
+                
+                consumed_val = 0.0
+                target_val = 0.0
+                pct = 100
+                
+                if nut_type == "macro":
+                    if backend_key == "protein_g":
+                        consumed_val = daily_protein_consumed
+                        target_val = target_protein
+                    elif backend_key == "carbs_g":
+                        consumed_val = daily_carbs_consumed
+                        target_val = target_carbs
+                    elif backend_key == "fiber_g":
+                        consumed_val = daily_fiber_consumed
+                        target_val = 25.0
+                        
+                    pct = int((consumed_val / target_val) * 100) if target_val > 0 else 100
+                else:
+                    micro_item = micro_averages.get(backend_key.lower())
+                    if micro_item:
+                        consumed_val = micro_item["consumed"] / days if days > 0 else 0
+                        target_val = micro_item["target"] / days if days > 0 else 0
+                        pct = micro_item["percentage"]
+                    else:
+                        continue
+                        
+                # Perform direct clinical comparisons
+                if resolved_key != "sodium" and pct < 75:
+                    clinical_insights.append({
+                        "type": "warning",
+                        "title": f"{cond} ও {label_bn} ঘাটতি সতর্কতা",
+                        "message": f"আপনার {cond} ব্যবস্থাপনায় {label_bn} প্রয়োজনীয়। কিন্তু আপনার {days} দিনের গড় গ্রহণ ছিল মাত্র {round(consumed_val, 1)}{unit} (যা চাহিদা {round(target_val, 1)}{unit} এর তুলনায় মাত্র {pct}%)। ডায়েট ডাটাবেজ নির্দেশিকা: {notes_str}",
+                        "disease": cond,
+                        "reference": ref_str
+                    })
+                elif resolved_key == "sodium" and pct > 115:
+                    clinical_insights.append({
+                        "type": "error",
+                        "title": f"অতিরিক্ত সোডিয়াম ও {cond} ঝুঁকি",
+                        "message": f"আপনার {cond} ব্যবস্থাপনায় সোডিয়াম (লবণ) নিয়ন্ত্রণ আবশ্যক। কিন্তু আপনার গড় সোডিয়াম গ্রহণ {round(consumed_val * days, 1)}mg (সর্বোচ্চ দৈনিক নিরাপদ সীমা ২০০০mg এর চেয়ে {pct}% বেশি)। নির্দেশিকা: {notes_str}",
+                        "disease": cond,
+                        "reference": ref_str
+                    })
+
+    # 2. General Fallbacks for crucial nutrients if not covered by conditions
+    # Fiber fallback
+    if not any(ins["disease"].lower() == "constipation" for ins in clinical_insights) and daily_fiber_consumed < 16:
+        clinical_insights.append({
+            "type": "warning",
+            "title": "ফাইবার (আঁশ) ঘাটতি সতর্কতা",
+            "message": f"আপনার দৈনিক গড় ফাইবার গ্রহণ ছিল মাত্র {round(daily_fiber_consumed, 1)}g (জাতীয় পুষ্টি লক্ষ্যমাত্রা ২৫-৩০g)। আঁশযুক্ত খাবারের ঘাটতি হজম প্রক্রিয়া ধীর করতে পারে।",
+            "disease": "Constipation",
+            "reference": "Bangladesh National Dietary Guidelines"
+        })
+
+    # Calcium fallback
+    cal_micro = micro_averages.get("calcium (ca)")
+    if cal_micro and not any(ins["disease"].lower() == "osteoporosis" for ins in clinical_insights) and cal_micro["percentage"] < 70:
+        clinical_insights.append({
+            "type": "warning",
+            "title": "ক্যালসিয়াম ঘাটতি সতর্কতা",
+            "message": f"আপনার ক্যালসিয়াম গ্রহণ প্রয়োজনীয় লক্ষ্যমাত্রার তুলনায় কম (মাত্র {cal_micro['percentage']}% পূরণ হয়েছে)। দীর্ঘস্থায়ী ক্যালসিয়ামের ঘাটতি হাড় ও দাঁতের ক্ষয় ঝুঁকি বাড়িয়ে দেয়।",
+            "disease": "Osteoporosis",
+            "reference": "WHO Osteoporosis Guidelines"
+        })
+
+    # Iron fallback
+    ir_micro = micro_averages.get("iron (fe)")
+    if ir_micro and not any(ins["disease"].lower() == "anemia" for ins in clinical_insights) and ir_micro["percentage"] < 70:
+        clinical_insights.append({
+            "type": "warning",
+            "title": "আয়রণ ঘাটতি সতর্কতা",
+            "message": f"আপনার দৈনিক গড় আয়রন পূরণ হচ্ছে মাত্র {ir_micro['percentage']}%। শরীরে হিমোগ্লোবিন ও অক্সিজেন প্রবাহ সচল রাখতে লাল চালের ভাত, কলিজা বা কচু শাক খাদ্যতালিকায় বাড়ান।",
+            "disease": "Anemia",
+            "reference": "WHO Anemia Guidelines"
+        })
+
     return {
         "period_days": days,
         "days_with_data": days_with_data,
@@ -406,4 +553,5 @@ async def get_health_summary(
         "pie_data": pie_data,
         "micronutrient_targets": micronutrient_targets,
         "current_weight_kg": current_weight,
+        "clinical_insights": clinical_insights,
     }

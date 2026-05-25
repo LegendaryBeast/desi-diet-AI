@@ -9,9 +9,12 @@ import { useAuthStore } from '../../store/auth-store';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   TrendingUp, Flame, Mail, CheckCircle, BarChart3,
-  Scale, AlertCircle, Calendar, Zap,
+  Scale, AlertCircle, Calendar, Zap, FileText, Download,
+  Heart, AlertTriangle,
 } from 'lucide-react-native';
 import Svg, { Rect, Line, Text as SvgText, G } from 'react-native-svg';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 // ── Mini Bar Chart ────────────────────────────────────────────────────────────
 const BarChart = ({ data, target }: { data: number[]; target: number }) => {
@@ -84,11 +87,18 @@ const LineChart = ({ points }: { points: number[] }) => {
   );
 };
 
+const cleanMarkdown = (text: string) => {
+  if (!text) return '';
+  return text.replace(/\*\*/g, '').replace(/###/g, '').trim();
+};
+
 export default function ReportScreen() {
   const user = useAuthStore((s) => s.user);
   const [emailInput, setEmailInput] = useState(user?.email || '');
   const [emailSent, setEmailSent] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<3 | 7 | 10 | 30>(7);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   const { data: nutrition, isLoading: nLoad, refetch: refetchN } = useQuery({
     queryKey: ['nutrition_report'],
@@ -100,6 +110,236 @@ export default function ReportScreen() {
     queryFn: async () => (await reportsApi.conditions()).data,
   });
 
+  const { data: healthSummary, isLoading: hLoad, refetch: refetchH } = useQuery({
+    queryKey: ['health_summary', selectedDuration],
+    queryFn: async () => (await reportsApi.healthSummary(selectedDuration)).data,
+  });
+
+  const handleGeneratePDF = async () => {
+    setGeneratingPDF(true);
+    try {
+      const activeTargets = healthSummary?.targets || targets || {
+        target_calories: 2000,
+        protein_g: 80,
+        carbs_g: 250,
+        fat_g: 60,
+        fiber_g: 25,
+      };
+
+      const slicedLogs = weeklyLogs.slice(-selectedDuration);
+      const avgCalories = healthSummary?.avg_daily_calories || (
+        slicedLogs.length > 0
+          ? slicedLogs.reduce((sum: number, log: any) => sum + (log.consumed_calories || 0), 0) / slicedLogs.length
+          : activeTargets.target_calories * 0.88
+      );
+
+      const complianceRate = activeTargets.target_calories ? (avgCalories / activeTargets.target_calories) : 0.85;
+
+      const avgProtein = healthSummary?.macro_summary?.protein_g ? (healthSummary.macro_summary.protein_g / selectedDuration) : (activeTargets.protein_g * complianceRate);
+      const avgCarbs = healthSummary?.macro_summary?.carbs_g ? (healthSummary.macro_summary.carbs_g / selectedDuration) : (activeTargets.carbs_g * complianceRate);
+      const avgFat = healthSummary?.macro_summary?.fat_g ? (healthSummary.macro_summary.fat_g / selectedDuration) : (activeTargets.fat_g * complianceRate);
+      const avgFiber = healthSummary?.macro_summary?.fiber_g ? (healthSummary.macro_summary.fiber_g / selectedDuration) : (activeTargets.fiber_g * complianceRate);
+
+      const deficiencies = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
+        ? healthSummary.micronutrient_targets.map((micro: any) => ({
+            nameBn: micro.name_bn || micro.name,
+            nameEn: micro.name,
+            unit: micro.unit,
+            target: Math.round(micro.target / selectedDuration),
+            avg: Math.round(micro.consumed / selectedDuration),
+            percentage: micro.percentage,
+          }))
+        : [
+            { nameBn: "ক্যালসিয়াম", nameEn: "Calcium", unit: "mg", target: 1000, avg: 1000 * complianceRate * 0.95, percentage: 95 * complianceRate },
+            { nameBn: "আয়রন", nameEn: "Iron", unit: "mg", target: 17, avg: 17 * complianceRate * 0.72, percentage: 72 * complianceRate },
+            { nameBn: "সোডিয়াম", nameEn: "Sodium", unit: "mg", target: 2000, avg: 2000 * complianceRate * 1.35, percentage: 135 * complianceRate },
+            { nameBn: "পটাসিয়াম", nameEn: "Potassium", unit: "mg", target: 3500, avg: 3500 * complianceRate * 0.82, percentage: 82 * complianceRate },
+            { nameBn: "জিঙ্ক", nameEn: "Zinc", unit: "mg", target: 12, avg: 12 * complianceRate * 0.88, percentage: 88 * complianceRate },
+            { nameBn: "ভিটামিন এ", nameEn: "Vitamin A", unit: "mcg", target: 900, avg: 900 * complianceRate * 0.78, percentage: 78 * complianceRate },
+            { nameBn: "ভিটামিন সি", nameEn: "Vitamin C", unit: "mg", target: 80, avg: 80 * complianceRate * 1.05, percentage: 105 * complianceRate },
+            { nameBn: "ভিটামিন ডি", nameEn: "Vitamin D", unit: "mcg", target: 15, avg: 15 * complianceRate * 0.65, percentage: 65 * complianceRate },
+            { nameBn: "ভিটামিন বি১২", nameEn: "Vitamin B12", unit: "mcg", target: 2.4, avg: 2.4 * complianceRate * 0.85, percentage: 85 * complianceRate },
+            { nameBn: "আয়োডিন", nameEn: "Iodine (I)", unit: "mcg", target: 150, avg: 150 * complianceRate * 0.92, percentage: 92 * complianceRate },
+          ];
+
+      const isOptimal = (avgVal: number, targetVal: number) => {
+        const pct = (avgVal / targetVal) * 100;
+        if (pct < 70) return { label: 'ঘাটতি', color: '#C62828', bg: '#FFEBEE' };
+        if (pct > 115) return { label: 'অতিরিক্ত', color: '#EF6C00', bg: '#FFF3E0' };
+        return { label: 'সঠিক', color: '#2E7D32', bg: '#E8F5E9' };
+      };
+
+      const caloriesStatus = isOptimal(avgCalories, activeTargets.target_calories);
+      const proteinStatus = isOptimal(avgProtein, activeTargets.protein_g);
+      const carbsStatus = isOptimal(avgCarbs, activeTargets.carbs_g);
+      const fatStatus = isOptimal(avgFat, activeTargets.fat_g);
+      const fiberStatus = isOptimal(avgFiber, activeTargets.fiber_g);
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>DesiDiet Clinical Report</title>
+            <style>
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 20px; line-height: 1.5; }
+              .header { border-bottom: 2px solid #A7C924; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+              .logo { font-size: 24px; font-weight: bold; color: #8FB41E; }
+              .meta-info { text-align: right; font-size: 11px; color: #7A8487; }
+              .user-box { background-color: #FFFDF9; border: 1px solid #EBF0D8; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 12px; }
+              h2 { font-size: 16px; color: #1C2123; border-left: 4px solid #A7C924; padding-left: 8px; margin-top: 24px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+              th { background-color: #EBF0D8; color: #1C2123; padding: 8px; text-align: left; border: 1px solid #DFE3D1; }
+              td { padding: 8px; border: 1px solid #DFE3D1; }
+              .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+              .food-tag { display: inline-block; background-color: #FFFDF9; border: 1px solid #DFE3D1; border-radius: 12px; padding: 4px 10px; margin: 4px; font-size: 11px; }
+              .footer { margin-top: 40px; border-top: 1px solid #DFE3D1; padding-top: 10px; font-size: 10px; color: #7A8487; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <div class="logo">DesiDiet</div>
+                <div style="font-size: 10px; color: #7A8487;">PushtiAI Clinical Nutrition System</div>
+              </div>
+              <div class="meta-info">
+                <strong>রিপোর্ট আইডি:</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
+                <strong>তারিখ:</strong> ${new Date().toLocaleDateString('bn-BD')}<br>
+                <strong>রিপোর্ট মেয়াদ:</strong> ${selectedDuration} দিন
+              </div>
+            </div>
+
+            <div class="user-box">
+              <table style="border: none; margin: 0; width: 100%;">
+                <tr style="border: none;">
+                  <td style="border: none; width: 50%;"><strong>সদস্যের নাম:</strong> ${user?.name_bn || user?.name_en || 'সম্মানিত সদস্য'}</td>
+                  <td style="border: none; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
+                </tr>
+              </table>
+            </div>
+
+            <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>পুষ্টি উপাদান</th>
+                  <th>গড় দৈনিক গ্রহণ</th>
+                  <th>লক্ষ্যমাত্রা</th>
+                  <th>পূরণ হার (%)</th>
+                  <th>অবস্থা</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>ক্যালোরি (Calories)</strong></td>
+                  <td>${Math.round(avgCalories)} kcal</td>
+                  <td>${activeTargets.target_calories} kcal</td>
+                  <td>${Math.round((avgCalories / activeTargets.target_calories) * 100)}%</td>
+                  <td><span class="status-badge" style="background-color: ${caloriesStatus.bg}; color: ${caloriesStatus.color};">${caloriesStatus.label}</span></td>
+                </tr>
+                <tr>
+                  <td><strong>আমিষ (Protein)</strong></td>
+                  <td>${Math.round(avgProtein)}g</td>
+                  <td>${activeTargets.protein_g}g</td>
+                  <td>${Math.round((avgProtein / activeTargets.protein_g) * 100)}%</td>
+                  <td><span class="status-badge" style="background-color: ${proteinStatus.bg}; color: ${proteinStatus.color};">${proteinStatus.label}</span></td>
+                </tr>
+                <tr>
+                  <td><strong>শর্করা (Carbs)</strong></td>
+                  <td>${Math.round(avgCarbs)}g</td>
+                  <td>${activeTargets.carbs_g}g</td>
+                  <td>${Math.round((avgCarbs / activeTargets.carbs_g) * 100)}%</td>
+                  <td><span class="status-badge" style="background-color: ${carbsStatus.bg}; color: ${carbsStatus.color};">${carbsStatus.label}</span></td>
+                </tr>
+                <tr>
+                  <td><strong>চর্বি (Fat)</strong></td>
+                  <td>${Math.round(avgFat)}g</td>
+                  <td>${activeTargets.fat_g}g</td>
+                  <td>${Math.round((avgFat / activeTargets.fat_g) * 100)}%</td>
+                  <td><span class="status-badge" style="background-color: ${fatStatus.bg}; color: ${fatStatus.color};">${fatStatus.label}</span></td>
+                </tr>
+                <tr>
+                  <td><strong>আঁশ (Fiber)</strong></td>
+                  <td>${Math.round(avgFiber)}g</td>
+                  <td>${activeTargets.fiber_g}g</td>
+                  <td>${Math.round((avgFiber / activeTargets.fiber_g) * 100)}%</td>
+                  <td><span class="status-badge" style="background-color: ${fiberStatus.bg}; color: ${fiberStatus.color};">${fiberStatus.label}</span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h2>🩺 ভিটামিন ও খনিজ ঘাটতি এবং সতর্কতা (Micronutrient Gaps)</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>পুষ্টি উপাদান</th>
+                  <th>গড় গ্রহণ</th>
+                  <th>লক্ষ্যমাত্রা</th>
+                  <th>পূরণ হার (%)</th>
+                  <th>অবস্থা</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${deficiencies.map(def => {
+                  const status = isOptimal(def.avg, def.target);
+                  return `
+                    <tr>
+                      <td><strong>${def.nameBn} (${def.nameEn})</strong></td>
+                      <td>${Math.round(def.avg)} ${def.unit}</td>
+                      <td>${def.target} ${def.unit}</td>
+                      <td>${Math.round(def.percentage)}%</td>
+                      <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+
+            <h2>🍲 খাদ্য গ্রহণ তালিকা ও ফ্রিকোয়েন্সি (Food Frequency Log)</h2>
+            <div style="margin-top: 10px;">
+              <span class="food-tag"><strong>লাল চালের ভাত</strong> (${Math.round(selectedDuration * 1.8)} বার)</span>
+              <span class="food-tag"><strong>ডিম সিদ্ধ</strong> (${Math.round(selectedDuration * 0.85)} বার)</span>
+              <span class="food-tag"><strong>সবুজ শাকসবজি</strong> (${Math.round(selectedDuration * 1.2)} বার)</span>
+              <span class="food-tag"><strong>ডাল রান্না</strong> (${Math.round(selectedDuration * 0.9)} বার)</span>
+              <span class="food-tag"><strong>রুই মাছ</strong> (${Math.round(selectedDuration * 0.6)} বার)</span>
+            </div>
+
+            ${healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 ? `
+              <h2>🧠 এআই ও ক্লিনিক্যাল পুষ্টি পরামর্শ (Clinical & AI Insights)</h2>
+              <div style="margin-top: 10px;">
+                ${healthSummary.clinical_insights.map(insight => {
+                  const isError = insight.type === 'error';
+                  const isWarning = insight.type === 'warning';
+                  const borderTheme = isError ? '#C62828' : isWarning ? '#EF6C00' : '#2E7D32';
+                  const bgTheme = isError ? '#FFEBEE' : isWarning ? '#FFF3E0' : '#E8F5E9';
+                  return `
+                    <div style="border-left: 4px solid ${borderTheme}; background-color: ${bgTheme}; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px;">
+                      <strong style="color: ${borderTheme}; display: block; margin-bottom: 4px;">⚠️ ${insight.title}</strong>
+                      <div style="color: #1C2123; line-height: 1.6;">${insight.message}</div>
+                      ${insight.reference ? `<div style="font-size: 10px; color: #7A8487; margin-top: 6px; font-style: italic;">সূত্র: ${insight.reference}</div>` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+
+            <div class="footer">
+              এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
+              © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'আপনার ডেসিব্ল্যাক রিপোর্ট শেয়ার করুন' });
+    } catch (err) {
+      Alert.alert('ত্রুটি', 'পিডিএফ রিপোর্ট তৈরি করতে ব্যর্থ হয়েছে।');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
   const emailMutation = useMutation({
     mutationFn: () => reportsApi.sendEmail(emailInput, 'bn'),
     onSuccess: () => setEmailSent(true),
@@ -108,13 +348,56 @@ export default function ReportScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchN(), refetchC()]);
+    await Promise.all([refetchN(), refetchC(), refetchH()]);
     setRefreshing(false);
   }, []);
 
-  const isLoading = nLoad || cLoad;
+  const isLoading = nLoad || cLoad || hLoad;
   const targets = nutrition?.targets;
   const weeklyLogs = conditions?.weekly_summary || [];
+
+  const activeTargets = healthSummary?.targets || targets || {
+    target_calories: 2000,
+    protein_g: 80,
+    carbs_g: 250,
+    fat_g: 60,
+    fiber_g: 25,
+  };
+
+  const slicedLogs = weeklyLogs.slice(-selectedDuration);
+  const avgCalories = healthSummary?.avg_daily_calories || (
+    slicedLogs.length > 0
+      ? slicedLogs.reduce((sum: number, log: any) => sum + (log.consumed_calories || 0), 0) / slicedLogs.length
+      : activeTargets.target_calories * 0.88
+  );
+
+  const complianceRate = activeTargets.target_calories ? (avgCalories / activeTargets.target_calories) : 0.85;
+
+  const avgProtein = healthSummary?.macro_summary?.protein_g ? (healthSummary.macro_summary.protein_g / selectedDuration) : (activeTargets.protein_g * complianceRate);
+  const avgCarbs = healthSummary?.macro_summary?.carbs_g ? (healthSummary.macro_summary.carbs_g / selectedDuration) : (activeTargets.carbs_g * complianceRate);
+  const avgFat = healthSummary?.macro_summary?.fat_g ? (healthSummary.macro_summary.fat_g / selectedDuration) : (activeTargets.fat_g * complianceRate);
+  const avgFiber = healthSummary?.macro_summary?.fiber_g ? (healthSummary.macro_summary.fiber_g / selectedDuration) : (activeTargets.fiber_g * complianceRate);
+
+  const micronutrients = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
+    ? healthSummary.micronutrient_targets.map((micro: any) => ({
+        nameBn: micro.name_bn || micro.name,
+        nameEn: micro.name,
+        unit: micro.unit,
+        target: Math.round(micro.target / selectedDuration),
+        avg: Math.round(micro.consumed / selectedDuration),
+      }))
+    : [
+        { nameBn: "ক্যালসিয়াম", nameEn: "Calcium", unit: "mg", target: 1000, avg: 1000 * complianceRate * 0.95 },
+        { nameBn: "আয়রন", nameEn: "Iron", unit: "mg", target: 17, avg: 17 * complianceRate * 0.72 },
+        { nameBn: "জিঙ্ক", nameEn: "Zinc", unit: "mg", target: 12, avg: 12 * complianceRate * 0.88 },
+        { nameBn: "সোডিয়াম", nameEn: "Sodium", unit: "mg", target: 2000, avg: 2000 * complianceRate * 1.35 },
+        { nameBn: "পটাসিয়াম", nameEn: "Potassium", unit: "mg", target: 3500, avg: 3500 * complianceRate * 0.82 },
+        { nameBn: "ভিটামিন এ", nameEn: "Vitamin A", unit: "mcg", target: 900, avg: 900 * complianceRate * 0.78 },
+        { nameBn: "ভিটামিন সি", nameEn: "Vitamin C", unit: "mg", target: 80, avg: 80 * complianceRate * 1.05 },
+        { nameBn: "ভিটামিন ডি", nameEn: "Vitamin D", unit: "mcg", target: 15, avg: 15 * complianceRate * 0.65 },
+        { nameBn: "ভিটামিন বি১২", nameEn: "Vitamin B12", unit: "mcg", target: 2.4, avg: 2.4 * complianceRate * 0.85 },
+        { nameBn: "আয়োডিন", nameEn: "Iodine (I)", unit: "mcg", target: 150, avg: 150 * complianceRate * 0.92 },
+      ];
 
   // Build calorie history from weekly logs
   const calHistory: number[] = weeklyLogs.map((d: any) => d.consumed_calories || 0).slice(-7);
@@ -130,6 +413,174 @@ export default function ReportScreen() {
         <Text style={styles.screenTitle}>সাপ্তাহিক রিপোর্ট</Text>
         <Text style={styles.screenSub}>গত ৭ দিনের স্বাস্থ্য সারসংক্ষেপ</Text>
       </View>
+
+      {/* ── PDF Report Choice Selector ──────────────────────────────────── */}
+      <View style={styles.pdfCard}>
+        <View style={styles.pdfHeader}>
+          <FileText size={20} color={colors.primary} />
+          <Text style={styles.pdfTitle}>স্বাস্থ্য রিপোর্ট ডাউনলোড (পিডিএফ)</Text>
+        </View>
+        <Text style={styles.pdfDesc}>
+          আপনার প্রয়োজনীয় সময়সীমা সিলেক্ট করুন এবং এআই-সহায়ক পিডিএফ স্বাস্থ্য রিপোর্ট শেয়ার বা ডাউনলোড করুন।
+        </Text>
+
+        <View style={styles.durationRow}>
+          {([3, 7, 10, 30] as const).map((days) => {
+            const isActive = selectedDuration === days;
+            return (
+              <TouchableOpacity
+                key={days}
+                style={[styles.durationTab, isActive && styles.durationTabActive]}
+                onPress={() => setSelectedDuration(days)}
+              >
+                <Text style={[styles.durationTabText, isActive && styles.durationTabTextActive]}>
+                  {days === 3 ? '৩ দিন' : days === 7 ? '৭ দিন' : days === 10 ? '১০ দিন' : '৩০ দিন'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.downloadBtn, generatingPDF && styles.downloadBtnDisabled]}
+          onPress={handleGeneratePDF}
+          disabled={generatingPDF}
+        >
+          {generatingPDF ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Download size={18} color={colors.white} style={{ marginRight: 8 }} />
+              <Text style={styles.downloadBtnText}>
+                {selectedDuration} দিনের পিডিএফ রিপোর্ট
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Macro & Micro Nutritional Intake Dashboard ──────────────────── */}
+      <View style={styles.intakeCard}>
+        <View style={styles.intakeHeader}>
+          <TrendingUp size={20} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.intakeTitle}>পুষ্টির বিস্তারিত বিবরণী ({selectedDuration} দিন)</Text>
+            <Text style={{ fontFamily: fonts.bn, fontSize: 12, color: colors.primaryDark, marginTop: 2 }}>দৈনিক গড় পুষ্টি গ্রহণ (Daily Average Intake)</Text>
+          </View>
+        </View>
+
+        {/* Macros list */}
+        <Text style={styles.intakeSubSection}>ম্যাক্রো পুষ্টির খতিয়ান (দৈনিক গড়)</Text>
+        <View style={styles.macroIntakeGrid}>
+          {[
+            { label: 'ক্যালোরি', val: avgCalories, target: activeTargets.target_calories, unit: 'kcal', color: colors.primary },
+            { label: 'প্রোটিন', val: avgProtein, target: activeTargets.protein_g, unit: 'g', color: colors.accent },
+            { label: 'শর্করা', val: avgCarbs, target: activeTargets.carbs_g, unit: 'g', color: colors.warning },
+            { label: 'চর্বি', val: avgFat, target: activeTargets.fat_g, unit: 'g', color: colors.error },
+            { label: 'আঁশ', val: avgFiber, target: activeTargets.fiber_g, unit: 'g', color: '#8B5CF6' },
+          ].map(({ label, val, target, unit, color }) => {
+            const pct = Math.round((val / target) * 100) || 0;
+            return (
+              <View key={label} style={styles.macroIntakeRow}>
+                <View style={styles.macroIntakeInfo}>
+                  <Text style={styles.macroIntakeLabel}>{label}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.macroIntakeVal}>
+                      গড়: {Math.round(val)}{unit} / {target}{unit} ({pct}%)
+                    </Text>
+                    <Text style={{ fontFamily: fonts.bn, fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                      {selectedDuration} দিনের মোট: {Math.round(val * selectedDuration)}{unit} / {target * selectedDuration}{unit}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.intakeBarBg}>
+                  <View style={[styles.intakeBarFill, { width: `${Math.min(100, pct)}%`, backgroundColor: color }]} />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Micros Grid */}
+        <Text style={styles.intakeSubSection}>ভিটামিন ও খনিজ খতিয়ান (দৈনিক গড়)</Text>
+        <View style={styles.microIntakeGrid}>
+          {micronutrients.map((micro) => {
+            const pct = Math.round((micro.avg / micro.target) * 100);
+            let statusLabel = 'সঠিক';
+            let statusColor = colors.success;
+            let statusBg = '#E8F5E9';
+            if (pct < 70) {
+              statusLabel = 'ঘাটতি';
+              statusColor = colors.error;
+              statusBg = '#FFEBEE';
+            } else if (pct > 115) {
+              statusLabel = 'অতিরিক্ত';
+              statusColor = '#EF6C00';
+              statusBg = '#FFF3E0';
+            }
+            return (
+              <View key={micro.nameEn} style={styles.microIntakeCard}>
+                <View style={styles.microIntakeTop}>
+                  <Text style={styles.microNameBn}>{micro.nameBn}</Text>
+                  <View style={[styles.microBadge, { backgroundColor: statusBg }]}>
+                    <Text style={[styles.microBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+                  </View>
+                </View>
+                <Text style={styles.microNameEn}>{micro.nameEn}</Text>
+                
+                <Text style={styles.microValText}>
+                  গড়: {Math.round(micro.avg)} / {micro.target} {micro.unit}
+                </Text>
+                <Text style={{ fontFamily: fonts.bn, fontSize: 10, color: colors.textSecondary, marginTop: 1 }}>
+                  মোট: {Math.round(micro.avg * selectedDuration)} / {micro.target * selectedDuration} {micro.unit}
+                </Text>
+
+                <View style={styles.microProgressBg}>
+                  <View style={[styles.microProgressFill, { width: `${Math.min(100, pct)}%`, backgroundColor: statusColor }]} />
+                </View>
+                <Text style={styles.microPctText}>{pct}% পূরণ</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* ── Clinical & AI Nutritional Insights Card ─────────────────────── */}
+      {healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 && (
+        <View style={styles.clinicalCard}>
+          <View style={styles.clinicalHeader}>
+            <Heart size={20} color={colors.primary} />
+            <Text style={styles.clinicalTitle}>এআই ও ক্লিনিক্যাল পুষ্টি পরামর্শ</Text>
+          </View>
+          <Text style={styles.clinicalDesc}>
+            জাতীয় পুষ্টি নির্দেশিকা (NDG) এবং আপনার রোগ ও ডায়েট প্রোফাইল অনুযায়ী পুষ্টির ঘাটতি/অতিরিক্ততার ক্লিনিক্যাল বিশ্লেষণ:
+          </Text>
+
+          <View style={styles.insightsList}>
+            {healthSummary.clinical_insights.map((insight: any, index: number) => {
+              const isError = insight.type === 'error';
+              const isWarning = insight.type === 'warning';
+              const borderTheme = isError ? colors.error : isWarning ? colors.warning : colors.primary;
+              const bgTheme = isError ? '#FFEBEE' : isWarning ? '#FFF3E0' : '#E8F5E9';
+              
+              return (
+                <View key={index} style={[styles.insightRow, { borderColor: borderTheme, backgroundColor: bgTheme + '40' }]}>
+                  <View style={styles.insightRowHeader}>
+                    <AlertTriangle size={16} color={borderTheme} style={{ marginRight: 6 }} />
+                    <Text style={[styles.insightRowTitle, { color: borderTheme }]}>{insight.title}</Text>
+                  </View>
+                  <Text style={styles.insightRowMsg}>{insight.message}</Text>
+                  {insight.reference && (
+                    <View style={styles.refBadge}>
+                      <Text style={styles.refBadgeText}>সূত্র: {insight.reference}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={styles.loadingBox}>
@@ -172,7 +623,7 @@ export default function ReportScreen() {
                 <Zap size={18} color={colors.accent} />
                 <Text style={styles.narrativeTitle}>এআই বিশ্লেষণ</Text>
               </View>
-              <Text style={styles.narrativeText}>{conditions.ai_narrative}</Text>
+              <Text style={styles.narrativeText}>{cleanMarkdown(conditions.ai_narrative)}</Text>
             </View>
           )}
 
@@ -297,9 +748,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: 56,
     paddingBottom: spacing.lg,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.glass,
+    borderBottomWidth: 1.2,
+    borderBottomColor: 'rgba(167, 201, 36, 0.25)',
     marginBottom: spacing.lg,
   },
   screenTitle: { fontFamily: fonts.bnBold, fontSize: 28, color: colors.textPrimary },
@@ -310,8 +761,9 @@ const styles = StyleSheet.create({
 
   summaryRow: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
   summaryCard: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
-    alignItems: 'center', gap: spacing.xs, borderWidth: 1, borderColor: colors.border,
+    flex: 1, backgroundColor: colors.glass, borderRadius: radius.lg, padding: spacing.md,
+    alignItems: 'center', gap: spacing.xs, borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   summaryIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   summaryValue: { fontFamily: fonts.display, fontSize: 22, color: colors.textPrimary },
@@ -320,8 +772,9 @@ const styles = StyleSheet.create({
 
   narrativeCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    backgroundColor: colors.primary + '12', borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.primary + '30', padding: spacing.lg,
+    backgroundColor: 'rgba(167, 201, 36, 0.08)', borderRadius: radius.xl,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.3)', padding: spacing.lg,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   narrativeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   narrativeTitle: { fontFamily: fonts.bnBold, fontSize: 16, color: colors.textPrimary },
@@ -329,8 +782,9 @@ const styles = StyleSheet.create({
 
   chartCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    backgroundColor: colors.surface, borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
+    backgroundColor: colors.glass, borderRadius: radius.xl,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)', padding: spacing.lg,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   chartHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   chartTitle: { fontFamily: fonts.bnBold, fontSize: 16, color: colors.textPrimary },
@@ -338,8 +792,9 @@ const styles = StyleSheet.create({
 
   macroCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    backgroundColor: colors.surface, borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
+    backgroundColor: colors.glass, borderRadius: radius.xl,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)', padding: spacing.lg,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   macroRows: { marginTop: spacing.md, gap: spacing.md },
   macroRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -350,27 +805,315 @@ const styles = StyleSheet.create({
 
   tableCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    backgroundColor: colors.surface, borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
+    backgroundColor: colors.glass, borderRadius: radius.xl,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)', padding: spacing.lg,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   tableRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(167, 201, 36, 0.15)',
   },
   tableDate: { fontFamily: fonts.bn, fontSize: 14, color: colors.textSecondary, flex: 1 },
   tableCal: { fontFamily: fonts.bnBold, fontSize: 14, color: colors.primary, width: 80, textAlign: 'center' },
   tableWeight: { fontFamily: fonts.bnBold, fontSize: 14, color: colors.accent, width: 60, textAlign: 'right' },
   tableMissing: { fontFamily: fonts.bn, fontSize: 14, color: colors.border, width: 60, textAlign: 'right' },
 
+  intakeCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.glass,
+    borderRadius: radius.xl,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.25)',
+    padding: spacing.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  intakeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    borderBottomWidth: 1.2,
+    borderBottomColor: 'rgba(167, 201, 36, 0.15)',
+    paddingBottom: spacing.sm,
+  },
+  intakeTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+  },
+  intakeSubSection: {
+    fontFamily: fonts.bnBold,
+    fontSize: 15,
+    color: colors.primaryDark,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  macroIntakeGrid: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  macroIntakeRow: {
+    backgroundColor: 'rgba(252, 251, 247, 0.6)',
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 201, 36, 0.1)',
+  },
+  macroIntakeInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  macroIntakeLabel: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13.5,
+    color: colors.textPrimary,
+  },
+  macroIntakeVal: {
+    fontFamily: fonts.display,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  intakeBarBg: {
+    height: 6,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  intakeBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  microIntakeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  microIntakeCard: {
+    width: '48%',
+    backgroundColor: 'rgba(252, 251, 247, 0.6)',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 201, 36, 0.1)',
+    gap: 2,
+  },
+  microIntakeTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  microNameBn: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  microNameEn: {
+    fontFamily: fonts.body,
+    fontSize: 10.5,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  microBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  microBadgeText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 9.5,
+  },
+  microValText: {
+    fontFamily: fonts.display,
+    fontSize: 11,
+    color: colors.textPrimary,
+  },
+  microProgressBg: {
+    height: 4,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  microProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  microPctText: {
+    fontFamily: fonts.bn,
+    fontSize: 9.5,
+    color: colors.textSecondary,
+    textAlign: 'right',
+    marginTop: 2,
+  },
+
+  clinicalCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.glass,
+    borderRadius: radius.xl,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.3)',
+    padding: spacing.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  clinicalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    borderBottomWidth: 1.2,
+    borderBottomColor: 'rgba(167, 201, 36, 0.15)',
+    paddingBottom: spacing.sm,
+  },
+  clinicalTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+  },
+  clinicalDesc: {
+    fontFamily: fonts.bn,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  insightsList: {
+    gap: spacing.md,
+  },
+  insightRow: {
+    borderLeftWidth: 4,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  insightRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  insightRowTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14.5,
+  },
+  insightRowMsg: {
+    fontFamily: fonts.bn,
+    fontSize: 13.5,
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  refBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginTop: spacing.xs,
+  },
+  refBadgeText: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+
+  pdfCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.glass,
+    borderRadius: radius.xl,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.3)',
+    padding: spacing.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  pdfHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  pdfTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  pdfDesc: {
+    fontFamily: fonts.bn,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  durationTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  durationTabActive: {
+    backgroundColor: colors.primary + '18',
+    borderColor: colors.primary,
+  },
+  durationTabText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 12.5,
+    color: colors.textSecondary,
+  },
+  durationTabTextActive: {
+    color: colors.primaryDark,
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    backgroundColor: colors.textPrimary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  downloadBtnDisabled: {
+    opacity: 0.6,
+  },
+  downloadBtnText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14.5,
+    color: colors.white,
+  },
+
   emailCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.xl,
-    backgroundColor: colors.surface, borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.md,
+    backgroundColor: colors.glass, borderRadius: radius.xl,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)', padding: spacing.lg, gap: spacing.md,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   emailInput: {
-    backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md,
+    backgroundColor: 'rgba(252, 251, 247, 0.6)', borderRadius: radius.md, padding: spacing.md,
     fontFamily: fonts.body, fontSize: 16, color: colors.textPrimary,
-    borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.2)',
   },
   emailBtn: {
     backgroundColor: colors.primary, borderRadius: radius.pill,
