@@ -18,7 +18,7 @@ export default function WelcomeScreen() {
       profileApi.get()
         .then(() => router.replace('/(tabs)'))
         .catch((e: any) => {
-          if (e.response?.status === 404) {
+          if (e.response?.status === 404 || e.response?.status === 400) {
             router.replace('/(auth)/onboarding');
           } else {
             router.replace('/(tabs)');

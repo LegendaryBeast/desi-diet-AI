@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, mealPlanApi, mealTrackingApi, profileApi } from '../../lib/api';
 import { fonts } from '../../lib/theme';
-import { Search, Crown, Play, ChevronLeft, ChevronRight, Check } from 'lucide-react-native';
+import { Search, Crown, Play, ChevronLeft, ChevronRight, Check, Flame } from 'lucide-react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { HomeScreenSkeleton } from '../../components/SkeletonLoader';
 import { useHaptics } from '../../hooks/useHaptics';

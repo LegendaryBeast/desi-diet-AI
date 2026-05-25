@@ -42,7 +42,7 @@ export default function LoginScreen() {
         await profileApi.get();
         router.replace('/(tabs)');
       } catch (err: any) {
-        if (err.response?.status === 404) {
+        if (err.response?.status === 404 || err.response?.status === 400) {
           router.replace('/(auth)/onboarding');
         } else {
           router.replace('/(tabs)'); // Default fallback

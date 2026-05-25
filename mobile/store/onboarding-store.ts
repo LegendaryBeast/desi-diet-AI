@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OnboardingState {
   data: {
@@ -32,8 +34,16 @@ const initialState = {
   disliked_foods: [],
 };
 
-export const useOnboardingStore = create<OnboardingState>((set) => ({
-  data: initialState,
-  updateData: (fields) => set((state) => ({ data: { ...state.data, ...fields } })),
-  reset: () => set({ data: initialState }),
-}));
+export const useOnboardingStore = create<OnboardingState>()(
+  persist(
+    (set) => ({
+      data: initialState,
+      updateData: (fields) => set((state) => ({ data: { ...state.data, ...fields } })),
+      reset: () => set({ data: initialState }),
+    }),
+    {
+      name: 'onboarding-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);

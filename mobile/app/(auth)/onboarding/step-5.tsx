@@ -98,13 +98,18 @@ export default function Step5Screen() {
   };
 
   const handleFinish = async () => {
+    if (!data.name_bn || !data.age || !data.weight_kg || !data.height_cm) {
+      alert('দয়া করে পূর্ববর্তী ধাপের তথ্যগুলো আবার পূরণ করুন।');
+      router.replace('/(auth)/onboarding/step-1');
+      return;
+    }
     setLoading(true);
     try {
       // Create profile via API
       await profileApi.create({
         name_bn: data.name_bn,
-        name_en: data.name_en,
-        age: parseInt(data.age),
+        name_en: data.name_bn,
+        age: parseInt(data.age, 10),
         gender: data.gender,
         weight_kg: parseFloat(data.weight_kg),
         height_cm: parseFloat(data.height_cm),
