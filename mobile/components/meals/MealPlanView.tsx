@@ -220,6 +220,17 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
           <View style={[styles.progressFill, { width: `${totalMeals > 0 ? (completedCount / totalMeals) * 100 : 0}%` }]} />
         </View>
 
+        {/* Targets & Nutrition Details Button */}
+        <TouchableOpacity
+          style={styles.targetDetailsBtn}
+          onPress={() => {
+            haptics.light();
+            router.push('/target-details');
+          }}
+        >
+          <Text style={styles.targetDetailsText}>📊 পুষ্টি ও লক্ষ্যমাত্রা বিশ্লেষণ দেখুন</Text>
+        </TouchableOpacity>
+
         {/* Meal cards */}
         {(planData?.meals || []).map((meal: any) =>
           renderMealCard(meal, planId, completedSlots)
@@ -383,12 +394,17 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
 
   mealCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   mealCardDone: { borderColor: colors.success + '60', backgroundColor: colors.success + '0A' },
 
@@ -406,7 +422,7 @@ const styles = StyleSheet.create({
   calBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: colors.primary + '18', borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 8 },
   calText: { fontFamily: fonts.bnBold, fontSize: 13, color: colors.primary },
 
-  weekCard: { backgroundColor: colors.surface, borderRadius: radius.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  weekCard: { backgroundColor: colors.glass, borderRadius: radius.lg, marginBottom: spacing.md, borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2, overflow: 'hidden' },
   weekCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md },
   weekDayMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   weekDayName: { fontFamily: fonts.bnBold, fontSize: 17, color: colors.textPrimary },
@@ -414,4 +430,21 @@ const styles = StyleSheet.create({
   weekDayRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   weekDayCal: { fontFamily: fonts.bnBold, fontSize: 14, color: colors.primary },
   weekCardBody: { borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.md },
+  targetDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm + 2,
+    marginBottom: spacing.lg,
+    gap: spacing.xs,
+  },
+  targetDetailsText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.primary,
+  },
 });

@@ -4,29 +4,30 @@
  */
 
 export const colors = {
-  primary: '#A7C924', // Lime Green from active elements
+  primary: '#A7C924', // Lime Green
   primaryDark: '#8FB41E',
-  accent: '#7ABDD1', // Light Blue from water/waves
+  accent: '#7ABDD1', // Light Blue
   accentLight: '#BEE3ED',
   success: '#43A047',
   warning: '#FF8F00',
   error: '#C62828',
-  background: '#EAF3F5', // Soft light blue-grey dashboard background
-  surface: '#FFFFFF', // Pure White for cards/containers
-  surfaceLight: '#F5FAFB',
-  glass: 'rgba(255, 255, 255, 0.7)',
-  textPrimary: '#1C2123', // Stark modern dark grey/black text
-  textSecondary: '#8C979A', // Neutral grey for subtitles/secondary text
+  background: '#FFFDF9', // Soft light cream background
+  surface: '#FCFBF7', // Warm cream-white cards
+  surfaceLight: '#FDFDFB', // Extralight cream
+  glass: 'rgba(252, 251, 247, 0.8)', // Translucent cream-white glass
+  textPrimary: '#1C2123',
+  textSecondary: '#7A8487',
   white: '#FFFFFF',
   black: '#000000',
-  border: '#E0E8EA', // Soft border grey/blue
+  border: 'rgba(167, 201, 36, 0.2)', // Glossy light green border
+  borderSolid: '#EBF0D8', // Solid light green-cream border
 };
 
 export const fonts = {
-  display: 'PlayfairDisplay_700Bold',
-  body: 'SpaceGrotesk_400Regular',
-  bodyMedium: 'SpaceGrotesk_500Medium',
-  bodyBold: 'SpaceGrotesk_700Bold',
+  display: 'Inter_700Bold',
+  body: 'Inter_400Regular',
+  bodyMedium: 'Inter_500Medium',
+  bodyBold: 'Inter_700Bold',
   bn: 'HindSiliguri_400Regular',
   bnBold: 'HindSiliguri_700Bold',
 };

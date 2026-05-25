@@ -1,7 +1,7 @@
 import { Tabs, Redirect } from 'expo-router';
 import { View, ActivityIndicator, Platform } from 'react-native';
 import { useAuthStore } from '../../store/auth-store';
-import { Home, UtensilsCrossed, MessageCircle, BarChart3, User } from 'lucide-react-native';
+import { Home, Utensils, Bot, TrendingUp, User } from 'lucide-react-native';
 import { colors, fonts } from '../../lib/theme';
 
 export default function TabLayout() {
@@ -29,19 +29,26 @@ export default function TabLayout() {
           borderTopColor: colors.border,
           elevation: 0,
           shadowOpacity: 0,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === 'ios' ? 88 : 72,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontFamily: fonts.bnBold,
-          fontSize: 10,
+          fontSize: 10.5,
           marginTop: 2,
+          lineHeight: 14,
         },
       }}
     >
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null, // Hidden from tab bar
+        }}
+      />
       <Tabs.Screen
         name="home"
         options={{
@@ -53,21 +60,21 @@ export default function TabLayout() {
         name="meals"
         options={{
           title: 'খাবার',
-          tabBarIcon: ({ color }) => <UtensilsCrossed size={22} color={color} strokeWidth={1.8} />,
+          tabBarIcon: ({ color }) => <Utensils size={22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'কথোপকথন',
-          tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} strokeWidth={1.8} />,
+          title: 'পুষ্টি এআই',
+          tabBarIcon: ({ color }) => <Bot size={22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="report"
         options={{
           title: 'রিপোর্ট',
-          tabBarIcon: ({ color }) => <BarChart3 size={22} color={color} strokeWidth={1.8} />,
+          tabBarIcon: ({ color }) => <TrendingUp size={22} color={color} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen

@@ -1,57 +1,35 @@
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl,
-  TextInput, Alert, ActivityIndicator, Switch,
+  Alert, Switch, Platform,
 } from 'react-native';
 import { useState, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { profileApi, medicineApi } from '../../lib/api';
+import { profileApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth-store';
 import { useSettingsStore } from '../../store/settings-store';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   User, Scale, TrendingUp, HeartPulse, LogOut,
-  Pill, Plus, Trash2, Bell, ChevronRight, Send,
+  Pill, Bell, ChevronRight, Activity, Shield, Apple, BarChart3,
 } from 'lucide-react-native';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { language, setLanguage, notificationsEnabled, setNotificationsEnabled } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
-  const [medInput, setMedInput] = useState('');
-  const queryClient = useQueryClient();
 
   const { data: profileData, refetch: refetchProfile } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => (await profileApi.get()).data,
   });
 
-  const { data: medicines, refetch: refetchMeds } = useQuery({
-    queryKey: ['medicines'],
-    queryFn: async () => (await medicineApi.list()).data,
-  });
-
-  const addMedMutation = useMutation({
-    mutationFn: () => medicineApi.add(medInput.trim(), language),
-    onSuccess: () => {
-      setMedInput('');
-      queryClient.invalidateQueries({ queryKey: ['medicines'] });
-    },
-    onError: () => Alert.alert('ত্রুটি', 'ওষুধ যোগ করতে সমস্যা হয়েছে।'),
-  });
-
-  const delMedMutation = useMutation({
-    mutationFn: (id: string) => medicineApi.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['medicines'] }),
-  });
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchProfile(), refetchMeds()]);
+    await refetchProfile();
     setRefreshing(false);
-  }, []);
+  }, [refetchProfile]);
 
   const handleLogout = () => {
     Alert.alert('প্রস্থান', 'আপনি কি নিশ্চিত যে প্রস্থান করতে চান?', [
@@ -79,6 +57,7 @@ export default function ProfileScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      showsVerticalScrollIndicator={false}
     >
       {/* ── Avatar & Name ──────────────────────────────────────────────────── */}
       <View style={styles.avatarSection}>
@@ -117,6 +96,52 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {/* ── Quick Tools Section ───────────────────────────────────────────── */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>অ্যাপ টুলস ও সেবাসমূহ</Text>
+        <View style={styles.detailsCard}>
+          <TouchableOpacity style={styles.toolRow} onPress={() => router.push('/foods')}>
+            <View style={styles.toolRowLeft}>
+              <View style={[styles.toolIconBox, { backgroundColor: '#EBF0D8' }]}>
+                <Apple size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.toolLabel}>খাবারের ডাটাবেজ (Foods)</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolRow} onPress={() => router.push('/health-log')}>
+            <View style={styles.toolRowLeft}>
+              <View style={[styles.toolIconBox, { backgroundColor: '#E2F2F5' }]}>
+                <Activity size={18} color={colors.accent} />
+              </View>
+              <Text style={styles.toolLabel}>স্বাস্থ্য ট্র্যাকার (Health Log)</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolRow} onPress={() => router.push('/medicine')}>
+            <View style={styles.toolRowLeft}>
+              <View style={[styles.toolIconBox, { backgroundColor: '#FFF7E6' }]}>
+                <Pill size={18} color="#B06000" />
+              </View>
+              <Text style={styles.toolLabel}>ওষুধের সময়সূচী (Medicine)</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.toolRow, { borderBottomWidth: 0 }]} onPress={() => router.push('/target-details')}>
+            <View style={styles.toolRowLeft}>
+              <View style={[styles.toolIconBox, { backgroundColor: '#EAF7EE' }]}>
+                <Shield size={18} color={colors.success} />
+              </View>
+              <Text style={styles.toolLabel}>পুষ্টি উপাদানসমূহ (Micronutrients)</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* ── Profile Details ───────────────────────────────────────────────── */}
       {profile && (
         <View style={styles.section}>
@@ -137,67 +162,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-
-      {/* ── Medicine Reminders ────────────────────────────────────────────── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Pill size={18} color={colors.accent} />
-          <Text style={styles.sectionTitle}>ওষুধের সময়সূচী</Text>
-        </View>
-
-        {/* Add medicine */}
-        <View style={styles.medInputRow}>
-          <TextInput
-            style={styles.medInput}
-            value={medInput}
-            onChangeText={setMedInput}
-            placeholder="যেমন: মেটফরমিন ৫০০mg রাতের খাবারের পর"
-            placeholderTextColor={colors.textSecondary}
-            multiline
-          />
-          <TouchableOpacity
-            style={[styles.medAddBtn, (!medInput.trim() || addMedMutation.isPending) && styles.medAddBtnDisabled]}
-            onPress={() => addMedMutation.mutate()}
-            disabled={!medInput.trim() || addMedMutation.isPending}
-          >
-            {addMedMutation.isPending
-              ? <ActivityIndicator size="small" color={colors.white} />
-              : <Send size={18} color={colors.white} />
-            }
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.medHint}>এআই সময়সূচী বিশ্লেষণ করে ক্যালেন্ডারে যুক্ত করবে</Text>
-
-        {/* Medicine list */}
-        {(medicines || []).map((med: any) => (
-          <View key={med.id} style={styles.medCard}>
-            <View style={styles.medIconBox}>
-              <Pill size={18} color={colors.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.medName}>{med.name} <Text style={styles.medDose}>{med.dose}</Text></Text>
-              <Text style={styles.medSchedule}>{Array.isArray(med.times) ? med.times.join(', ') : med.times}</Text>
-              {med.with_food && <Text style={styles.medNote}>খাবারের সাথে</Text>}
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert('মুছুন', `${med.name} মুছতে চান?`, [
-                  { text: 'বাতিল', style: 'cancel' },
-                  { text: 'মুছুন', style: 'destructive', onPress: () => delMedMutation.mutate(med.id) },
-                ]);
-              }}
-            >
-              <Trash2 size={20} color={colors.error} />
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        {(!medicines || medicines.length === 0) && (
-          <View style={styles.emptyMeds}>
-            <Text style={styles.emptyMedsText}>কোনো ওষুধ যোগ করা হয়নি</Text>
-          </View>
-        )}
-      </View>
 
       {/* ── Notifications Settings ────────────────────────────────────────── */}
       <View style={styles.section}>
@@ -263,11 +227,11 @@ const styles = StyleSheet.create({
 
   avatarSection: {
     alignItems: 'center',
-    paddingTop: 64,
+    paddingTop: Platform.OS === 'ios' ? 64 : 44,
     paddingBottom: spacing.xl,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.glass,
+    borderBottomWidth: 1.2,
+    borderBottomColor: 'rgba(167, 201, 36, 0.25)',
   },
   avatarCircle: {
     width: 88, height: 88, borderRadius: 44,
@@ -292,9 +256,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingVertical: spacing.lg,
   },
   statCard: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg,
+    flex: 1, backgroundColor: colors.glass, borderRadius: radius.lg,
     padding: spacing.md, alignItems: 'center', gap: spacing.xs,
-    borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statValue: { fontFamily: fonts.display, fontSize: 20, color: colors.textPrimary },
   statUnit: { fontFamily: fonts.bn, fontSize: 13, color: colors.textSecondary },
@@ -302,44 +271,37 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  sectionTitle: { fontFamily: fonts.bnBold, fontSize: 18, color: colors.textPrimary, marginBottom: spacing.md },
+  sectionTitle: { fontFamily: fonts.bnBold, fontSize: 16, color: colors.textPrimary, marginBottom: spacing.sm },
 
-  detailsCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  detailsCard: { 
+    backgroundColor: colors.glass, borderRadius: radius.lg, 
+    borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.25)', 
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    overflow: 'hidden' 
+  },
   detailRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: spacing.md, paddingHorizontal: spacing.md,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(167, 201, 36, 0.15)',
   },
   detailLabel: { fontFamily: fonts.bn, fontSize: 15, color: colors.textSecondary },
   detailValue: { fontFamily: fonts.bnBold, fontSize: 15, color: colors.textPrimary },
 
-  medInputRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: 4 },
-  medInput: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg,
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
-    fontFamily: fonts.bn, fontSize: 15, color: colors.textPrimary,
-    borderWidth: 1, borderColor: colors.border, minHeight: 50,
+  toolRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: spacing.md, paddingHorizontal: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(167, 201, 36, 0.15)',
   },
-  medAddBtn: {
-    width: 50, height: 50, borderRadius: radius.lg,
-    backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
+  toolRowLeft: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
   },
-  medAddBtnDisabled: { opacity: 0.5 },
-  medHint: { fontFamily: fonts.bn, fontSize: 12, color: colors.textSecondary, marginBottom: spacing.md },
-
-  medCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,
-    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
-    marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border,
+  toolIconBox: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
   },
-  medIconBox: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.accent + '18', alignItems: 'center', justifyContent: 'center' },
-  medName: { fontFamily: fonts.bnBold, fontSize: 16, color: colors.textPrimary },
-  medDose: { fontFamily: fonts.bn, color: colors.textSecondary, fontSize: 14 },
-  medSchedule: { fontFamily: fonts.bn, fontSize: 14, color: colors.primary, marginTop: 2 },
-  medNote: { fontFamily: fonts.bn, fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-
-  emptyMeds: { paddingVertical: spacing.lg, alignItems: 'center' },
-  emptyMedsText: { fontFamily: fonts.bn, fontSize: 15, color: colors.textSecondary },
+  toolLabel: {
+    fontFamily: fonts.bnBold, fontSize: 14, color: colors.textPrimary,
+  },
 
   switchRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -349,7 +311,7 @@ const styles = StyleSheet.create({
   switchSub: { fontFamily: fonts.bn, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
   langRow: { flexDirection: 'row', gap: spacing.md },
-  langBtn: { flex: 1, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  langBtn: { flex: 1, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', backgroundColor: colors.glass, borderWidth: 1.2, borderColor: 'rgba(167, 201, 36, 0.2)' },
   langBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   langText: { fontFamily: fonts.bnBold, fontSize: 15, color: colors.textSecondary },
   langTextActive: { color: colors.white },

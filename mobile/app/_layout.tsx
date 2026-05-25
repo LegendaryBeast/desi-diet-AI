@@ -2,14 +2,10 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import {
-  PlayfairDisplay_400Regular,
-  PlayfairDisplay_700Bold,
-} from '@expo-google-fonts/playfair-display';
-import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
 import {
   HindSiliguri_400Regular,
   HindSiliguri_700Bold,
@@ -19,14 +15,13 @@ import { queryClient } from '../lib/query-client';
 import { useAuthStore } from '../store/auth-store';
 import { useSettingsStore } from '../store/settings-store';
 import { colors } from '../lib/theme';
+import { SubscriptionProvider } from '../context/SubscriptionContext';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    PlayfairDisplay_400Regular,
-    PlayfairDisplay_700Bold,
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
     HindSiliguri_400Regular,
     HindSiliguri_700Bold,
   });
@@ -43,15 +38,17 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <SubscriptionProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </SubscriptionProvider>
     </QueryClientProvider>
   );
 }

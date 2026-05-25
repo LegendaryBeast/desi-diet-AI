@@ -82,7 +82,7 @@ export const healthLogApi = {
 };
 
 export const mealPlanApi = {
-  daily: (language = 'bn', force = false) => api.get(`/meal-plans/daily?language=${language}${force ? '&force=true' : ''}`),
+  daily: (language = 'bn', force = false, offset = 0) => api.get(`/meal-plans/daily?language=${language}&offset=${offset}${force ? '&force=true' : ''}`),
   weekly: (language = 'bn', force = false) => api.get(`/meal-plans/weekly?language=${language}${force ? '&force=true' : ''}`),
   history: () => api.get('/meal-plans/history'),
   feedback: (planId: string, score: number) =>
@@ -103,6 +103,7 @@ export const foodsApi = {
 export const reportsApi = {
   nutrition: () => api.get('/reports/nutrition'),
   conditions: () => api.get('/reports/conditions'),
+  healthSummary: (days = 7) => api.get(`/reports/health-summary?days=${days}`),
   sendEmail: (email: string, language = 'en') => api.post('/reports/send-email', { email, language }),
 };
 
