@@ -40,19 +40,43 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
 
     if req.direct_calories is not None:
         # Direct log from meal plan! Skip LLM/search analysis to ensure perfect plan mapping
+        direct_carbs = req.direct_carbs
+        direct_fat = req.direct_fat
+        
+        # Smart Helper: Scale macros from verified Graph-RAG database to ensure beautiful macro progress
+        if (direct_carbs is None or direct_fat is None) and (req.direct_name or req.input):
+            try:
+                rag = _get_rag()
+                db_matches = rag.search_food(req.direct_name or req.input)
+                if db_matches:
+                    match = db_matches[0]
+                    db_cal = float(match.get("calories") or 0.0)
+                    if db_cal > 0:
+                        scale = float(req.direct_calories) / db_cal
+                        if direct_carbs is None:
+                            direct_carbs = round(float(match.get("carbs") or 0.0) * scale, 1)
+                        if direct_fat is None:
+                            direct_fat = round(float(match.get("fat") or 0.0) * scale, 1)
+            except Exception:
+                logger.exception("Failed to scale direct plan macros via Graph-RAG")
+
+        # Fallback to zero if still None
+        direct_carbs = direct_carbs or 0.0
+        direct_fat = direct_fat or 0.0
+
         parsed_items = [{
             "name": req.direct_name or req.input,
             "amount_g": req.direct_amount_g or 100.0,
             "calories": req.direct_calories,
             "protein_g": req.direct_protein or 0.0,
-            "carbs_g": req.direct_carbs or 0.0,
-            "fat_g": req.direct_fat or 0.0
+            "carbs_g": direct_carbs,
+            "fat_g": direct_fat
         }]
         total_calories = req.direct_calories
         macros = {
             "protein_g": req.direct_protein or 0.0,
-            "carbs_g": req.direct_carbs or 0.0,
-            "fat_g": req.direct_fat or 0.0
+            "carbs_g": direct_carbs,
+            "fat_g": direct_fat
         }
         ai_feedback = "পরিকল্পিত খাবারটি সফলভাবে আপনার দৈনন্দিন ট্র্যাকিংয়ে যুক্ত করা হয়েছে।"
         input_text_display = f"📋 [Plan] {req.direct_name or req.input}"
