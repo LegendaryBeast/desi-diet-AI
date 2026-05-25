@@ -548,7 +548,7 @@ export default function ReportScreen() {
 
   const isLoading = nLoad || cLoad || hLoad;
   const targets = nutrition?.targets;
-  const weeklyLogs = conditions?.weekly_summary || [];
+  const weeklyLogs = healthSummary?.calorie_history || [];
 
   const activeTargets = healthSummary?.targets || targets || {
     target_calories: 2000,
@@ -594,8 +594,8 @@ export default function ReportScreen() {
       ];
 
   // Build calorie history from weekly logs
-  const calHistory: number[] = weeklyLogs.map((d: any) => d.consumed_calories || 0).slice(-7);
-  const weightHistory: number[] = weeklyLogs.map((d: any) => d.weight_kg).filter(Boolean).slice(-7);
+  const calHistory: number[] = weeklyLogs.map((d: any) => d.consumed_calories || d.calories_consumed || 0);
+  const weightHistory: number[] = weeklyLogs.map((d: any) => d.weight_kg).filter((w: any) => w !== null && w !== undefined);
 
   return (
     <ScrollView
@@ -905,12 +905,12 @@ export default function ReportScreen() {
             <View style={styles.tableCard}>
               <View style={styles.chartHeader}>
                 <Calendar size={18} color={colors.textSecondary} />
-                <Text style={styles.chartTitle}>দৈনিক বিবরণ</Text>
+                <Text style={styles.chartTitle}>দৈনিক বিবরণ ({selectedDuration} দিন)</Text>
               </View>
-              {weeklyLogs.slice(-7).map((log: any, i: number) => (
+              {weeklyLogs.map((log: any, i: number) => (
                 <View key={i} style={styles.tableRow}>
                   <Text style={styles.tableDate}>{log.date || `দিন ${i + 1}`}</Text>
-                  <Text style={styles.tableCal}>{log.consumed_calories || 0} kcal</Text>
+                  <Text style={styles.tableCal}>{log.consumed_calories ?? log.calories_consumed ?? 0} kcal</Text>
                   {log.weight_kg ? (
                     <Text style={styles.tableWeight}>{log.weight_kg} kg</Text>
                   ) : (

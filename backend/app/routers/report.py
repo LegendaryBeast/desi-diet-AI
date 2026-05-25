@@ -179,10 +179,15 @@ async def get_health_summary(
 
     # 3. Fetch meal plans for last N days
     since_date = datetime.now(timezone.utc) - timedelta(days=days)
-    plans = await prisma.mealplan.find_many(
+    all_plans = await prisma.mealplan.find_many(
         where={"userId": current_user.id, "planDate": {"gte": since_date}, "planType": "daily"},
         order={"planDate": "asc"},
     )
+
+    # Filter plans by proximity to today to get exactly `days` plans
+    now_date = datetime.now(timezone.utc).date()
+    plans_by_proximity = sorted(all_plans, key=lambda p: abs((p.planDate.date() - now_date).days))
+    plans = sorted(plans_by_proximity[:days], key=lambda p: p.planDate)
 
     # 4. Weight history
     weight_logs = await prisma.healthlog.find_many(
@@ -246,13 +251,18 @@ async def get_health_summary(
             days_with_data += 1
             total_cals_all += day_calories
 
+        plan_date_str = plan.planDate.strftime("%d/%m")
+        matching_weight = next((w["weight_kg"] for w in weight_history if w["date"] == plan_date_str), None)
+
         calorie_history.append({
-            "date": plan.planDate.strftime("%d/%m"),
+            "date": plan_date_str,
             "calories_consumed": round(day_calories),
+            "consumed_calories": round(day_calories),
             "calories_planned": round(plan_data.get("total_calories") or target_calories),
             "calories_target": target_calories,
             "completed_slots": len(completed_slots),
             "total_slots": len(meals),
+            "weight_kg": matching_weight,
         })
 
     avg_calories = round(total_cals_all / days_with_data) if days_with_data > 0 else 0
