@@ -128,3 +128,39 @@ async def delete_medicine_reminder(reminder_id: str, current_user=Depends(get_cu
         data={"active": False},
     )
     return {"message": "Reminder deleted", "id": reminder_id}
+
+
+from pydantic import BaseModel
+from typing import Optional, List
+
+class MedicineManualCreateRequest(BaseModel):
+    name: str
+    dose: str
+    times: List[str]
+    with_food: bool
+    notes: Optional[str] = None
+
+@router.post("/manual", response_model=MedicineReminderListItem)
+async def add_manual_medicine_reminder(req: MedicineManualCreateRequest, current_user=Depends(get_current_user)):
+    """Add a medicine reminder manually without AI parsing."""
+    record = await prisma.medicinereminder.create(
+        data={
+            "userId": current_user.id,
+            "name": req.name,
+            "dose": req.dose,
+            "times": to_json_string(req.times),
+            "withFood": req.with_food,
+            "notes": req.notes,
+            "active": True,
+        }
+    )
+    return MedicineReminderListItem(
+        id=record.id,
+        name=record.name,
+        dose=record.dose,
+        times=req.times,
+        with_food=record.withFood,
+        notes=record.notes,
+        active=record.active,
+        created_at=record.createdAt,
+    )

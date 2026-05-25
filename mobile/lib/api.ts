@@ -133,6 +133,8 @@ export const mealBuilderApi = {
 // Medicine API
 export const medicineApi = {
   add: (input: string, language = 'en') => api.post('/medicine-reminders', { input, language }),
+  addManual: (data: { name: string; dose: string; times: string[]; with_food: boolean; notes?: string }) =>
+    api.post('/medicine-reminders/manual', data),
   list: () => api.get('/medicine-reminders'),
   delete: (id: string) => api.delete(`/medicine-reminders/${id}`),
 };
