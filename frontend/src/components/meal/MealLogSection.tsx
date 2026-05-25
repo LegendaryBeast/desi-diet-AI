@@ -14,6 +14,7 @@ import {
   Moon,
   Sparkles,
   ImagePlus,
+  Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -235,6 +236,16 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
       setError(err instanceof Error ? err.message : 'Failed to analyze photo');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const deleteLog = async (logId: string) => {
+    setError(null);
+    try {
+      await mealTrackingApi.delete(logId);
+      fetchTodayLogs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete log');
     }
   };
 
@@ -554,11 +565,21 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                       {(log.meal_slot || 'snack')} · {time}
                     </div>
                   </div>
-                  <div className="font-body font-bold text-ink shrink-0">
-                    {log.total_calories}
-                    <span className="text-[0.6rem] text-ink-faint font-body ml-1">kcal</span>
+                  <div className="font-body font-bold text-ink shrink-0 flex items-center gap-2">
+                    <span>
+                      {log.total_calories}
+                      <span className="text-[0.6rem] text-ink-faint font-body ml-1">kcal</span>
+                    </span>
+                    <button
+                      onClick={() => deleteLog(log.id)}
+                      className="p-1.5 text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      title="মুছে ফেলুন"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
+
               );
             })}
           </div>

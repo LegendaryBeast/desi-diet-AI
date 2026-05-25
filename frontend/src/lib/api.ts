@@ -706,6 +706,10 @@ export const mealTrackingApi = {
   },
 
   today: () => apiFetch<MealTrackingListItem[]>('/meal-tracking/today'),
+  delete: (logId: string) =>
+    apiFetch<{ message: string }>(`/meal-tracking/${logId}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ─── Medicine Reminders ───────────────────────────────────────────────────────

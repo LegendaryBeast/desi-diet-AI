@@ -124,6 +124,7 @@ export const MealPlan = () => {
 
   const [loggingFoods, setLoggingFoods] = useState<Record<string, boolean>>({});
   const [loggedFoods, setLoggedFoods] = useState<Record<string, boolean>>({});
+  const [loggedFoodIds, setLoggedFoodIds] = useState<Record<string, string>>({});
 
   // Tracked meal data (from MealLogSection / mealTrackingApi)
   const [trackedCalories, setTrackedCalories] = useState(0);
@@ -139,18 +140,42 @@ export const MealPlan = () => {
   const logFoodItem = async (slotName: string, itemIndex: number, food: MealItem) => {
     const backendSlot = slotName.startsWith('snack') ? 'snack' : slotName;
     const key = `${slotName}-${itemIndex}`;
+
+    // If already logged, toggle off (delete)
+    if (loggedFoods[key]) {
+      const logId = loggedFoodIds[key];
+      if (!logId) return;
+      setLoggingFoods((prev) => ({ ...prev, [key]: true }));
+      try {
+        await mealTrackingApi.delete(logId);
+        setLoggedFoods((prev) => ({ ...prev, [key]: false }));
+        setLoggedFoodIds((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        setTrackingVersion((v) => v + 1);
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : 'লগ মুছে ফেলতে সমস্যা হয়েছে');
+      } finally {
+        setLoggingFoods((prev) => ({ ...prev, [key]: false }));
+      }
+      return;
+    }
+
     setLoggingFoods((prev) => ({ ...prev, [key]: true }));
     try {
       const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
       const foodName = food.name_en || food.name_bn || '';
       const inputStr = `${amountStr} of ${foodName}`;
 
-      await mealTrackingApi.log({
+      const res = await mealTrackingApi.log({
         input: inputStr,
         meal_slot: backendSlot,
         language: 'bn',
       });
       setLoggedFoods((prev) => ({ ...prev, [key]: true }));
+      setLoggedFoodIds((prev) => ({ ...prev, [key]: res.id }));
       // Trigger MealLogSection to re-fetch tracked data
       setTrackingVersion((v) => v + 1);
     } catch (err: unknown) {
@@ -666,13 +691,13 @@ export const MealPlan = () => {
                               {!isEditing && (
                                 <button
                                   onClick={() => logFoodItem(slot.slot, j, food)}
-                                  disabled={loggingFoods[`${slot.slot}-${j}`] || loggedFoods[`${slot.slot}-${j}`]}
+                                  disabled={loggingFoods[`${slot.slot}-${j}`]}
                                   className={`p-1 rounded border transition-all ${
                                     loggedFoods[`${slot.slot}-${j}`]
                                       ? 'bg-emerald-500 text-white border-emerald-500'
                                       : 'bg-white hover:bg-emerald-50 text-ink-faint hover:text-emerald-600 border-ink/5'
                                   }`}
-                                  title={loggedFoods[`${slot.slot}-${j}`] ? 'লগ করা হয়েছে' : 'খাওয়া হিসেবে যোগ করুন'}
+                                  title={loggedFoods[`${slot.slot}-${j}`] ? 'বাদ দিতে আবার ক্লিক করুন' : 'খাওয়া হিসেবে যোগ করুন'}
                                 >
                                   {loggingFoods[`${slot.slot}-${j}`] ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />

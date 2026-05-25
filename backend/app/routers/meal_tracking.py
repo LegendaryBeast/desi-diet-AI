@@ -255,3 +255,22 @@ async def get_today_logs(current_user=Depends(get_current_user)):
         )
         for r in records
     ]
+
+
+@router.delete("/{log_id}")
+async def delete_logged_meal(log_id: str, current_user=Depends(get_current_user)):
+    """Delete a logged meal by its ID."""
+    record = await prisma.mealtracking.find_first(
+        where={
+            "id": log_id,
+            "userId": current_user.id
+        }
+    )
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Logged meal not found."
+        )
+    await prisma.mealtracking.delete(where={"id": log_id})
+    return {"message": "Logged meal successfully deleted."}
+
