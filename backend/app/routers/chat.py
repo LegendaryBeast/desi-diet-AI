@@ -437,8 +437,30 @@ async def diet_plan_session(req: DietPlanChatRequest, current_user=Depends(get_c
     """
 
     async def event_generator():
-        # 1. Start with the fixed collection system prompt
-        messages = [{"role": "system", "content": COLLECTION_SYSTEM_PROMPT}]
+        # Fetch user profile to pre-fill details and avoid asking questions they already answered
+        profile = await prisma.profile.find_unique(where={"userId": current_user.id})
+        
+        dynamic_prompt = COLLECTION_SYSTEM_PROMPT
+        if profile:
+            conds = safe_list(profile.medicalConditions)
+            dynamic_prompt += (
+                f"\n\n=== USER'S EXISTING SAVED PROFILE DATA ===\n"
+                f"We already have the following confirmed details for this user:\n"
+                f"- age: {profile.age}\n"
+                f"- gender: {profile.gender}\n"
+                f"- height_cm: {profile.heightCm}\n"
+                f"- weight_kg: {profile.weightKg}\n"
+                f"- activity_level: {profile.activityLevel}\n"
+                f"- goal: {profile.goal}\n"
+                f"- medical_conditions: {conds}\n\n"
+                f"IMPORTANT INSTRUCTIONS:\n"
+                f"1. Do NOT ask the user for any of the above details step-by-step unless they request to change them!\n"
+                f"2. In your response, acknowledge their saved details warmly. Ask if they want to use these details directly to generate their diet plan, or if they would like to update anything first.\n"
+                f"3. If they say 'yes', 'confirm', 'হ্যাঁ', 'ঠিক আছে', or indicate they want to use their saved details, IMMEDIATELY complete the collection by outputting the ##DIET_DATA_COMPLETE## marker followed by the JSON block containing these exact saved details!\n"
+            )
+
+        # 1. Start with the dynamic system prompt
+        messages = [{"role": "system", "content": dynamic_prompt}]
 
         # 2. Add conversation history
         for turn in req.history:

@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw } from 'lucide-react-native';
-import { dietPlanChatApi } from '../../lib/api';
+import { dietPlanChatApi, profileApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
 import EventSource from 'react-native-sse';
@@ -31,6 +31,21 @@ export default function DietPlanChatScreen() {
   const [planReady, setPlanReady] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const haptics = useHaptics();
+
+  useEffect(() => {
+    // Fetch profile to personalize welcome message
+    profileApi.get().then((res) => {
+      if (res.data?.profile) {
+        const p = res.data.profile;
+        const msg = `নমস্কার! 👋 আমি পুষ্টি এআই। আপনার প্রোফাইল অনুযায়ী আপনার বয়স ${p.age} বছর, ওজন ${p.weight_kg} কেজি এবং উচ্চতা ${p.height_cm} সেমি।\n\nআপনি কি এই তথ্যগুলো দিয়ে সরাসরি আপনার নতুন ডায়েট পরিকল্পনা তৈরি করতে চান, নাকি কোনো তথ্য পরিবর্তন করতে চান?`;
+        setMessages([{
+          role: 'assistant',
+          content: msg,
+          id: 'welcome',
+        }]);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0) {
