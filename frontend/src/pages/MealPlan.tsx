@@ -224,6 +224,50 @@ export const MealPlan = () => {
     }
   };
 
+  const syncLoggedFoods = useCallback(async (currentPlan: MealPlanResponse | null) => {
+    if (!currentPlan) return;
+    try {
+      const logs = await mealTrackingApi.today();
+      const newLoggedFoods: Record<string, boolean> = {};
+      const newLoggedFoodIds: Record<string, string> = {};
+
+      const pd = currentPlan.plan_data as PlanData;
+      const meals = pd.meals || [];
+
+      meals.forEach((slot) => {
+        const slotName = slot.slot;
+        const backendSlot = slotName.startsWith('snack') ? 'snack' : slotName;
+        const items = slot.items || [];
+
+        items.forEach((item, j) => {
+          const key = `${slotName}-${j}`;
+          const foodNameEn = (item.name_en || '').toLowerCase();
+          const foodNameBn = (item.name_bn || '').toLowerCase();
+
+          // Find a log from today that belongs to this slot and matches this food name
+          const matchedLog = logs.find((log) => {
+            if (log.meal_slot !== backendSlot) return false;
+            const logText = (log.input_text || '').toLowerCase();
+            return (
+              (foodNameEn && logText.includes(foodNameEn)) ||
+              (foodNameBn && logText.includes(foodNameBn))
+            );
+          });
+
+          if (matchedLog) {
+            newLoggedFoods[key] = true;
+            newLoggedFoodIds[key] = matchedLog.id;
+          }
+        });
+      });
+
+      setLoggedFoods(newLoggedFoods);
+      setLoggedFoodIds(newLoggedFoodIds);
+    } catch (e) {
+      console.warn('Failed to sync logged foods:', e);
+    }
+  }, []);
+
   const targets = profileData?.targets;
 
   const fetchDaily = useCallback(async () => {
@@ -302,6 +346,12 @@ export const MealPlan = () => {
     else if (tab === 'tomorrow') fetchTomorrow();
     else fetchHistory();
   }, [tab, fetchDaily, fetchTomorrow, fetchHistory]);
+
+  useEffect(() => {
+    if (tab === 'today' && plan) {
+      syncLoggedFoods(plan);
+    }
+  }, [plan, trackingVersion, tab, syncLoggedFoods]);
 
   useEffect(() => {
     if (!searchQuery) {
