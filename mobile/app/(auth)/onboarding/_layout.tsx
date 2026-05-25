@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing } from '../../../lib/theme';
 import { ArrowLeft } from 'lucide-react-native';
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 6;
 
 export default function OnboardingLayout() {
   const pathname = usePathname();
@@ -11,13 +11,15 @@ export default function OnboardingLayout() {
   
   // Extract step number from path (e.g., /onboarding/step-1 -> 1)
   const match = pathname.match(/step-(\d+)/);
-  const currentStep = match ? parseInt(match[1], 10) : 1;
+  const currentStepRaw = match ? parseInt(match[1], 10) : 1;
+  // Step 7 acts as step 6 visually in the progress bar
+  const currentStep = currentStepRaw === 7 ? 6 : currentStepRaw;
   const progress = (currentStep / TOTAL_STEPS) * 100;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        {currentStep > 1 && currentStep < 7 && (
+        {currentStep > 1 && currentStep < 6 && (
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -32,7 +34,6 @@ export default function OnboardingLayout() {
         <Stack.Screen name="step-3" />
         <Stack.Screen name="step-4" />
         <Stack.Screen name="step-5" />
-        <Stack.Screen name="step-6" />
         <Stack.Screen name="step-7" />
       </Stack>
     </View>

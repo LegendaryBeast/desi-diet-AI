@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useOnboardingStore } from '../../../store/onboarding-store';
+import { profileApi } from '../../../lib/api';
 import { colors, fonts, spacing, radius } from '../../../lib/theme';
 import { ArrowRight, Check, Search, X } from 'lucide-react-native';
 
@@ -84,6 +85,7 @@ export default function Step5Screen() {
   const router = useRouter();
   const { data, updateData } = useOnboardingStore();
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const medicalConditions = data.medical_conditions || [];
 
@@ -92,6 +94,31 @@ export default function Step5Screen() {
       updateData({ medical_conditions: medicalConditions.filter((c) => c !== val) });
     } else {
       updateData({ medical_conditions: [...medicalConditions, val] });
+    }
+  };
+
+  const handleFinish = async () => {
+    setLoading(true);
+    try {
+      // Create profile via API
+      await profileApi.create({
+        name_bn: data.name_bn,
+        name_en: data.name_en,
+        age: parseInt(data.age),
+        gender: data.gender,
+        weight_kg: parseFloat(data.weight_kg),
+        height_cm: parseFloat(data.height_cm),
+        activity_level: data.activity_level,
+        goal: data.goal,
+        medical_conditions: medicalConditions,
+        preferred_foods: [], // Aligning with web/backend (removing step 6)
+      });
+      // Move directly to final summary
+      router.push('/(auth)/onboarding/step-7');
+    } catch (e) {
+      console.error('Profile creation failed:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -177,11 +204,18 @@ export default function Step5Screen() {
         </ScrollView>
 
         <TouchableOpacity 
-          style={styles.nextBtn} 
-          onPress={() => router.push('/(auth)/onboarding/step-6')}
+          style={[styles.nextBtn, loading && styles.nextBtnDisabled]} 
+          onPress={handleFinish}
+          disabled={loading}
         >
-          <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
-          <ArrowRight size={20} color={colors.white} />
+          {loading ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Text style={styles.nextBtnText}>প্রোফাইল তৈরি করুন</Text>
+              <ArrowRight size={20} color={colors.white} />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -269,5 +303,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     marginTop: spacing.md,
   },
+  nextBtnDisabled: { opacity: 0.7 },
   nextBtnText: { fontFamily: fonts.bnBold, fontSize: 18, color: colors.white },
 });
