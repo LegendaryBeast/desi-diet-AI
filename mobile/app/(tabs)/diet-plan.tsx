@@ -36,8 +36,7 @@ export default function DietPlanChatScreen() {
     // Fetch profile to personalize welcome message
     profileApi.get().then((res) => {
       if (res.data?.profile) {
-        const p = res.data.profile;
-        const msg = `হ্যালো! 👋 আমি পুষ্টি এআই। আপনার প্রোফাইল অনুযায়ী আপনার বয়স ${p.age} বছর, ওজন ${p.weight_kg} কেজি এবং উচ্চতা ${p.height_cm} সেমি।\n\nআপনি কি এই তথ্যগুলো দিয়ে সরাসরি আপনার নতুন ডায়েট পরিকল্পনা তৈরি করতে চান, নাকি কোনো তথ্য পরিবর্তন করতে চান?`;
+        const msg = `হ্যালো! 👋 আমি পুষ্টি এআই। আমি দেখতে পাচ্ছি যে আপনার একটি স্বাস্থ্য প্রোফাইল আগে থেকেই তৈরি করা আছে।\n\nআপনি কি আপনার সংরক্ষিত প্রোফাইল তথ্য ব্যবহার করে সরাসরি একটি নতুন ডায়েট পরিকল্পনা তৈরি করতে চান, নাকি কোনো তথ্য পরিবর্তন করতে চান?`;
         setMessages([{
           role: 'assistant',
           content: msg,
