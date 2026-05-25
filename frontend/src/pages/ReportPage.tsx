@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { reportsApi, type HealthSummaryReport } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 type Period = 3 | 7 | 10;
 
@@ -36,6 +37,9 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
 };
 
 export const ReportPage = () => {
+  const { profileData } = useAuth();
+  const userName = profileData?.profile?.name_bn || profileData?.profile?.name_en || 'সম্মানিত সদস্য';
+
   const [period, setPeriod] = useState<Period>(7);
   const [weight, setWeight] = useState('');
   const [report, setReport] = useState<HealthSummaryReport | null>(null);
@@ -176,7 +180,7 @@ export const ReportPage = () => {
           <div class="user-box">
             <table style="border: none; margin: 0; width: 100%; box-shadow: none;">
               <tr style="border: none;">
-                <td style="border: none; padding: 0; width: 50%;"><strong>সদস্য:</strong> সম্মানিত সদস্য</td>
+                <td style="border: none; padding: 0; width: 50%;"><strong>সদস্য:</strong> ${userName}</td>
                 <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
               </tr>
             </table>

@@ -10,7 +10,7 @@ import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   TrendingUp, Flame, Mail, CheckCircle, BarChart3,
   Scale, AlertCircle, Calendar, Zap, FileText, Download,
-  Heart, AlertTriangle,
+  Heart, AlertTriangle, Brain, ShieldCheck,
 } from 'lucide-react-native';
 import Svg, { Rect, Line, Text as SvgText, G } from 'react-native-svg';
 import * as Print from 'expo-print';
@@ -754,6 +754,71 @@ export default function ReportScreen() {
         </View>
       ) : (
         <>
+          {/* ── AI Dietitian Verdict Card ── */}
+          {healthSummary?.ai_verdict ? (
+            <View style={styles.verdictCard}>
+              <View style={styles.verdictHeader}>
+                <View style={styles.verdictIconContainer}>
+                  <Brain size={20} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.verdictTitle}>এআই ও সামগ্রিক পুষ্টি মূল্যায়ন</Text>
+                  <Text style={styles.verdictSub}>PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত</Text>
+                </View>
+              </View>
+              <Text style={styles.verdictText}>"{healthSummary.ai_verdict}"</Text>
+              <View style={styles.verdictFooter}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <ShieldCheck size={14} color={colors.primary} />
+                  <Text style={styles.verdictFooterText}>অনুমোদিত ক্লিনিক্যাল পুষ্টি নির্দেশিকা</Text>
+                </View>
+                <Text style={[styles.verdictFooterText, { fontStyle: 'italic', fontWeight: 'bold' }]}>DesiDiet AI Engine</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── Clinical AI Insights Card ── */}
+          {healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 ? (
+            <View style={styles.clinicalCard}>
+              <View style={styles.clinicalHeader}>
+                <View style={{ width: 4, height: 16, backgroundColor: colors.accent, borderRadius: 2 }} />
+                <Text style={styles.clinicalTitle}>🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ</Text>
+              </View>
+              <Text style={styles.clinicalDesc}>
+                আপনার প্রফেশনাল পুষ্টি বিশ্লেষণ ও নির্দেশনা:
+              </Text>
+              <View style={styles.insightsList}>
+                {healthSummary.clinical_insights.map((ins: any, i: number) => {
+                  const isError = ins.type === 'error';
+                  const borderCol = isError ? '#EF5350' : '#FFB74D';
+                  const bgCol = isError ? 'rgba(239, 83, 80, 0.05)' : 'rgba(255, 183, 77, 0.05)';
+                  const titleCol = isError ? '#C62828' : '#E65100';
+                  return (
+                    <View key={i} style={[styles.insightRow, { borderLeftColor: borderCol, backgroundColor: bgCol }]}>
+                      <View style={styles.insightRowHeader}>
+                        <AlertCircle size={15} color={borderCol} style={{ marginRight: 6 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.insightRowTitle, { color: titleCol }]}>{ins.title}</Text>
+                          {ins.disease ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: isError ? 'rgba(239, 83, 80, 0.1)' : 'rgba(255, 183, 77, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
+                              <Text style={{ fontFamily: fonts.bn, fontSize: 10, color: titleCol }}>শারীরিক অবস্থা: {ins.disease}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </View>
+                      <Text style={styles.insightRowMsg}>{ins.message}</Text>
+                      {ins.reference ? (
+                        <View style={styles.refBadge}>
+                          <Text style={styles.refBadgeText}>রেফারেন্স: {ins.reference}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           {/* ── Summary Cards ──────────────────────────────────────────────── */}
           {targets && (
             <View style={styles.summaryRow}>
@@ -1109,6 +1174,72 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'right',
     marginTop: 2,
+  },
+
+  verdictCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: '#FFFDF9',
+    borderRadius: radius.xl,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.3)',
+    padding: spacing.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  verdictHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  verdictIconContainer: {
+    padding: 6,
+    backgroundColor: 'rgba(167, 201, 36, 0.15)',
+    borderRadius: radius.md,
+  },
+  verdictTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  verdictSub: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  verdictText: {
+    fontFamily: fonts.bn,
+    fontSize: 14.5,
+    color: colors.textPrimary,
+    lineHeight: 24,
+    fontStyle: 'italic',
+    fontWeight: '500',
+    paddingLeft: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: 'rgba(167, 201, 36, 0.5)',
+    backgroundColor: 'rgba(252, 251, 247, 0.4)',
+    paddingVertical: spacing.xs,
+    paddingRight: spacing.xs,
+    borderRadius: radius.xs,
+  },
+  verdictFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    paddingTop: spacing.sm,
+    marginTop: spacing.md,
+  },
+  verdictFooterText: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
   },
 
   clinicalCard: {
