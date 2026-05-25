@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { mealPlanApi } from '../../lib/api';
+import { mealPlanApi, mealTrackingApi } from '../../lib/api';
 import { useRouter } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
@@ -39,8 +39,8 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
 
   // ── Daily Plan Query ──────────────────────────────────────────────────────
   const dailyQ = useQuery({
-    queryKey: ['daily_plan'],
-    queryFn: async () => (await mealPlanApi.daily('bn')).data,
+    queryKey: ['daily_plan', 0],
+    queryFn: async () => (await mealPlanApi.daily('bn', false, 0)).data,
     enabled: mode === 'daily',
   });
 
@@ -53,12 +53,83 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
 
   // ── Mark-Complete Mutation ────────────────────────────────────────────────
   const markMutation = useMutation({
-    mutationFn: async ({ planId, slot, completed }: { planId: string; slot: string; completed: boolean }) => {
-      return mealPlanApi.markComplete(planId, slot, completed);
+    mutationFn: async ({ planId, slot, completed, items }: { planId: string; slot: string; completed: boolean; items: any[] }) => {
+      const backendSlot = slot.startsWith('snack') ? 'snack' : slot;
+
+      // 1. Toggle slot complete state
+      const res = await mealPlanApi.markComplete(planId, slot, completed);
+
+      try {
+        // 2. Fetch today's existing logs to match names
+        const todayLogsRes = await mealTrackingApi.today();
+        const logs = todayLogsRes.data || [];
+
+        if (completed) {
+          // Log all items that aren't already logged
+          const logPromises = items.map(async (food: any) => {
+            const foodNameEn = (food.name_en || '').toLowerCase();
+            const foodNameBn = (food.name_bn || '').toLowerCase();
+
+            const isAlreadyLogged = logs.some((log: any) => {
+              if (log.meal_slot !== backendSlot) return false;
+              const logText = (log.input_text || '').toLowerCase();
+              return (
+                (foodNameEn && logText.includes(foodNameEn)) ||
+                (foodNameBn && logText.includes(foodNameBn))
+              );
+            });
+
+            if (!isAlreadyLogged) {
+              const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+              const foodName = food.name_en || food.name_bn || '';
+              const inputStr = `${amountStr} of ${foodName}`;
+
+              await mealTrackingApi.log({
+                input: inputStr,
+                meal_slot: backendSlot,
+                language: 'bn',
+                direct_calories: food.calories ? Number(food.calories) : undefined,
+                direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
+                direct_carbs: undefined,
+                direct_fat: undefined,
+                direct_name: food.name_en || food.name_bn || undefined,
+                direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
+              });
+            }
+          });
+          await Promise.all(logPromises);
+        } else {
+          // Delete all logged items in this slot
+          const deletePromises = items.map(async (food: any) => {
+            const foodNameEn = (food.name_en || '').toLowerCase();
+            const foodNameBn = (food.name_bn || '').toLowerCase();
+
+            const matchedLogs = logs.filter((log: any) => {
+              if (log.meal_slot !== backendSlot) return false;
+              const logText = (log.input_text || '').toLowerCase();
+              return (
+                (foodNameEn && logText.includes(foodNameEn)) ||
+                (foodNameBn && logText.includes(foodNameBn))
+              );
+            });
+
+            const delPromises = matchedLogs.map(async (log: any) => {
+              await mealTrackingApi.delete(log.id);
+            });
+            await Promise.all(delPromises);
+          });
+          await Promise.all(deletePromises);
+        }
+      } catch (err) {
+        console.warn('Failed to sync meal tracking logs on slot toggle:', err);
+      }
+
+      return res;
     },
     onSuccess: (_, vars) => {
       haptics.success();
       queryClient.invalidateQueries({ queryKey: ['daily_plan'] });
+      queryClient.invalidateQueries({ queryKey: ['daily_tracking'] });
     },
     onError: () => haptics.error(),
   });
@@ -108,7 +179,7 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
               style={[styles.checkBtn, isCompleted && styles.checkBtnDone]}
               onPress={() => {
                 haptics.light();
-                markMutation.mutate({ planId, slot: meal.slot, completed: !isCompleted });
+                markMutation.mutate({ planId, slot: meal.slot, completed: !isCompleted, items: meal.items || [] });
               }}
               disabled={markMutation.isPending}
             >

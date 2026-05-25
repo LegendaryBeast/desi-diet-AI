@@ -381,7 +381,65 @@ export const MealPlan = () => {
 
   const toggleSlotForPlan = async (targetPlan: MealPlanResponse, slot: string) => {
     const isComplete = (targetPlan.completed_slots || []).includes(slot);
+    const backendSlot = slot.startsWith('snack') ? 'snack' : slot;
+
+    // 1. Determine list of items inside this slot
+    const pd = getPlanData(targetPlan);
+    const meals = pd.meals || [];
+    const targetMeal = meals.find((m) => m.slot === slot);
+    const items = targetMeal?.items || [];
+
+    const newLoggedFoods = { ...loggedFoods };
+    const newLoggedFoodIds = { ...loggedFoodIds };
+
     try {
+      // 2. Perform database logging or deleting of all items in this slot
+      if (!isComplete) {
+        // Marking slot as Eaten: Log all individual items that aren't already logged
+        const logPromises = items.map(async (food, j) => {
+          const key = `${slot}-${j}`;
+          if (!newLoggedFoods[key]) {
+            const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+            const foodName = food.name_en || food.name_bn || '';
+            const inputStr = `${amountStr} of ${foodName}`;
+
+            const res = await mealTrackingApi.log({
+              input: inputStr,
+              meal_slot: backendSlot,
+              language: 'bn',
+              direct_calories: food.calories ? Number(food.calories) : undefined,
+              direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
+              direct_carbs: undefined,
+              direct_fat: undefined,
+              direct_name: food.name_en || food.name_bn || undefined,
+              direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
+            });
+
+            newLoggedFoods[key] = true;
+            newLoggedFoodIds[key] = res.id;
+          }
+        });
+        await Promise.all(logPromises);
+      } else {
+        // Marking slot as Not Eaten: Delete all individual items in this slot
+        const deletePromises = items.map(async (food, j) => {
+          const key = `${slot}-${j}`;
+          const logId = newLoggedFoodIds[key];
+          if (logId) {
+            await mealTrackingApi.delete(logId);
+            delete newLoggedFoods[key];
+            delete newLoggedFoodIds[key];
+          }
+        });
+        await Promise.all(deletePromises);
+      }
+
+      // Update state for individual checked logs
+      setLoggedFoods(newLoggedFoods);
+      setLoggedFoodIds(newLoggedFoodIds);
+      setTrackingVersion((v) => v + 1);
+
+      // 3. Mark the slot complete in meal plan
       const res = await mealPlanApi.markSlotComplete(targetPlan.plan_id, slot, !isComplete);
 
       // Update plan in state
@@ -395,19 +453,8 @@ export const MealPlan = () => {
       setHistoryPlans((prev) =>
         prev.map((p) => (p.plan_id === targetPlan.plan_id ? res : p))
       );
-    } catch {
-      // Fallback
-      setHistoryPlans((prev) =>
-        prev.map((p) => {
-          if (p.plan_id === targetPlan.plan_id) {
-            const nextCompleted = isComplete
-              ? (p.completed_slots || []).filter((s) => s !== slot)
-              : [...(p.completed_slots || []), slot];
-            return { ...p, completed_slots: nextCompleted };
-          }
-          return p;
-        })
-      );
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'স্লট পরিবর্তন করতে সমস্যা হয়েছে');
     }
   };
 
@@ -472,8 +519,8 @@ export const MealPlan = () => {
     const slotConsumedCal = meals
       .filter((m) => (p.completed_slots || []).includes(m.slot))
       .reduce((acc, m) => acc + (m.items || []).reduce((s, item) => s + (item.calories || 0), 0), 0);
-    // Add tracked (logged) calories for today's plan
-    const consumedCal = isToday ? slotConsumedCal + trackedCalories : slotConsumedCal;
+    // Use tracked (logged) calories for today's plan, else fallback to slot calculations
+    const consumedCal = isToday ? trackedCalories : slotConsumedCal;
 
     // Total calculation
     let totalCal = p.calorie_target || pd.target_calories || 0;
@@ -539,11 +586,11 @@ export const MealPlan = () => {
                     return acc;
                   }, { protein_g: 0, carbs_g: 0, fat_g: 0 });
 
-                // For today's plan, add tracked macros
+                // For today's plan, use tracked macros directly
                 const consumedMacros = isToday ? {
-                  protein_g: Math.round(slotMacros.protein_g + trackedMacros.protein_g),
-                  carbs_g: Math.round(slotMacros.carbs_g + trackedMacros.carbs_g),
-                  fat_g: Math.round(slotMacros.fat_g + trackedMacros.fat_g),
+                  protein_g: Math.round(trackedMacros.protein_g),
+                  carbs_g: Math.round(trackedMacros.carbs_g),
+                  fat_g: Math.round(trackedMacros.fat_g),
                 } : slotMacros;
 
                 return [

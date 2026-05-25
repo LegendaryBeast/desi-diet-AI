@@ -123,19 +123,7 @@ export default function HomeScreen() {
     });
   }
 
-  const plannedMeals = planData?.plan_data?.meals || [];
-  const completedSlots = (planData?.completed_slots && typeof planData.completed_slots === 'string' 
-    ? JSON.parse(planData.completed_slots) 
-    : planData?.completed_slots) || [];
-    
-  plannedMeals.forEach((meal: any) => {
-    if (completedSlots.includes(meal.slot)) {
-      consumedCals += meal.target_calories || 0;
-      consumedProtein += (meal.target_calories * 0.2) / 4;
-      consumedCarbs += (meal.target_calories * 0.5) / 4;
-      consumedFat += (meal.target_calories * 0.3) / 9;
-    }
-  });
+  // No double-counting: consumed calories and macros are purely calculated from actual logged trackingData logs
 
   const targetCals = reportData?.targets?.target_calories || 2350;
   const userName = profileData?.profile?.name_en || profileData?.profile?.name_bn || 'Andreas';
