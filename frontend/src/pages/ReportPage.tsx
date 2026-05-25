@@ -9,6 +9,7 @@ import {
   BarChart2, Flame, Zap, Droplet, Wind, AlertCircle,
   RefreshCw, Scale, Activity, TrendingUp, Target,
   CheckCircle2, ChevronRight, Loader2, Calendar,
+  Mail, Download, Heart
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { reportsApi, type HealthSummaryReport } from '../lib/api';
@@ -42,6 +43,12 @@ export const ReportPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
 
+  // Email report state
+  const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
   const handleGenerate = useCallback(async () => {
     const wKg = parseFloat(weight);
     if (!weight || isNaN(wKg) || wKg < 20 || wKg > 300) {
@@ -50,6 +57,7 @@ export const ReportPage = () => {
     }
     setLoading(true);
     setError(null);
+    setEmailSent(false);
     try {
       const data = await reportsApi.healthSummary(period, wKg);
       setReport(data);
@@ -60,6 +68,223 @@ export const ReportPage = () => {
       setLoading(false);
     }
   }, [period, weight]);
+
+  const handleSendEmail = async () => {
+    if (!email.includes('@')) {
+      setEmailError('অনুগ্রহ করে সঠিক ইমেইল দিন');
+      return;
+    }
+    setEmailSending(true);
+    setEmailError('');
+    try {
+      await reportsApi.sendEmail(email, 'bn');
+      setEmailSent(true);
+    } catch (err: unknown) {
+      setEmailError(err instanceof Error ? err.message : 'ইমেইল পাঠাতে সমস্যা হয়েছে');
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (!report) return;
+
+    const activeTargets = report.targets || {
+      target_calories: 2000,
+      protein_g: 80,
+      carbs_g: 250,
+      fat_g: 60,
+      fiber_g: 25,
+    };
+
+    const avgCalories = report.avg_daily_calories || 0;
+    const complianceRate = activeTargets.target_calories ? (avgCalories / activeTargets.target_calories) : 0.85;
+
+    const avgProtein = report.macro_summary?.protein_g ? (report.macro_summary.protein_g / period) : (activeTargets.protein_g * complianceRate);
+    const avgCarbs = report.macro_summary?.carbs_g ? (report.macro_summary.carbs_g / period) : (activeTargets.carbs_g * complianceRate);
+    const avgFat = report.macro_summary?.fat_g ? (report.macro_summary.fat_g / period) : (activeTargets.fat_g * complianceRate);
+    const avgFiber = report.macro_summary?.fiber_g ? (report.macro_summary.fiber_g / period) : (activeTargets.fiber_g * complianceRate);
+
+    const deficiencies = report.micronutrient_targets || [];
+
+    const isOptimal = (avgVal: number, targetVal: number) => {
+      const pct = (avgVal / targetVal) * 100;
+      if (pct < 70) return { label: 'ঘাটতি', color: '#C62828', bg: '#FFEBEE' };
+      if (pct > 115) return { label: 'অতিরিক্ত', color: '#EF6C00', bg: '#FFF3E0' };
+      return { label: 'সঠিক', color: '#2E7D32', bg: '#E8F5E9' };
+    };
+
+    const caloriesStatus = isOptimal(avgCalories, activeTargets.target_calories);
+    const proteinStatus = isOptimal(avgProtein, activeTargets.protein_g);
+    const carbsStatus = isOptimal(avgCarbs, activeTargets.carbs_g);
+    const fatStatus = isOptimal(avgFat, activeTargets.fat_g);
+    const fiberStatus = isOptimal(avgFiber, activeTargets.fiber_g);
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>DesiDiet Clinical Report</title>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 30px; line-height: 1.6; }
+            .header { border-bottom: 3px solid #A7C924; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+            .logo { font-size: 28px; font-weight: bold; color: #8FB41E; letter-spacing: -0.5px; }
+            .meta-info { text-align: right; font-size: 12px; color: #7A8487; }
+            .user-box { background-color: #FFFDF9; border: 1px solid #EBF0D8; padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; }
+            h2 { font-size: 18px; color: #1C2123; border-left: 5px solid #A7C924; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+            th { background-color: #EBF0D8; color: #1C2123; padding: 10px 12px; text-align: left; border: 1px solid #DFE3D1; font-weight: bold; }
+            td { padding: 10px 12px; border: 1px solid #DFE3D1; }
+            .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+            .food-tag { display: inline-block; background-color: #FFFDF9; border: 1px solid #DFE3D1; border-radius: 16px; padding: 6px 14px; margin: 5px; font-size: 12px; color: #e05a1c; font-weight: bold; }
+            .footer { margin-top: 50px; border-top: 1px solid #DFE3D1; padding-top: 15px; font-size: 11px; color: #7A8487; text-align: center; line-height: 1.8; }
+            .clinical-box { border-left: 4px solid #A7C924; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">DesiDiet</div>
+              <div style="font-size: 11px; color: #7A8487; margin-top: 2px;">PushtiAI Clinical Nutrition System</div>
+            </div>
+            <div class="meta-info">
+              <strong>রিপোর্ট আইডি:</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
+              <strong>তারিখ:</strong> ${new Date().toLocaleDateString('bn-BD')}<br>
+              <strong>রিপোর্ট মেয়াদ:</strong> ${period} দিন
+            </div>
+          </div>
+
+          <div class="user-box">
+            <table style="border: none; margin: 0; width: 100%; box-shadow: none;">
+              <tr style="border: none;">
+                <td style="border: none; padding: 0; width: 50%;"><strong>সদস্য:</strong> সম্মানিত সদস্য</td>
+                <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
+              </tr>
+            </table>
+          </div>
+
+          <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>পুষ্টি উপাদান</th>
+                <th>গড় দৈনিক গ্রহণ</th>
+                <th>লক্ষ্যমাত্রা</th>
+                <th>পূরণ হার (%)</th>
+                <th>অবস্থা</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>ক্যালোরি (Calories)</strong></td>
+                <td>${Math.round(avgCalories)} kcal</td>
+                <td>${activeTargets.target_calories} kcal</td>
+                <td>${Math.round((avgCalories / activeTargets.target_calories) * 100)}%</td>
+                <td><span class="status-badge" style="background-color: ${caloriesStatus.bg}; color: ${caloriesStatus.color};">${caloriesStatus.label}</span></td>
+              </tr>
+              <tr>
+                <td><strong>আমিষ (Protein)</strong></td>
+                <td>${Math.round(avgProtein)}g</td>
+                <td>${activeTargets.protein_g}g</td>
+                <td>${Math.round((avgProtein / activeTargets.protein_g) * 100)}%</td>
+                <td><span class="status-badge" style="background-color: ${proteinStatus.bg}; color: ${proteinStatus.color};">${proteinStatus.label}</span></td>
+              </tr>
+              <tr>
+                <td><strong>শর্করা (Carbs)</strong></td>
+                <td>${Math.round(avgCarbs)}g</td>
+                <td>${activeTargets.carbs_g}g</td>
+                <td>${Math.round((avgCarbs / activeTargets.carbs_g) * 100)}%</td>
+                <td><span class="status-badge" style="background-color: ${carbsStatus.bg}; color: ${carbsStatus.color};">${carbsStatus.label}</span></td>
+              </tr>
+              <tr>
+                <td><strong>চর্বি (Fat)</strong></td>
+                <td>${Math.round(avgFat)}g</td>
+                <td>${activeTargets.fat_g}g</td>
+                <td>${Math.round((avgFat / activeTargets.fat_g) * 100)}%</td>
+                <td><span class="status-badge" style="background-color: ${fatStatus.bg}; color: ${fatStatus.color};">${fatStatus.label}</span></td>
+              </tr>
+              <tr>
+                <td><strong>আঁশ (Fiber)</strong></td>
+                <td>${Math.round(avgFiber)}g</td>
+                <td>${activeTargets.fiber_g}g</td>
+                <td>${Math.round((avgFiber / activeTargets.fiber_g) * 100)}%</td>
+                <td><span class="status-badge" style="background-color: ${fiberStatus.bg}; color: ${fiberStatus.color};">${fiberStatus.label}</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Gaps)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>পুষ্টি উপাদান</th>
+                <th>গড় গ্রহণ</th>
+                <th>লক্ষ্যমাত্রা</th>
+                <th>পূরণ হার (%)</th>
+                <th>অবস্থা</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${deficiencies.map(def => {
+                const status = isOptimal(def.consumed / period, def.target / period);
+                return `
+                  <tr>
+                    <td><strong>${def.name_bn || def.name} (${def.name})</strong></td>
+                    <td>${Math.round(def.consumed / period)} ${def.unit}</td>
+                    <td>${Math.round(def.target / period)} ${def.unit}</td>
+                    <td>${Math.round(def.percentage)}%</td>
+                    <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+
+          ${report.clinical_insights && report.clinical_insights.length > 0 ? `
+            <h2>🧠 এআই ও ক্লিনিক্যাল পুষ্টি পরামর্শ (Clinical Insights)</h2>
+            <div style="margin-top: 10px;">
+              ${report.clinical_insights.map((insight: any) => {
+                const isError = insight.type === 'error';
+                const isWarning = insight.type === 'warning';
+                const borderTheme = isError ? '#C62828' : isWarning ? '#EF6C00' : '#2E7D32';
+                const bgTheme = isError ? '#FFEBEE' : isWarning ? '#FFF3E0' : '#E8F5E9';
+                return `
+                  <div class="clinical-box" style="border-left-color: ${borderTheme}; background-color: ${bgTheme};">
+                    <strong style="color: ${borderTheme}; display: block; margin-bottom: 4px;">⚠️ ${insight.title}</strong>
+                    <div style="color: #1C2123;">${insight.message}</div>
+                    ${insight.reference ? `<div style="font-size: 11px; color: #7A8487; margin-top: 6px; font-style: italic;">সূত্র: ${insight.reference}</div>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+
+          <div class="footer">
+            এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
+            © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    }
+  };
 
   return (
     <DashboardLayout
@@ -75,12 +300,12 @@ export const ReportPage = () => {
         ) : undefined
       }
     >
-      <div className="max-w-3xl w-full mx-auto pb-6 space-y-4">
+      <div className="max-w-6xl w-full mx-auto pb-6 space-y-4">
 
         {/* ── Weight Input + Period Selector ── */}
         {!generated && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl border border-ink/5 shadow-sm p-3.5 space-y-3"
+            className="bg-white rounded-xl border border-ink/5 shadow-sm p-4 space-y-3 max-w-2xl mx-auto"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
@@ -164,12 +389,12 @@ export const ReportPage = () => {
 
               {/* Summary Hero */}
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-ink text-cream p-3.5 rounded-xl relative overflow-hidden"
+                className="bg-ink text-cream p-5 rounded-2xl relative overflow-hidden"
               >
                 <div className="absolute inset-0 opacity-5">
                   <BarChart2 className="w-40 h-40 absolute -right-5 -top-5" />
                 </div>
-                <div className="relative grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="relative grid grid-cols-2 md:grid-cols-4 gap-6">
                   {[
                     { icon: Calendar, label: 'বিশ্লেষিত দিন', val: `${report.days_with_data}/${report.period_days}`, unit: 'দিন', color: 'text-accent' },
                     { icon: Flame, label: 'গড় ক্যালোরি/দিন', val: report.avg_daily_calories.toLocaleString(), unit: 'kcal', color: 'text-amber-400' },
@@ -188,230 +413,343 @@ export const ReportPage = () => {
                 </div>
               </motion.div>
 
-              {/* Side-by-side Charts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* ── Calorie Intake Per Day Chart ── */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                  className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-1 h-3.5 bg-accent rounded-full" />
-                    <h2 className="font-bn font-bold text-xs text-ink">ক্যালোরি গ্রহণ (প্রতিদিন)</h2>
-                  </div>
-                  {report.calorie_history.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={150}>
-                      <AreaChart data={report.calorie_history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#e05a1c" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#e05a1c" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ece8" />
-                        <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                          formatter={(val: number) => [`${val} kcal`, 'ক্যালোরি']}
-                        />
-                        <ReferenceLine y={report.target_calories} stroke="#3b82f6" strokeDasharray="4 4" />
-                        <Area type="monotone" dataKey="calories_consumed" stroke="#e05a1c" strokeWidth={2}
-                          fill="url(#calGrad)" dot={{ r: 2.5, fill: '#e05a1c' }} activeDot={{ r: 4 }} name="calories" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[150px] flex items-center justify-center">
-                      <p className="font-bn text-ink-faint text-[0.68rem]">কোনো মিল প্ল্যান সম্পন্ন করা হয়নি</p>
-                    </div>
-                  )}
-                </motion.div>
-
-                {/* ── Weight Curve Chart ── */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                  className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                    <h2 className="font-bn font-bold text-xs text-ink">ওজনের পরিবর্তন</h2>
-                  </div>
-                  {report.weight_history.length > 1 ? (
-                    <ResponsiveContainer width="100%" height={150}>
-                      <LineChart data={report.weight_history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ece8" />
-                        <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                        <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}kg`} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                          formatter={(val: number) => [`${val} kg`, 'ওজন']}
-                        />
-                        <Line type="monotone" dataKey="weight_kg" stroke="#3b82f6" strokeWidth={2}
-                          dot={{ r: 3, fill: '#3b82f6', stroke: 'white', strokeWidth: 1 }} activeDot={{ r: 4 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[150px] flex flex-col items-center justify-center gap-1 text-center">
-                      <TrendingUp className="w-6 h-6 text-ink/10" />
-                      <p className="font-bn text-ink-faint text-[0.68rem]">
-                        ওজন লগ করুন পরিবর্তন দেখতে<br />
-                        <span className="opacity-60 text-[0.62rem]">আজ: {report.current_weight_kg} কেজি</span>
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-
-              {/* ── Macro Row: Pie + Bar ── */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                {/* Pie Chart */}
-                <div className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1 h-3.5 bg-amber-500 rounded-full" />
-                    <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো বিভাজন</h2>
-                  </div>
-                  {report.pie_data.length > 0 ? (
-                    <>
-                      <div className="h-[120px] flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={report.pie_data} cx="50%" cy="50%" outerRadius={50}
-                              dataKey="value" labelLine={false} label={renderCustomLabel}>
-                              {report.pie_data.map((entry, i) => (
-                                <Cell key={i} fill={entry.color} />
-                              ))}
-                            </Pie>
+              {/* Main Gorgeous 2-Column Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                
+                {/* Left Columns (Charts and Nutrient Stats) - Takes 2/3 space */}
+                <div className="lg:col-span-2 space-y-4">
+                  
+                  {/* Side-by-side Charts Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Calorie Intake Chart */}
+                    <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1 h-3.5 bg-accent rounded-full" />
+                        <h2 className="font-bn font-bold text-xs text-ink">ক্যালোরি গ্রহণ (প্রতিদিন)</h2>
+                      </div>
+                      {report.calorie_history.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={150}>
+                          <AreaChart data={report.calorie_history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#e05a1c" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="#e05a1c" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ece8" />
+                            <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                             <Tooltip
                               contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                              formatter={(val: number, _: string, props: any) => [
-                                `${val}% (${props.payload.grams}g)`,
-                                props.payload.name
-                              ]}
+                              formatter={(val: number) => [`${val} kcal`, 'ক্যালোরি']}
                             />
-                          </PieChart>
+                            <ReferenceLine y={report.target_calories} stroke="#3b82f6" strokeDasharray="4 4" />
+                            <Area type="monotone" dataKey="calories_consumed" stroke="#e05a1c" strokeWidth={2}
+                              fill="url(#calGrad)" dot={{ r: 2.5, fill: '#e05a1c' }} activeDot={{ r: 4 }} name="calories" />
+                          </AreaChart>
                         </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[150px] flex items-center justify-center">
+                          <p className="font-bn text-ink-faint text-[0.68rem]">কোনো মিল প্ল্যান সম্পন্ন করা হয়নি</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Weight Curve Chart */}
+                    <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
+                        <h2 className="font-bn font-bold text-xs text-ink">ওজনের পরিবর্তন</h2>
                       </div>
-                      <div className="flex justify-center gap-3 flex-wrap mt-1">
-                        {report.pie_data.map((d, i) => (
-                          <div key={i} className="flex items-center gap-1 text-[0.62rem] font-bn">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
-                            <span className="font-bold text-ink">{d.name}</span>
-                            <span className="text-ink-faint">{d.grams}g</span>
+                      {report.weight_history.length > 1 ? (
+                        <ResponsiveContainer width="100%" height={150}>
+                          <LineChart data={report.weight_history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ece8" />
+                            <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                            <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}kg`} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                              formatter={(val: number) => [`${val} kg`, 'ওজন']}
+                            />
+                            <Line type="monotone" dataKey="weight_kg" stroke="#3b82f6" strokeWidth={2}
+                              dot={{ r: 3, fill: '#3b82f6', stroke: 'white', strokeWidth: 1 }} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[150px] flex flex-col items-center justify-center gap-1 text-center">
+                          <TrendingUp className="w-6 h-6 text-ink/10" />
+                          <p className="font-bn text-ink-faint text-[0.68rem]">
+                            ওজন লগ করুন পরিবর্তন দেখতে<br />
+                            <span className="opacity-60 text-[0.62rem]">আজ: {report.current_weight_kg} কেজি</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Macro Row: Pie + Bar */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Pie Chart */}
+                    <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm flex flex-col justify-between">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1 h-3.5 bg-amber-500 rounded-full" />
+                        <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো বিভাজন</h2>
+                      </div>
+                      {report.pie_data.length > 0 ? (
+                        <>
+                          <div className="h-[120px] flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie data={report.pie_data} cx="50%" cy="50%" outerRadius={50}
+                                  dataKey="value" labelLine={false} label={renderCustomLabel}>
+                                  {report.pie_data.map((entry, i) => (
+                                    <Cell key={i} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                                  formatter={(val: number, _: string, props: any) => [
+                                    `${val}% (${props.payload.grams}g)`,
+                                    props.payload.name
+                                  ]}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="flex justify-center gap-3 flex-wrap mt-1">
+                            {report.pie_data.map((d, i) => (
+                              <div key={i} className="flex items-center gap-1 text-[0.62rem] font-bn">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
+                                <span className="font-bold text-ink">{d.name}</span>
+                                <span className="text-ink-faint">{d.grams}g</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="h-[140px] flex items-center justify-center">
+                          <p className="font-bn text-ink-faint text-[0.68rem]">পর্যাপ্ত ডেটা নেই</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Macro vs Target Bar */}
+                    <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1 h-3.5 bg-green-500 rounded-full" />
+                        <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো গ্রহণ বনাম লক্ষ্য</h2>
+                      </div>
+                      <div className="space-y-2.5">
+                        {[
+                          { label: 'প্রোটিন', consumed: report.macro_summary.protein_g, target: report.macro_summary.target_protein_g, color: 'bg-emerald-500', unit: 'g' },
+                          { label: 'শর্করা', consumed: report.macro_summary.carbs_g, target: report.macro_summary.target_carbs_g, color: 'bg-blue-500', unit: 'g' },
+                          { label: 'চর্বি', consumed: report.macro_summary.fat_g, target: report.macro_summary.target_fat_g, color: 'bg-amber-500', unit: 'g' },
+                          { label: 'ফাইবার', consumed: report.macro_summary.fiber_g, target: report.period_days * 30, color: 'bg-green-500', unit: 'g' },
+                        ].map((m, i) => {
+                          const pct = m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;
+                          return (
+                            <div key={i} className="font-bn">
+                              <div className="flex justify-between text-[0.68rem] mb-0.5">
+                                <span className="font-bold text-ink">{m.label}</span>
+                                <span className="text-ink-faint">{m.consumed.toFixed(0)}{m.unit} / {m.target.toFixed(0)}{m.unit} ({pct}%)</span>
+                              </div>
+                              <div className="h-1.5 bg-cream rounded-full overflow-hidden">
+                                <div className={`h-full ${m.color} rounded-full transition-all duration-700`}
+                                  style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Micronutrient Tracker */}
+                  {report.micronutrient_targets.length > 0 && (() => {
+                    const VITAMIN_NAMES = [
+                      "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+                      "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
+                      "Pantothenic acid (B5)", "Biotin (B7)"
+                    ];
+                    const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
+                    const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
+                    const all = report.micronutrient_targets;
+                    const vitamins = all.filter(n => VITAMIN_NAMES.includes(n.name));
+                    const minerals = all.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+                    const fatty = all.filter(n => FATTY_NAMES.includes(n.name));
+                    const groups = [
+                      { id: 'v', label: 'ভিটামিন', items: vitamins, color: 'bg-amber-500' },
+                      { id: 'm', label: 'খনিজ', items: minerals, color: 'bg-blue-500' },
+                      { id: 'f', label: 'ফ্যাটি অ্যাসিড', items: fatty, color: 'bg-green-500' },
+                    ];
+                    return (
+                      <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1 h-3.5 bg-purple-500 rounded-full" />
+                          <h2 className="font-bn font-bold text-xs text-ink">মাইক্রোনিউট্রিয়েন্ট ট্র্যাকার</h2>
+                        </div>
+                        {groups.map(g => g.items.length > 0 && (
+                          <div key={g.id} className="space-y-2.5">
+                            <div className="flex items-center gap-1.5">
+                              <div className={`w-2 h-2 rounded-full ${g.color}`} />
+                              <h3 className="font-bn font-bold text-[0.68rem] text-ink">{g.label}</h3>
+                              <div className="flex-1 h-px bg-ink/5" />
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {g.items.map((nut, i) => {
+                                let barColor = g.color;
+                                if (nut.percentage >= 100) barColor = 'bg-green-500';
+                                else if (nut.percentage >= 50) barColor = 'bg-amber-500';
+                                return (
+                                  <div key={i} className="bg-cream/30 p-2.5 rounded-xl border border-ink/5 space-y-2 flex flex-col justify-between hover:shadow transition-all duration-300">
+                                    <div className="flex justify-between items-start gap-1">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="font-bn font-bold text-[0.62rem] text-ink leading-tight truncate">{nut.name_bn}</p>
+                                        <p className="text-[0.52rem] text-ink-faint uppercase truncate leading-none mt-0.5">{nut.name}</p>
+                                      </div>
+                                      <span className={`text-[0.58rem] font-bold shrink-0 px-1.5 py-0.5 rounded ${
+                                        nut.percentage >= 100 ? 'text-green-700 bg-green-50' : nut.percentage >= 50 ? 'text-amber-700 bg-amber-50' : 'text-ink-muted bg-cream'
+                                      }`}>{nut.percentage}%</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="h-1 bg-cream rounded-full overflow-hidden">
+                                        <div className={`h-full ${barColor} transition-all duration-700 rounded-full`}
+                                          style={{ width: `${Math.min(100, nut.percentage)}%` }} />
+                                      </div>
+                                      <div className="flex justify-between text-[0.52rem] font-bn text-ink-faint leading-none">
+                                        <span>{Math.round(nut.consumed)} {nut.unit}</span>
+                                        <span>{Math.round(nut.target)} {nut.unit}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </>
-                  ) : (
-                    <div className="h-[140px] flex items-center justify-center">
-                      <p className="font-bn text-ink-faint text-[0.68rem]">পর্যাপ্ত ডেটা নেই</p>
+                    );
+                  })()}
+
+                </div>
+
+                {/* Right Columns (Clinical Insights & Actions) - Takes 1/3 space */}
+                <div className="space-y-4">
+                  
+                  {/* Download PDF Card */}
+                  <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Download className="w-5 h-5 text-accent animate-bounce" />
+                      <h3 className="font-display font-black text-sm text-ink">স্বাস্থ্য রিপোর্ট ডাউনলোড</h3>
+                    </div>
+                    <p className="font-bn text-xs text-ink-muted leading-relaxed">
+                      আপনার {period} দিনের পুষ্টি, এআই ও ক্লিনিক্যাল পরামর্শ সংবলিত একটি প্রফেশনাল পিডিএফ রিপোর্ট ডাউনলোড করুন।
+                    </p>
+                    <button
+                      onClick={handlePrint}
+                      className="w-full py-2.5 bg-accent hover:opacity-90 text-white rounded-xl font-bn font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                    >
+                      <Download className="w-4 h-4" />
+                      পিডিএফ রিপোর্ট প্রিন্ট / সেভ
+                    </button>
+                  </div>
+
+                  {/* AI & Clinical Insights */}
+                  {report.clinical_insights && report.clinical_insights.length > 0 && (
+                    <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-5 h-5 text-accent animate-pulse" />
+                        <h3 className="font-display font-black text-sm text-ink">এআই ও ক্লিনিক্যাল পরামর্শ</h3>
+                      </div>
+                      <p className="font-bn text-xs text-ink-muted leading-relaxed">
+                        জাতীয় পুষ্টি নির্দেশিকা (NDG) এবং আপনার রোগ ও ডায়েট প্রোফাইল অনুযায়ী পুষ্টির ঘাটতি বা অতিরিক্ততার ক্লিনিক্যাল বিশ্লেষণ:
+                      </p>
+
+                      <div className="space-y-3">
+                        {report.clinical_insights.map((insight: any, index: number) => {
+                          const isError = insight.type === 'error';
+                          const isWarning = insight.type === 'warning';
+                          
+                          let cardBg = "bg-emerald-50/40 border-emerald-500/20 text-emerald-800";
+                          let iconColor = "text-emerald-600";
+                          let titleColor = "text-emerald-950";
+                          
+                          if (isError) {
+                            cardBg = "bg-red-50/40 border-red-500/20 text-red-800";
+                            iconColor = "text-red-600";
+                            titleColor = "text-red-950";
+                          } else if (isWarning) {
+                            cardBg = "bg-amber-50/40 border-amber-500/20 text-amber-800";
+                            iconColor = "text-amber-600";
+                            titleColor = "text-amber-950";
+                          }
+
+                          return (
+                            <div key={index} className={`p-4 rounded-xl border flex flex-col gap-2 ${cardBg}`}>
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className={`w-4 h-4 shrink-0 ${iconColor}`} />
+                                <strong className={`font-bn font-bold text-xs ${titleColor}`}>{insight.title}</strong>
+                              </div>
+                              <p className="font-bn text-xs leading-relaxed opacity-90">{insight.message}</p>
+                              {insight.reference && (
+                                <span className="self-start font-bn text-[0.6rem] font-bold bg-white/70 px-2 py-0.5 rounded border border-black/5 opacity-80 mt-1">
+                                  সূত্র: {insight.reference}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
-                </div>
 
-                {/* Macro vs Target Bar */}
-                <div className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-1 h-3.5 bg-green-500 rounded-full" />
-                    <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো গ্রহণ বনাম লক্ষ্য</h2>
-                  </div>
-                  <div className="space-y-2.5">
-                    {[
-                      { label: 'প্রোটিন', consumed: report.macro_summary.protein_g, target: report.macro_summary.target_protein_g, color: 'bg-emerald-500', unit: 'g' },
-                      { label: 'শর্করা', consumed: report.macro_summary.carbs_g, target: report.macro_summary.target_carbs_g, color: 'bg-blue-500', unit: 'g' },
-                      { label: 'চর্বি', consumed: report.macro_summary.fat_g, target: report.macro_summary.target_fat_g, color: 'bg-amber-500', unit: 'g' },
-                      { label: 'ফাইবার', consumed: report.macro_summary.fiber_g, target: report.period_days * 30, color: 'bg-green-500', unit: 'g' },
-                    ].map((m, i) => {
-                      const pct = m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;
-                      return (
-                        <div key={i} className="font-bn">
-                          <div className="flex justify-between text-[0.68rem] mb-0.5">
-                            <span className="font-bold text-ink">{m.label}</span>
-                            <span className="text-ink-faint">{m.consumed.toFixed(0)}{m.unit} / {m.target.toFixed(0)}{m.unit} ({pct}%)</span>
-                          </div>
-                          <div className="h-1.5 bg-cream rounded-full overflow-hidden">
-                            <div className={`h-full ${m.color} rounded-full transition-all duration-700`}
-                              style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* ── Micronutrient Progress ── */}
-              {report.micronutrient_targets.length > 0 && (() => {
-                const VITAMIN_NAMES = [
-                  "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-                  "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-                  "Pantothenic acid (B5)", "Biotin (B7)"
-                ];
-                const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
-                const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
-                const all = report.micronutrient_targets;
-                const vitamins = all.filter(n => VITAMIN_NAMES.includes(n.name));
-                const minerals = all.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-                const fatty = all.filter(n => FATTY_NAMES.includes(n.name));
-                const groups = [
-                  { id: 'v', label: 'ভিটামিন', items: vitamins, color: 'bg-amber-500' },
-                  { id: 'm', label: 'খনিজ', items: minerals, color: 'bg-blue-500' },
-                  { id: 'f', label: 'ফ্যাটি অ্যাসিড', items: fatty, color: 'bg-green-500' },
-                ];
-                return (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-                    className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm space-y-3"
-                  >
+                  {/* Email Report Form */}
+                  <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-1 h-3.5 bg-purple-500 rounded-full" />
-                      <h2 className="font-bn font-bold text-xs text-ink">মাইক্রোনিউট্রিয়েন্ট ট্র্যাকার</h2>
+                      <Mail className="w-5 h-5 text-accent" />
+                      <h3 className="font-display font-black text-sm text-ink">ইমেইলে রিপোর্ট পাঠান</h3>
                     </div>
-                    {groups.map(g => g.items.length > 0 && (
-                      <div key={g.id} className="space-y-2">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-2 h-2 rounded-full ${g.color}`} />
-                          <h3 className="font-bn font-bold text-[0.68rem] text-ink">{g.label}</h3>
-                          <div className="flex-1 h-px bg-ink/5" />
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                          {g.items.map((nut, i) => {
-                            let barColor = g.color;
-                            if (nut.percentage >= 100) barColor = 'bg-green-500';
-                            else if (nut.percentage >= 50) barColor = 'bg-amber-500';
-                            return (
-                              <div key={i} className="bg-cream/30 p-2 rounded-lg border border-ink/5 space-y-1.5 flex flex-col justify-between">
-                                <div className="flex justify-between items-start gap-1">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-bn font-bold text-[0.62rem] text-ink leading-tight truncate">{nut.name_bn}</p>
-                                    <p className="text-[0.52rem] text-ink-faint uppercase truncate leading-none mt-0.5">{nut.name}</p>
-                                  </div>
-                                  <span className={`text-[0.58rem] font-bold shrink-0 px-1 rounded ${
-                                    nut.percentage >= 100 ? 'text-green-700 bg-green-50' : nut.percentage >= 50 ? 'text-amber-700 bg-amber-50' : 'text-ink-muted bg-cream'
-                                  }`}>{nut.percentage}%</span>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="h-1 bg-cream rounded-full overflow-hidden">
-                                    <div className={`h-full ${barColor} transition-all duration-700 rounded-full`}
-                                      style={{ width: `${Math.min(100, nut.percentage)}%` }} />
-                                  </div>
-                                  <div className="flex justify-between text-[0.52rem] font-bn text-ink-faint leading-none">
-                                    <span>{nut.consumed} {nut.unit}</span>
-                                    <span>{nut.target} {nut.unit}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                    <p className="font-bn text-xs text-ink-muted leading-relaxed">
+                      আপনার এই স্বাস্থ্য রিপোর্টের সারসংক্ষেপটি সরাসরি আপনার ইমেইলে পাঠিয়ে রাখুন।
+                    </p>
+
+                    {emailSent ? (
+                      <div className="p-3 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 flex items-center justify-center gap-2 font-bn text-xs font-bold">
+                        <CheckCircle2 className="w-4 h-4" /> রিপোর্ট সফলভাবে ইমেইলে পাঠানো হয়েছে!
                       </div>
-                    ))}
-                  </motion.div>
-                );
-              })()}
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="আপনার ইমেইল ঠিকানা"
+                          value={email}
+                          onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                          className="flex-1 px-3 py-2 bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-xl font-display text-xs outline-none transition-all"
+                        />
+                        <button
+                          onClick={handleSendEmail}
+                          disabled={emailSending || !email.includes('@')}
+                          className="px-4 py-2 bg-ink text-cream hover:bg-accent rounded-xl font-display font-bold text-xs transition-all disabled:opacity-50 shrink-0"
+                        >
+                          {emailSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'পাঠান'}
+                        </button>
+                      </div>
+                    )}
+                    {emailError && (
+                      <p className="text-[0.68rem] text-red-500 font-bn mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" /> {emailError}
+                      </p>
+                    )}
+                  </div>
+
+                </div>
+
+              </div>
 
               {/* Regenerate button */}
-              <div className="flex justify-center pt-1">
+              <div className="flex justify-center pt-2">
                 <button onClick={() => { setGenerated(false); setReport(null); }}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-ink/10 rounded-lg font-bn text-xs text-ink-muted hover:border-accent/30 hover:text-accent transition-all"
+                  className="flex items-center gap-1.5 px-5 py-2.5 border border-ink/10 rounded-xl font-bn text-xs text-ink-muted hover:border-accent/30 hover:text-accent hover:bg-cream transition-all shadow-sm"
                 >
                   <RefreshCw className="w-3 h-3" /> নতুন রিপোর্ট তৈরি করুন
                 </button>
@@ -425,3 +763,4 @@ export const ReportPage = () => {
     </DashboardLayout>
   );
 };
+

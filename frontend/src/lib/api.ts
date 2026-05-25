@@ -615,6 +615,13 @@ export interface HealthSummaryReport {
     name: string; name_bn: string; target: number; consumed: number; unit: string; percentage: number;
   }>;
   current_weight_kg: number;
+  clinical_insights?: Array<{
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'error';
+    reference?: string;
+    disease?: string;
+  }>;
 }
 
 export const reportsApi = {
