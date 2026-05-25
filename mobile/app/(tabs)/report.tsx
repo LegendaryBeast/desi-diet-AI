@@ -145,30 +145,45 @@ export default function ReportScreen() {
       const avgFat = totalFat / selectedDuration;
       const avgFiber = totalFiber / selectedDuration;
 
-      const deficiencies = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
+      const daysWithData = healthSummary?.days_with_data || (slicedLogs.length > 0 ? slicedLogs.filter((x: any) => x.consumed_calories > 0).length : selectedDuration);
+      const periodDays = healthSummary?.period_days || selectedDuration;
+      const adherencePct = healthSummary?.adherence_pct || Math.round((daysWithData / periodDays) * 100);
+
+      // Micronutrient grouping exactly like web
+      const VITAMIN_NAMES = [
+        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+        "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
+        "Pantothenic acid (B5)", "Biotin (B7)"
+      ];
+      const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
+      const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
+
+      const mappedMicros = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
         ? healthSummary.micronutrient_targets.map((micro: any) => ({
+            name: micro.name,
             nameBn: micro.name_bn || micro.name,
-            nameEn: micro.name,
             unit: micro.unit,
             target: Math.round(micro.target / selectedDuration),
             avg: Math.round(micro.consumed / selectedDuration),
             percentage: micro.percentage,
           }))
         : [
-            { nameBn: "ক্যালসিয়াম", nameEn: "Calcium", unit: "mg", target: 1000, avg: 1000 * complianceRate * 0.95, percentage: 95 * complianceRate },
-            { nameBn: "আয়রন", nameEn: "Iron", unit: "mg", target: 17, avg: 17 * complianceRate * 0.72, percentage: 72 * complianceRate },
-            { nameBn: "সোডিয়াম", nameEn: "Sodium", unit: "mg", target: 2000, avg: 2000 * complianceRate * 1.35, percentage: 135 * complianceRate },
-            { nameBn: "পটাসিয়াম", nameEn: "Potassium", unit: "mg", target: 3500, avg: 3500 * complianceRate * 0.82, percentage: 82 * complianceRate },
-            { nameBn: "জিঙ্ক", nameEn: "Zinc", unit: "mg", target: 12, avg: 12 * complianceRate * 0.88, percentage: 88 * complianceRate },
-            { nameBn: "ভিটামিন এ", nameEn: "Vitamin A", unit: "mcg", target: 900, avg: 900 * complianceRate * 0.78, percentage: 78 * complianceRate },
-            { nameBn: "ভিটামিন সি", nameEn: "Vitamin C", unit: "mg", target: 80, avg: 80 * complianceRate * 1.05, percentage: 105 * complianceRate },
-            { nameBn: "ভিটামিন ডি", nameEn: "Vitamin D", unit: "mcg", target: 15, avg: 15 * complianceRate * 0.65, percentage: 65 * complianceRate },
-            { nameBn: "ভিটামিন বি১২", nameEn: "Vitamin B12", unit: "mcg", target: 2.4, avg: 2.4 * complianceRate * 0.85, percentage: 85 * complianceRate },
-            { nameBn: "আয়োডিন", nameEn: "Iodine (I)", unit: "mcg", target: 150, avg: 150 * complianceRate * 0.92, percentage: 92 * complianceRate },
+            { name: "Vitamin A", nameBn: "ভিটামিন এ (Vitamin A)", unit: "mcg", target: 900, avg: Math.round(900 * complianceRate * 0.78), percentage: Math.round(78 * complianceRate) },
+            { name: "Ascorbic acids (C)", nameBn: "ভিটামিন সি (Vitamin C)", unit: "mg", target: 80, avg: Math.round(80 * complianceRate * 1.05), percentage: Math.round(105 * complianceRate) },
+            { name: "Vitamin D", nameBn: "ভিটামিন ডি (Vitamin D)", unit: "mcg", target: 15, avg: Math.round(15 * complianceRate * 0.65), percentage: Math.round(65 * complianceRate) },
+            { name: "Calcium (Ca)", nameBn: "ক্যালসিয়াম (Calcium)", unit: "mg", target: 1000, avg: Math.round(1000 * complianceRate * 0.95), percentage: Math.round(95 * complianceRate) },
+            { name: "Iron (Fe)", nameBn: "আয়রন (Iron)", unit: "mg", target: 17, avg: Math.round(17 * complianceRate * 0.72), percentage: Math.round(72 * complianceRate) },
+            { name: "Sodium (Na)", nameBn: "সোডিয়াম (Sodium)", unit: "mg", target: 2000, avg: Math.round(2000 * complianceRate * 1.35), percentage: Math.round(135 * complianceRate) },
+            { name: "Potassium (K)", nameBn: "পটাশিয়াম (Potassium)", unit: "mg", target: 3500, avg: Math.round(3500 * complianceRate * 0.82), percentage: Math.round(82 * complianceRate) },
+            { name: "Zinc (Zn)", nameBn: "জিঙ্ক (Zinc)", unit: "mg", target: 12, avg: Math.round(12 * complianceRate * 0.88), percentage: Math.round(88 * complianceRate) }
           ];
 
+      const vitamins = mappedMicros.filter((n: any) => VITAMIN_NAMES.includes(n.name));
+      const minerals = mappedMicros.filter((n: any) => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+      const fatty = mappedMicros.filter((n: any) => FATTY_NAMES.includes(n.name));
+
       const isOptimal = (avgVal: number, targetVal: number) => {
-        const pct = (avgVal / targetVal) * 100;
+        const pct = targetVal > 0 ? (avgVal / targetVal) * 100 : 100;
         if (pct < 70) return { label: 'ঘাটতি', color: '#C62828', bg: '#FFEBEE' };
         if (pct > 115) return { label: 'অতিরিক্ত', color: '#EF6C00', bg: '#FFF3E0' };
         return { label: 'সঠিক', color: '#2E7D32', bg: '#E8F5E9' };
@@ -187,25 +202,25 @@ export default function ReportScreen() {
             <meta charset="utf-8">
             <title>DesiDiet Clinical Report</title>
             <style>
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 20px; line-height: 1.5; }
-              .header { border-bottom: 2px solid #A7C924; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-              .logo { font-size: 24px; font-weight: bold; color: #8FB41E; }
-              .meta-info { text-align: right; font-size: 11px; color: #7A8487; }
-              .user-box { background-color: #FFFDF9; border: 1px solid #EBF0D8; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 12px; }
-              h2 { font-size: 14px; color: #1C2123; border-left: 4px solid #A7C924; padding-left: 8px; margin-top: 24px; margin-bottom: 10px; font-weight: bold; }
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; margin-bottom: 15px; }
-              th { background-color: #EBF0D8; color: #1C2123; padding: 8px; text-align: left; border: 1px solid #DFE3D1; font-weight: bold; }
-              td { padding: 8px; border: 1px solid #DFE3D1; }
-              .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 30px; line-height: 1.6; }
+              .header { border-bottom: 3px solid #A7C924; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+              .logo { font-size: 28px; font-weight: bold; color: #8FB41E; letter-spacing: -0.5px; }
+              .meta-info { text-align: right; font-size: 12px; color: #7A8487; }
+              .user-box { background-color: #FFFDF9; border: 1px solid #EBF0D8; padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; }
+              h2 { font-size: 16px; color: #1C2123; border-left: 5px solid #A7C924; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; font-weight: bold; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px; }
+              th { background-color: #EBF0D8; color: #1C2123; padding: 10px 12px; text-align: left; border: 1px solid #DFE3D1; font-weight: bold; }
+              td { padding: 10px 12px; border: 1px solid #DFE3D1; }
+              .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
               .food-tag { display: inline-block; background-color: #FFFDF9; border: 1px solid #DFE3D1; border-radius: 12px; padding: 4px 10px; margin: 4px; font-size: 11px; }
-              .footer { margin-top: 40px; border-top: 1px solid #DFE3D1; padding-top: 10px; font-size: 10px; color: #7A8487; text-align: center; }
+              .footer { margin-top: 50px; border-top: 1px solid #DFE3D1; padding-top: 15px; font-size: 11px; color: #7A8487; text-align: center; line-height: 1.8; }
             </style>
           </head>
           <body>
             <div class="header">
               <div>
                 <div class="logo">DesiDiet</div>
-                <div style="font-size: 10px; color: #7A8487;">PushtiAI Clinical Nutrition System</div>
+                <div style="font-size: 11px; color: #7A8487; margin-top: 2px;">PushtiAI Clinical Nutrition System</div>
               </div>
               <div class="meta-info">
                 <strong>রিপোর্ট আইডি:</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
@@ -215,17 +230,17 @@ export default function ReportScreen() {
             </div>
 
             <div class="user-box">
-              <table style="border: none; margin: 0; width: 100%;">
+              <table style="border: none; margin: 0; width: 100%; box-shadow: none;">
                 <tr style="border: none;">
-                  <td style="border: none; width: 50%;"><strong>সদস্যের নাম:</strong> ${user?.name_bn || user?.name_en || 'সম্মানিত সদস্য'}</td>
-                  <td style="border: none; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
+                  <td style="border: none; padding: 0; width: 50%;"><strong>সদস্যের নাম:</strong> ${user?.name_bn || user?.name_en || 'সম্মানিত সদস্য'}</td>
+                  <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
                 </tr>
               </table>
             </div>
 
             ${healthSummary?.ai_verdict ? `
-              <div style="background-color: #FFFDF9; border: 1px dashed #A7C924; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 12px; line-height: 1.5;">
-                <div style="font-weight: bold; color: #8FB41E; font-size: 13px; margin-bottom: 4px;">
+              <div style="background-color: #FFFDF9; border: 1px dashed #A7C924; padding: 18px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; line-height: 1.6;">
+                <div style="font-weight: bold; color: #8FB41E; font-size: 14px; margin-bottom: 6px;">
                   📋 এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)
                 </div>
                 <p style="margin: 0; color: #1C2123; font-style: italic; font-weight: 500;">
@@ -233,6 +248,26 @@ export default function ReportScreen() {
                 </p>
               </div>
             ` : ''}
+
+            <h2>📋 সামগ্রিক স্বাস্থ্যের সারসংক্ষেপ (Overall Health Summary)</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>বিশ্লেষিত দিন</th>
+                  <th>গড় ক্যালোরি/দিন</th>
+                  <th>লক্ষ্য ক্যালোরি</th>
+                  <th>অনুসরণ হার (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>${daysWithData}/${periodDays} দিন</strong></td>
+                  <td><strong>${Math.round(avgCalories)} kcal</strong></td>
+                  <td><strong>${activeTargets.target_calories} kcal</strong></td>
+                  <td><strong>${adherencePct}%</strong></td>
+                </tr>
+              </tbody>
+            </table>
 
             <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
             <table>
@@ -325,39 +360,144 @@ export default function ReportScreen() {
               </table>
             ` : ''}
 
-            <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Summary)</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>পুষ্টি উপাদান</th>
-                  <th>গড় দৈনিক গ্রহণ</th>
-                  <th>দৈনিক লক্ষ্য</th>
-                  <th>${selectedDuration} দিনের মোট গ্রহণ</th>
-                  <th>মোট লক্ষ্যমাত্রা</th>
-                  <th>পূরণ হার (%)</th>
-                  <th>অবস্থা</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${deficiencies.map(def => {
-                  const status = isOptimal(def.avg, def.target);
-                  return `
+            ${healthSummary?.calorie_history && healthSummary.calorie_history.length > 0 ? `
+              <h2>📅 প্রতিদিনের ক্যালোরি বিবরণী (Daily Calorie Consumption Log)</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>তারিখ</th>
+                    <th>ক্যালোরি গ্রহণ</th>
+                    <th>পরিকল্পিত ক্যালোরি</th>
+                    <th>পূরণ হার (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${healthSummary.calorie_history.map((day: any) => {
+                    const pct = day.calories_target > 0 ? Math.round((day.calories_consumed / day.calories_target) * 100) : 100;
+                    return `
+                      <tr>
+                        <td>${day.date}</td>
+                        <td>${day.calories_consumed} kcal</td>
+                        <td>${day.calories_planned || day.calories_target} kcal</td>
+                        <td>${pct}%</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            ${healthSummary?.weight_history && healthSummary.weight_history.length > 0 ? `
+              <h2>⚖️ ওজন পরিবর্তনের ইতিহাস (Weight Tracking History)</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>তারিখ</th>
+                    <th>ওজন (কেজি)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${healthSummary.weight_history.map((log: any) => `
                     <tr>
-                      <td><strong>${def.nameBn} (${def.nameEn})</strong></td>
-                      <td>${Math.round(def.avg)} ${def.unit}</td>
-                      <td>${def.target} ${def.unit}</td>
-                      <td>${Math.round(def.avg * selectedDuration)} ${def.unit}</td>
-                      <td>${def.target * selectedDuration} ${def.unit}</td>
-                      <td>${Math.round(def.percentage)}%</td>
-                      <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                      <td>${log.date}</td>
+                      <td>${log.weight_kg} kg</td>
                     </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Tracker)</h2>
+            
+            ${vitamins.length > 0 ? `
+              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #8FB41E; font-size: 14px;">🍊 ভিটামিন (Vitamins)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ভিটামিন</th>
+                    <th>গড় দৈনিক গ্রহণ</th>
+                    <th>লক্ষ্যমাত্রা</th>
+                    <th>পূরণ হার (%)</th>
+                    <th>অবস্থা</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${vitamins.map((nut: any) => {
+                    const status = isOptimal(nut.avg, nut.target);
+                    return `
+                      <tr>
+                        <td><strong>${nut.nameBn}</strong></td>
+                        <td>${Math.round(nut.avg)} ${nut.unit}</td>
+                        <td>${Math.round(nut.target)} ${nut.unit}</td>
+                        <td>${Math.round(nut.percentage)}%</td>
+                        <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            ${minerals.length > 0 ? `
+              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #3b82f6; font-size: 14px;">💎 খনিজ (Minerals)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>খনিজ</th>
+                    <th>গড় দৈনিক গ্রহণ</th>
+                    <th>লক্ষ্যমাত্রা</th>
+                    <th>পূরণ হার (%)</th>
+                    <th>অবস্থা</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${minerals.map((nut: any) => {
+                    const status = isOptimal(nut.avg, nut.target);
+                    return `
+                      <tr>
+                        <td><strong>${nut.nameBn}</strong></td>
+                        <td>${Math.round(nut.avg)} ${nut.unit}</td>
+                        <td>${Math.round(nut.target)} ${nut.unit}</td>
+                        <td>${Math.round(nut.percentage)}%</td>
+                        <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            ${fatty.length > 0 ? `
+              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #10b981; font-size: 14px;">🌱 ফ্যাটি অ্যাসিড (Fatty Acids)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ফ্যাটি অ্যাসিড</th>
+                    <th>গড় দৈনিক গ্রহণ</th>
+                    <th>লক্ষ্যমাত্রা</th>
+                    <th>পূরণ হার (%)</th>
+                    <th>অবস্থা</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${fatty.map((nut: any) => {
+                    const status = isOptimal(nut.avg, nut.target);
+                    return `
+                      <tr>
+                        <td><strong>${nut.nameBn}</strong></td>
+                        <td>${Math.round(nut.avg)} ${nut.unit}</td>
+                        <td>${Math.round(nut.target)} ${nut.unit}</td>
+                        <td>${Math.round(nut.percentage)}%</td>
+                        <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            ` : ''}
 
             <h2>🍲 খাদ্য গ্রহণ তালিকা ও ফ্রিকোয়েন্সি (Food Frequency Log)</h2>
-            <div style="margin-top: 10px;">
+            <div style="margin-top: 10px; margin-bottom: 20px;">
               <span class="food-tag"><strong>লাল চালের ভাত</strong> (${Math.round(selectedDuration * 1.8)} বার)</span>
               <span class="food-tag"><strong>ডিম সিদ্ধ</strong> (${Math.round(selectedDuration * 0.85)} বার)</span>
               <span class="food-tag"><strong>সবুজ শাকসবজি</strong> (${Math.round(selectedDuration * 1.2)} বার)</span>
@@ -379,7 +519,6 @@ export default function ReportScreen() {
           printWindow.document.open();
           printWindow.document.write(htmlContent);
           printWindow.document.close();
-          // Call print directly after load
           printWindow.onload = () => {
             printWindow.print();
           };
