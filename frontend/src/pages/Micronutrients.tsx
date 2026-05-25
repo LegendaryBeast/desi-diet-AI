@@ -387,26 +387,26 @@ export const Micronutrients: React.FC = () => {
                       key={nut.name}
                       layoutId={`nutrient-card-${nut.name}`}
                       onClick={() => setSelectedNutrient(nut)}
-                      className="bg-white p-4.5 rounded-[2rem] border border-ink/5 hover:border-accent/30 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[155px]"
+                      className="bg-white p-4 rounded-2xl border border-ink/5 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 cursor-pointer transition-all flex flex-col justify-between h-[120px] relative overflow-hidden group"
                     >
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bn font-bold text-sm text-ink leading-snug truncate">{nut.name_bn}</h4>
-                          <span className="text-[0.62rem] text-ink-faint uppercase font-bold tracking-wider truncate block mt-0.5">{nut.name}</span>
+                          <h4 className="font-bn font-bold text-sm text-ink leading-snug truncate group-hover:text-accent transition-colors">{nut.name_bn}</h4>
+                          <span className="text-[0.6rem] text-ink-faint uppercase font-bold tracking-wider truncate block mt-0.5">{nut.name}</span>
                         </div>
-                        <span className={`font-body text-[0.65rem] font-bold shrink-0 px-2 py-0.5 rounded-lg ${bgBadge}`}>
+                        <span className={`font-body text-[0.65rem] font-bold shrink-0 px-2 py-0.5 rounded-lg transition-all ${bgBadge}`}>
                           {nut.percentage}%
                         </span>
                       </div>
 
-                      <div className="space-y-2 mt-auto">
-                        <div className="w-full bg-cream rounded-full h-2 overflow-hidden border border-ink/5">
+                      <div className="space-y-1.5 mt-auto">
+                        <div className="w-full bg-cream rounded-full h-1.5 overflow-hidden border border-ink/5">
                           <div
                             className={`h-full ${barColor} rounded-full transition-all duration-500`}
                             style={{ width: `${Math.min(100, nut.percentage)}%` }}
                           />
                         </div>
-                        <div className="flex justify-between items-center text-[0.62rem] font-bn text-ink-faint">
+                        <div className="flex justify-between items-center text-[0.58rem] font-bn text-ink-faint">
                           <span>{isBn ? 'গৃহীত: ' : 'Cons: '} <b className="text-ink-muted font-body font-bold">{nut.consumed} {nut.unit}</b></span>
                           <span>{isBn ? 'লক্ষ্য: ' : 'Target: '} <b className="text-ink-muted font-body font-bold">{nut.target} {nut.unit}</b></span>
                         </div>
