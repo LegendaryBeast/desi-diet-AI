@@ -168,12 +168,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               onClick={() => closeSidebar && setSidebarOpen(false)}
               className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group border border-transparent ${
                 isActive
-                  ? 'bg-ink text-cream shadow-md shadow-ink/5'
+                  ? 'bg-transparent text-ink font-black'
                   : 'text-ink-muted hover:bg-cream hover:text-ink hover:border-ink/5'
               }`}
             >
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                isActive ? 'bg-accent text-cream' : 'bg-cream group-hover:bg-ink group-hover:text-cream'
+                isActive ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-cream text-ink-muted group-hover:bg-ink group-hover:text-cream'
               }`}>
                 <item.icon size={16} />
               </div>
@@ -235,9 +235,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative bg-[#FDFCF9] overflow-hidden min-w-0">
-        {/* Cinematic Texture Background */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
+      <div className="flex-1 flex flex-col relative bg-[#EAF3F5] overflow-hidden min-w-0">
 
         {/* Dynamic Header */}
         <header className="sticky top-0 p-3 md:p-4 lg:px-8 border-b border-ink/5 flex items-center justify-between z-30 bg-white/70 backdrop-blur-xl shrink-0">
