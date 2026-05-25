@@ -177,27 +177,52 @@ async def get_health_summary(
     target_carbs = float(targets.get("carbs_g", 300))
     target_fat = float(targets.get("fat_g", 65))
 
-    # 3. Fetch meal plans for last N days
-    since_date = datetime.now(timezone.utc) - timedelta(days=days)
+    # 3. Fetch meal plans and weight logs for strictly the past N days (ending today)
+    today_dt = datetime.now(timezone.utc)
+    first_day = today_dt - timedelta(days=days - 1)
+    start_of_period = first_day.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_period = today_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+
     all_plans = await prisma.mealplan.find_many(
-        where={"userId": current_user.id, "planDate": {"gte": since_date}, "planType": "daily"},
+        where={
+            "userId": current_user.id,
+            "planDate": {
+                "gte": start_of_period,
+                "lte": end_of_period,
+            },
+            "planType": "daily"
+        },
         order={"planDate": "asc"},
     )
 
-    # Filter plans by proximity to today to get exactly `days` plans
-    now_date = datetime.now(timezone.utc).date()
-    plans_by_proximity = sorted(all_plans, key=lambda p: abs((p.planDate.date() - now_date).days))
-    plans = sorted(plans_by_proximity[:days], key=lambda p: p.planDate)
-
-    # 4. Weight history
     weight_logs = await prisma.healthlog.find_many(
-        where={"userId": current_user.id, "logDate": {"gte": since_date}, "weightKg": {"not": None}},
+        where={
+            "userId": current_user.id,
+            "logDate": {
+                "gte": start_of_period,
+                "lte": end_of_period,
+            },
+            "weightKg": {"not": None}
+        },
         order={"logDate": "asc"},
     )
-    weight_history = [
-        {"date": log.logDate.strftime("%d/%m"), "weight_kg": log.weightKg}
-        for log in weight_logs
-    ]
+
+    plans_by_date = {p.planDate.date(): p for p in all_plans}
+    weight_by_date = {log.logDate.date(): log.weightKg for log in weight_logs}
+
+    # Generate dates list from first_day to today_dt (chronological)
+    date_list = [start_of_period + timedelta(days=i) for i in range(days)]
+
+    # 4. Weight history
+    weight_history = []
+    for d in date_list:
+        d_date = d.date()
+        w_val = weight_by_date.get(d_date)
+        if w_val:
+            weight_history.append({
+                "date": d_date.strftime("%d/%m"),
+                "weight_kg": w_val
+            })
 
     # 5. Per-day calorie + macro extraction
     calorie_history = []
@@ -210,49 +235,56 @@ async def get_health_summary(
     days_with_data = 0
     total_cals_all = 0
 
-    for plan in plans:
-        plan_data = _safe_json(plan.planData)
-        completed_slots = _safe_json_list(plan.completedSlots)
-        meals = plan_data.get("meals", [])
+    for d in date_list:
+        d_date = d.date()
+        plan = plans_by_date.get(d_date)
+        plan_date_str = d_date.strftime("%d/%m")
 
         day_calories = 0
         day_has_data = False
+        completed_slots = []
+        meals = []
+        plan_data = {}
 
-        # Extract calories from completed meal items
-        for meal in meals:
-            slot = meal.get("slot", "")
-            if slot not in completed_slots:
-                continue
-            for item in meal.get("items", []):
-                item_cals = float(item.get("calories") or 0)
-                day_calories += item_cals
-                day_has_data = True
-                # Collect food items for later Neo4j micronutrient query
-                code = item.get("food_code") or item.get("code") or ""
-                name_en = item.get("name_en") or ""
-                amount_g = float(item.get("amount_g") or 100)
-                if code or name_en:
-                    all_food_items.append({
-                        "code": code, "name_en": name_en,
-                        "name_bn": item.get("name_bn") or "", "amount_g": amount_g
-                    })
+        if plan:
+            plan_data = _safe_json(plan.planData)
+            completed_slots = _safe_json_list(plan.completedSlots)
+            meals = plan_data.get("meals", [])
 
-        # Plan-level macros, weighted by slot completion ratio
-        plan_macros = plan_data.get("macros", {})
-        if plan_macros and completed_slots:
-            total_slots = max(len(meals), 1)
-            ratio = len(completed_slots) / total_slots
-            total_protein += float(plan_macros.get("protein_g") or 0) * ratio
-            total_carbs += float(plan_macros.get("carbs_g") or 0) * ratio
-            total_fat += float(plan_macros.get("fat_g") or 0) * ratio
-            total_fiber += float(plan_macros.get("fiber_g") or 0) * ratio
+            # Extract calories from completed meal items
+            for meal in meals:
+                slot = meal.get("slot", "")
+                if slot not in completed_slots:
+                    continue
+                for item in meal.get("items", []):
+                    item_cals = float(item.get("calories") or 0)
+                    day_calories += item_cals
+                    day_has_data = True
+                    # Collect food items for later Neo4j micronutrient query
+                    code = item.get("food_code") or item.get("code") or ""
+                    name_en = item.get("name_en") or ""
+                    amount_g = float(item.get("amount_g") or 100)
+                    if code or name_en:
+                        all_food_items.append({
+                            "code": code, "name_en": name_en,
+                            "name_bn": item.get("name_bn") or "", "amount_g": amount_g
+                        })
+
+            # Plan-level macros, weighted by slot completion ratio
+            plan_macros = plan_data.get("macros", {})
+            if plan_macros and completed_slots:
+                total_slots = max(len(meals), 1)
+                ratio = len(completed_slots) / total_slots
+                total_protein += float(plan_macros.get("protein_g") or 0) * ratio
+                total_carbs += float(plan_macros.get("carbs_g") or 0) * ratio
+                total_fat += float(plan_macros.get("fat_g") or 0) * ratio
+                total_fiber += float(plan_macros.get("fiber_g") or 0) * ratio
 
         if day_has_data:
             days_with_data += 1
             total_cals_all += day_calories
 
-        plan_date_str = plan.planDate.strftime("%d/%m")
-        matching_weight = next((w["weight_kg"] for w in weight_history if w["date"] == plan_date_str), None)
+        matching_weight = weight_by_date.get(d_date)
 
         calorie_history.append({
             "date": plan_date_str,
