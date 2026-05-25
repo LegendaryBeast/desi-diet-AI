@@ -5,7 +5,7 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
-import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw } from 'lucide-react-native';
+import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw, CalendarDays, TrendingUp, Flame } from 'lucide-react-native';
 import { dietPlanChatApi, profileApi, mealPlanApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -29,50 +29,17 @@ export default function DietPlanChatScreen() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [planReady, setPlanReady] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const haptics = useHaptics();
 
   useEffect(() => {
-    // Fetch profile to see if it exists
+    // Fetch profile to personalize greetings and starter states
     profileApi.get().then((res) => {
       if (res.data?.profile) {
-        // Profile exists! Automatically generate plan just like the web app
-        const greetingMsg = 'হ্যালো!  আমি পুষ্টি এআই। আমি দেখতে পাচ্ছি যে আপনার একটি স্বাস্থ্য প্রোফাইল আগে থেকেই তৈরি করা আছে।\n\nআপনার প্রোফাইল তথ্য অনুযায়ী আজকের বিশেষ ডায়েট পরিকল্পনা স্বয়ংক্রিয়ভাবে তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳';
-        setMessages([{
-          role: 'assistant',
-          content: greetingMsg,
-          id: 'welcome',
-        }]);
-        setStreaming(true);
-
-        mealPlanApi.daily('bn', true).then((planRes) => {
-          setPlanReady(true);
-          haptics.success();
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: 'আপনার ডায়েট পরিকল্পনা সফলভাবে তৈরি হয়েছে! নিচের বাটনে ক্লিক করে আজকের সুষম খাবার তালিকাটি দেখুন। 🥗✨',
-              id: `ready_${Date.now()}`,
-            }
-          ]);
-        }).catch(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: 'দুঃখিত, স্বয়ংক্রিয় পরিকল্পনা তৈরি করা যায়নি। অনুগ্রহ করে চ্যাটে লিখে আপনার তথ্য দিন বা পরে আবার চেষ্টা করুন।',
-              id: `error_${Date.now()}`,
-            }
-          ]);
-        }).finally(() => {
-          setStreaming(false);
-        });
+        setProfile(res.data.profile);
       }
-    }).catch(() => {
-      // Fallback to standard hello welcome message if profile doesn't exist
-      setMessages([WELCOME_MSG]);
-    });
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -176,6 +143,120 @@ export default function DietPlanChatScreen() {
       );
       setStreaming(false);
     }
+  const handlePresetPress = async (type: 'diet' | 'report' | 'calorie') => {
+    haptics.medium();
+    if (type === 'diet') {
+      const userMsg: Message = { 
+        role: 'user', 
+        content: 'আজকের জন্য আমার স্বাস্থ্য অবস্থা অনুযায়ী একটি খাবার পরিকল্পনা দিন।', 
+        id: `u_${Date.now()}` 
+      };
+      setMessages([WELCOME_MSG, userMsg]);
+      setStreaming(true);
+
+      const assistantId = `a_${Date.now()}`;
+      setMessages((prev) => [...prev, { 
+        role: 'assistant', 
+        content: 'আপনার প্রোফাইল তথ্য অনুযায়ী আজকের বিশেষ ডায়েট পরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳', 
+        id: assistantId 
+      }]);
+
+      try {
+        await mealPlanApi.daily('bn', true);
+        setPlanReady(true);
+        haptics.success();
+        setMessages((prev) =>
+          prev.map((m) => m.id === assistantId ? { 
+            ...m, 
+            content: 'আপনার ডায়েট পরিকল্পনা সফলভাবে তৈরি হয়েছে! নিচের বাটনে ক্লিক করে আজকের সুষম খাবার তালিকাটি দেখুন। 🥗✨' 
+          } : m)
+        );
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) => m.id === assistantId ? { 
+            ...m, 
+            content: 'দুঃখিত, পরিকল্পনা তৈরি করা যায়নি। অনুগ্রহ করে পরে আবার চেষ্টা করুন।' 
+          } : m)
+        );
+      } finally {
+        setStreaming(false);
+      }
+    } else if (type === 'report') {
+      sendMessage('আমার বর্তমান শারীরিক অবস্থা এবং পুষ্টির রিপোর্ট দেখান।');
+    } else if (type === 'calorie') {
+      sendMessage('আমার দৈনিক ক্যালোরি ও পুষ্টির হিসাব কীভাবে করা হয়েছে?');
+    }
+  };
+
+  const renderEmptyState = () => {
+    const userName = profile?.name_bn || profile?.name_en || '';
+    return (
+      <View style={styles.presetContainer}>
+        <View style={styles.botIconWrapper}>
+          <Bot size={40} color={colors.white} />
+          <View style={styles.botActiveBadge} />
+        </View>
+        
+        <Text style={styles.presetUserHello}>
+          {userName ? `হাই, ${userName}` : 'হাই!'}
+        </Text>
+        
+        <Text style={styles.presetMainTitle}>
+          আমি আপনাকে আজ কীভাবে সাহায্য করতে পারি?
+        </Text>
+        
+        <Text style={styles.presetSubTitle}>
+          আপনার পুষ্টি, ডায়েট এবং স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন।
+        </Text>
+
+        <View style={styles.presetGrid}>
+          {/* Diet Card */}
+          <TouchableOpacity 
+            style={styles.presetCard} 
+            activeOpacity={0.8}
+            onPress={() => handlePresetPress('diet')}
+          >
+            <View style={[styles.presetCardIconBox, { backgroundColor: colors.primary + '15' }]}>
+              <CalendarDays size={18} color={colors.primary} />
+            </View>
+            <View style={styles.presetCardContent}>
+              <Text style={styles.presetCardTitle}>ডায়েট</Text>
+              <Text style={styles.presetCardSub}>আজকের মিল প্ল্যান</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Report Card */}
+          <TouchableOpacity 
+            style={styles.presetCard} 
+            activeOpacity={0.8}
+            onPress={() => handlePresetPress('report')}
+          >
+            <View style={[styles.presetCardIconBox, { backgroundColor: colors.accent + '15' }]}>
+              <TrendingUp size={18} color={colors.accent} />
+            </View>
+            <View style={styles.presetCardContent}>
+              <Text style={styles.presetCardTitle}>রিপোর্ট</Text>
+              <Text style={styles.presetCardSub}>আপনার শারীরিক অবস্থা</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Calorie Card */}
+          <TouchableOpacity 
+            style={styles.presetCard} 
+            activeOpacity={0.8}
+            onPress={() => handlePresetPress('calorie')}
+          >
+            <View style={[styles.presetCardIconBox, { backgroundColor: '#FF8C0015' }]}>
+              <Flame size={18} color="#FF8C00" />
+            </View>
+            <View style={styles.presetCardContent}>
+              <Text style={styles.presetCardTitle}>ক্যালোরি</Text>
+              <Text style={styles.presetCardSub}>পুষ্টির হিসাব নিকাশ</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -228,37 +309,41 @@ export default function DietPlanChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.msgList}
-        showsVerticalScrollIndicator={false}
-        ListFooterComponent={
-          planReady ? (
-            <View style={styles.planReadyCard}>
-              <View style={styles.planReadyHeader}>
-                <CheckCircle2 size={32} color={colors.success} />
-                <Text style={styles.planReadyTitle}>ডায়েট পরিকল্পনা প্রস্তুত!</Text>
-                <Text style={styles.planReadySub}>
-                  আপনার ব্যক্তিগত তথ্য অনুযায়ী একটি নতুন পরিকল্পনা তৈরি করা হয়েছে।
-                </Text>
+      {/* Conditionally render Empty State Preset or standard Message Log */}
+      {messages.length <= 1 && !streaming ? (
+        renderEmptyState()
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.msgList}
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            planReady ? (
+              <View style={styles.planReadyCard}>
+                <View style={styles.planReadyHeader}>
+                  <CheckCircle2 size={32} color={colors.success} />
+                  <Text style={styles.planReadyTitle}>ডায়েট পরিকল্পনা প্রস্তুত!</Text>
+                  <Text style={styles.planReadySub}>
+                    আপনার ব্যক্তিগত তথ্য অনুযায়ী একটি নতুন পরিকল্পনা তৈরি করা হয়েছে।
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.viewPlanBtn}
+                  onPress={() => {
+                    haptics.light();
+                    router.replace('/(tabs)/meals');
+                  }}
+                >
+                  <Text style={styles.viewPlanText}>সম্পূর্ণ পরিকল্পনা দেখুন</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.viewPlanBtn}
-                onPress={() => {
-                  haptics.light();
-                  router.replace('/(tabs)/meals');
-                }}
-              >
-                <Text style={styles.viewPlanText}>সম্পূর্ণ পরিকল্পনা দেখুন</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
-      />
+            ) : null
+          }
+        />
+      )}
 
       {/* Input Bar */}
       {!planReady && (
@@ -393,4 +478,102 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
+
+  presetContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
+  },
+  botIconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: '#1E1E24',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  botActiveBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  presetUserHello: {
+    fontFamily: fonts.bn,
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  presetMainTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 24,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    lineHeight: 32,
+  },
+  presetSubTitle: {
+    fontFamily: fonts.bn,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xxl,
+    paddingHorizontal: spacing.md,
+    lineHeight: 22,
+  },
+  presetGrid: {
+    width: '100%',
+    gap: spacing.md,
+  },
+  presetCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  presetCardIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  presetCardContent: {
+    flex: 1,
+  },
+  presetCardTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  presetCardSub: {
+    fontFamily: fonts.bn,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
 });
