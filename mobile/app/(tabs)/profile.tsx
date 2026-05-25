@@ -129,10 +129,7 @@ export default function ProfileScreen() {
               value={(profile.medical_conditions || []).join(', ') || 'কোনো তথ্য নেই'}
             />
             {targets && (
-              <>
-                <DetailRow label="BMI" value={targets.bmi?.toFixed(1)} />
-                <DetailRow label="BMI অবস্থা" value={targets.bmi_category || ''} last />
-              </>
+              <DetailRow label="BMI" value={targets.bmi?.toFixed(1)} last />
             )}
           </View>
         </View>

@@ -71,7 +71,6 @@ export default function Step7Screen() {
       <View style={styles.card}>
         <Text style={styles.cardHeader}>বডি মাস ইনডেক্স (BMI)</Text>
         <Text style={styles.bmiValue}>{targets.bmi.toFixed(1)}</Text>
-        <Text style={styles.bmiLabel}>{targets.bmi_category}</Text>
         <Text style={styles.bmiHint}>
           আপনার আদর্শ ওজন হওয়া উচিত {Math.round(targets.ideal_body_weight_kg)} কেজি। 
           আমরা আপনার লক্ষ্য অনুযায়ী প্রতিদিনের প্ল্যান সাজাব।
