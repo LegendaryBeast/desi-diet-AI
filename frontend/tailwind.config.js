@@ -8,20 +8,20 @@ export default {
     extend: {
       colors: {
         cream: { 
-          DEFAULT: '#FFFFFF', 
-          dark: '#F5F5F5' 
+          DEFAULT: '#F5F0E8', 
+          dark: '#EDE6D6' 
         },
         ink: { 
-          DEFAULT: '#1C2123', 
-          muted: '#8C979A', 
-          faint: '#B0B8BA' 
+          DEFAULT: '#1A1714', 
+          muted: '#5C574F', 
+          faint: '#9E9890' 
         },
         accent: { 
-          DEFAULT: '#A7C924', 
-          light: '#EAF0D1' 
+          DEFAULT: '#C8472A', 
+          light: '#E8956E' 
         },
-        gold: '#E4EB26',
-        forest: '#2A6678',
+        gold: '#B8933E',
+        forest: '#2C5530',
       },
       fontFamily: {
         display: ['Playfair Display', 'Georgia', 'serif'],
