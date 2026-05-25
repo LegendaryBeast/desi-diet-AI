@@ -12,7 +12,7 @@ import {
   BarChart2, MessageSquare, Sparkles
 } from 'lucide-react-native';
 import { useHaptics } from '../../hooks/useHaptics';
-import { mealPlanApi } from '../../lib/api';
+import { mealPlanApi, foodsApi } from '../../lib/api';
 import { useSubscription } from '../../context/SubscriptionContext';
 import ProModal from '../../components/ui/ProModal';
 
@@ -76,6 +76,32 @@ export default function MealsScreen() {
   const queryClient = useQueryClient();
   const haptics = useHaptics();
   const router = useRouter();
+
+  const [justifications, setJustifications] = useState<Record<string, string>>({});
+  const [justificationLoading, setJustificationLoading] = useState<Record<string, boolean>>({});
+
+  const toggleFoodJustification = async (code: string, name: string) => {
+    if (!code) return;
+    const cacheKey = code;
+    if (justifications[cacheKey]) {
+      setJustifications((prev) => {
+        const next = { ...prev };
+        delete next[cacheKey];
+        return next;
+      });
+      return;
+    }
+    setJustificationLoading((prev) => ({ ...prev, [cacheKey]: true }));
+    try {
+      const response = await foodsApi.justify(code, name);
+      const data = response.data;
+      setJustifications((prev) => ({ ...prev, [cacheKey]: data.explanation || 'বিশ্লেষণ লোড করা সম্ভব হয়নি।' }));
+    } catch (e) {
+      setJustifications((prev) => ({ ...prev, [cacheKey]: 'বিশ্লেষণ লোড করতে সমস্যা হয়েছে।' }));
+    } finally {
+      setJustificationLoading((prev) => ({ ...prev, [cacheKey]: false }));
+    }
+  };
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const todayQ = useQuery({
@@ -204,31 +230,90 @@ export default function MealsScreen() {
           {(meal.items || []).map((item: any, idx: number) => {
             const foodName = item.name_bn || item.name_en || '';
             const sources = getSourcesForFood(item.name_en || item.name_bn || `food-${idx}`, 2);
+            const foodKey = item.food_code || item.code || item.name_en || item.name_bn || '';
             return (
-              <View key={idx} style={styles.foodItemRow}>
-                <Text style={styles.foodEmoji}>{item.emoji || '🍽️'}</Text>
-                <View style={styles.foodDetails}>
-                  <Text style={styles.foodName} numberOfLines={1}>{foodName}</Text>
-                  <View style={styles.foodSubRow}>
-                    <Text style={styles.foodSubText} numberOfLines={1}>
-                      {item.amount_g ? `${item.amount_g}g` : ''}
-                      {item.amount_g && item.calories ? ' • ' : ''}
-                      {item.calories ? `${item.calories} kcal` : ''}
+              <View key={idx} style={{ width: '100%', marginBottom: 4 }}>
+                <View style={styles.webFoodCard}>
+                  {/* Left Side: Emoji Box */}
+                  <View style={styles.webFoodEmojiBox}>
+                    <Text style={styles.webFoodEmoji}>{item.emoji || '🍽️'}</Text>
+                  </View>
+
+                  {/* Middle details: Name, weight & sources */}
+                  <View style={styles.webFoodInfo}>
+                    <Text style={styles.webFoodName} numberOfLines={1}>
+                      {foodName}
                     </Text>
-                    
-                    {/* Compact shopping sources logos */}
-                    <View style={styles.compactSources}>
-                      {sources.map((src: any, sIdx: number) => (
-                        <View
-                          key={sIdx}
-                          style={[styles.compactSourceCircle, { backgroundColor: src.color }]}
-                        >
-                          <Text style={styles.compactSourceAbbr}>{src.abbr}</Text>
-                        </View>
-                      ))}
+                    <View style={styles.webFoodMetaRow}>
+                      {item.amount_g || item.amount ? (
+                        <Text style={styles.webFoodWeight}>
+                          {item.amount_g || item.amount}g{' '}
+                          <Text style={styles.webFoodLabel}>পাওয়া যাবে:</Text>
+                        </Text>
+                      ) : null}
+                      
+                      {/* Compact shopping sources logos */}
+                      <View style={styles.webFoodSources}>
+                        {sources.map((src: any, sIdx: number) => (
+                          <View
+                            key={sIdx}
+                            style={[styles.compactSourceCircle, { backgroundColor: src.color }]}
+                          >
+                            <Text style={styles.compactSourceAbbr}>{src.abbr}</Text>
+                          </View>
+                        ))}
+                      </View>
                     </View>
                   </View>
+
+                  {/* Right Side: Calories & Icons */}
+                  <View style={styles.webFoodRight}>
+                    {/* Cal Badge */}
+                    <View style={styles.webFoodCalBadge}>
+                      <Text style={styles.webFoodCalText}>{item.calories || 0} cal</Text>
+                    </View>
+
+                    {/* Info Button */}
+                    <TouchableOpacity
+                      style={[styles.webFoodInfoBtn, justifications[foodKey] && { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}
+                      onPress={() => toggleFoodJustification(foodKey, foodName)}
+                    >
+                      <Text style={[styles.webFoodInfoText, justifications[foodKey] && { color: colors.accent }]}>ⓘ</Text>
+                    </TouchableOpacity>
+
+                    {/* Checkbox Button */}
+                    <TouchableOpacity
+                      style={[styles.webFoodCheckBtn, isCompleted && styles.webFoodCheckBtnActive]}
+                      onPress={() => {
+                        haptics.light();
+                        markMutation.mutate({ planId, slot: meal.slot, completed: !isCompleted });
+                      }}
+                      disabled={markMutation.isPending}
+                    >
+                      <Check size={10} color={isCompleted ? colors.white : 'rgba(0,0,0,0.15)'} strokeWidth={4.5} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
+                {/* Collapsible Justification Panels */}
+                {justificationLoading[foodKey] && (
+                  <View style={styles.justificationLoadingBox}>
+                    <ActivityIndicator size="small" color={colors.accent} />
+                    <Text style={styles.justificationLoadingText}>বিশ্লেষণ লোড হচ্ছে...</Text>
+                  </View>
+                )}
+
+                {justifications[foodKey] && (
+                  <View style={styles.justificationBox}>
+                    <View style={styles.justificationHeader}>
+                      <View style={styles.justificationPing} />
+                      <Text style={styles.justificationTitle}>ডায়েটিশিয়ান বিশ্লেষণ (RAG Insight):</Text>
+                    </View>
+                    <Text style={styles.justificationText}>
+                      {justifications[foodKey]}
+                    </Text>
+                  </View>
+                )}
               </View>
             );
           })}
@@ -236,7 +321,9 @@ export default function MealsScreen() {
 
         <View style={styles.calBadge}>
           <Flame size={12} color={colors.primary} />
-          <Text style={styles.calText}>{meal.target_calories} kcal</Text>
+          <Text style={styles.calText}>
+            {(meal.items || []).reduce((sum: number, item: any) => sum + (item.calories || 0), 0)} kcal
+          </Text>
         </View>
       </View>
     );
@@ -901,51 +988,171 @@ const styles = StyleSheet.create({
     borderColor: colors.success,
   },
   foodList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     marginVertical: spacing.sm,
-    gap: 8,
+    gap: 6,
   },
-  foodItemRow: {
+  webFoodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '48.5%', // 2 columns
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    width: '100%',
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    marginBottom: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  webFoodEmojiBox: {
+    width: 32,
+    height: 32,
     borderRadius: radius.sm,
-    padding: 6,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.03)',
   },
-  foodEmoji: {
+  webFoodEmoji: {
     fontSize: 16,
+  },
+  webFoodInfo: {
+    flex: 1,
+    justifyContent: 'center',
     marginRight: 6,
   },
-  foodDetails: {
-    flex: 1,
-  },
-  foodName: {
+  webFoodName: {
     fontFamily: fonts.bnBold,
-    fontSize: 11.5,
+    fontSize: 13,
     color: colors.textPrimary,
+    lineHeight: 16,
   },
-  foodSubRow: {
+  webFoodMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 3,
     gap: 4,
   },
-  foodSubText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 9.5,
-    color: colors.textSecondary,
-    flex: 1,
+  webFoodWeight: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.accent,
   },
-  compactSources: {
+  webFoodLabel: {
+    fontFamily: fonts.bn,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  webFoodSources: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+  },
+  webFoodRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  webFoodCalBadge: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  webFoodCalText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  webFoodInfoBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webFoodInfoText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 13,
+  },
+  webFoodCheckBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webFoodCheckBtnActive: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  justificationLoadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    marginTop: 4,
+    gap: 8,
+  },
+  justificationLoadingText: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  justificationBox: {
+    padding: 12,
+    backgroundColor: colors.accent + '08',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent + '15',
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 1,
+    elevation: 0.5,
+  },
+  justificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  justificationPing: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  justificationTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 11,
+    color: colors.accent,
+  },
+  justificationText: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
   compactSourceCircle: {
     width: 13,

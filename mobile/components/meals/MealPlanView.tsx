@@ -123,7 +123,9 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
         {/* Calorie badge */}
         <View style={styles.calBadge}>
           <Flame size={12} color={colors.primary} />
-          <Text style={styles.calText}>{meal.target_calories} kcal</Text>
+          <Text style={styles.calText}>
+            {(meal.items || []).reduce((sum: number, item: any) => sum + (item.calories || 0), 0)} kcal
+          </Text>
         </View>
       </View>
     );

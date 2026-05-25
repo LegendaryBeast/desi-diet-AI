@@ -97,6 +97,7 @@ export const foodsApi = {
   searchWithInsight: (q: string, slot = 'any') => api.get(`/foods/search-with-insight?q=${q}&slot=${slot}`),
   safeFoods: () => api.get('/foods/safe-foods'),
   detail: (code: string) => api.get(`/foods/${code}`),
+  justify: (code: string, name?: string) => api.get(`/foods/${encodeURIComponent(code)}/justify${name ? `?name=${encodeURIComponent(name)}` : ''}`),
 };
 
 // Reports API
@@ -119,8 +120,8 @@ export const dietPlanChatApi = {
 
 // Meal Tracking API
 export const mealTrackingApi = {
-  log: (input: string, mealSlot?: string, language = 'en') => 
-    api.post('/meal-tracking', { input, meal_slot: mealSlot, language }),
+  log: (input: string, mealSlot?: string, language = 'en', strictMode = false) => 
+    api.post('/meal-tracking', { input, meal_slot: mealSlot, language, strict_mode: strictMode }),
   today: () => api.get('/meal-tracking/today'),
 };
 

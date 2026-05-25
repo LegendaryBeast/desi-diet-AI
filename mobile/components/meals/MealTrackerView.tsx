@@ -5,6 +5,7 @@ import {
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { mealTrackingApi } from '../../lib/api';
+import { useSettingsStore } from '../../store/settings-store';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   PenLine, Send, Flame, Clock, CheckCircle2,
@@ -38,6 +39,7 @@ export default function MealTrackerView() {
   const [input, setInput] = useState('');
   const [selectedSlot, setSelectedSlot] = useState<MealSlot>('other');
   const haptics = useHaptics();
+  const { strictMode } = useSettingsStore();
 
   const { data: logsData, refetch: refetchLogs } = useQuery({
     queryKey: ['daily_tracking'],
@@ -49,7 +51,7 @@ export default function MealTrackerView() {
 
   const logMutation = useMutation({
     mutationFn: async () => {
-      const res = await mealTrackingApi.log(input.trim(), selectedSlot, 'bn');
+      const res = await mealTrackingApi.log(input.trim(), selectedSlot, 'bn', strictMode);
       return res.data;
     },
     onSuccess: () => {

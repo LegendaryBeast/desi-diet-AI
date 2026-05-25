@@ -622,6 +622,7 @@ export interface HealthSummaryReport {
     reference?: string;
     disease?: string;
   }>;
+  ai_verdict?: string;
 }
 
 export const reportsApi = {
@@ -673,7 +674,18 @@ export interface MealTrackingListItem {
 }
 
 export const mealTrackingApi = {
-  log: (data: { input: string; meal_slot?: string; language?: string }) =>
+  log: (data: {
+    input: string;
+    meal_slot?: string;
+    language?: string;
+    direct_calories?: number;
+    direct_protein?: number;
+    direct_carbs?: number;
+    direct_fat?: number;
+    direct_name?: string;
+    direct_amount_g?: number;
+    strict_mode?: boolean;
+  }) =>
     apiFetch<MealTrackingResponse>('/meal-tracking', {
       method: 'POST',
       body: JSON.stringify(data),

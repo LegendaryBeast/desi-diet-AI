@@ -15,6 +15,7 @@ import {
   Sparkles,
   ImagePlus,
   Trash2,
+  Shield,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -58,6 +59,15 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
   const [mode, setMode] = useState<Mode>('text');
   const [mealSlot, setMealSlot] = useState<string>('snack');
   const [text, setText] = useState('');
+  const [strictMode, setStrictMode] = useState(() => localStorage.getItem('strictMode') === 'true');
+
+  useEffect(() => {
+    const handleChanged = () => {
+      setStrictMode(localStorage.getItem('strictMode') === 'true');
+    };
+    window.addEventListener('strictModeChanged', handleChanged);
+    return () => window.removeEventListener('strictModeChanged', handleChanged);
+  }, []);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +218,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         input: text.trim(),
         meal_slot: mealSlot,
         language: lang,
+        strict_mode: strictMode,
       });
       setLastResult(res);
       setText('');

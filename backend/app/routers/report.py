@@ -532,6 +532,54 @@ async def get_health_summary(
             "reference": "WHO Anemia Guidelines"
         })
 
+    # 3. AI Dietitian Verdict Generator
+    ai_verdict = ""
+    try:
+        verdict_prompt = f"""You are a Senior Clinical Dietitian and AI Nutritionist specializing in Desi (South Asian) diets and medical nutrition therapy.
+Profile:
+- Gender: {profile.gender or "male"}
+- Age: {profile.age or 30} years
+- Goal: {profile.goal or "maintain weight"}
+- Medical Conditions: {", ".join(conditions) if conditions else "None"}
+
+Dietary Performance over the last {days} days:
+- Adherence Rate: {adherence_pct}%
+- Average Daily Calories: {avg_calories} kcal (Target: {target_calories} kcal)
+- Total Protein: {round(total_protein, 1)}g (Target: {round(target_protein * days, 1)}g)
+- Total Carbs: {round(total_carbs, 1)}g (Target: {round(target_carbs * days, 1)}g)
+- Total Fat: {round(total_fat, 1)}g (Target: {round(target_fat * days, 1)}g)
+- Total Fiber: {round(total_fiber, 1)}g
+
+Clinical Insights / Alerts:
+{chr(10).join([f"- {ins['title']}: {ins['message']}" for ins in clinical_insights]) if clinical_insights else "No major nutrient warnings."}
+
+Write a highly professional, clinically sound, personalized, and motivating summary verdict / overall clinical assessment (এআই সামগ্রিক মূল্যায়ন ও রায়) in Bengali (বাংলা) for the user. Keep it between 2 to 3 sentences. Be specific to their medical conditions, macro balance, and micronutrient performance.
+Do NOT use placeholders. Keep it highly premium and empathetic.
+Return ONLY a JSON object: {{"verdict": "your verdict in Bengali here"}}
+"""
+        messages = [
+            {"role": "system", "content": "You are a senior clinical dietitian and expert nutritionist. Return ONLY valid JSON."},
+            {"role": "user", "content": verdict_prompt}
+        ]
+        raw_verdict = await llm_client.chat_completion(
+            messages=messages,
+            temperature=0.3,
+            max_tokens=300,
+            response_format={"type": "json_object"}
+        )
+        data = json.loads(raw_verdict)
+        ai_verdict = data.get("verdict", "")
+    except Exception as ex:
+        print(f"Error generating AI verdict: {ex}")
+
+    # Fallback verdict in case of failure or empty response
+    if not ai_verdict:
+        if conditions:
+            conds_str = ", ".join(conditions)
+            ai_verdict = f"আপনার {conds_str} শারীরিক জটিলতা ও লক্ষ্যমাত্রার ওপর ভিত্তি করে আপনার পুষ্টি গ্রহণ বিশ্লেষণ করা হয়েছে। আপনার গড় ক্যালোরি গ্রহণ {avg_calories} kcal এবং অনুসরণ হার {adherence_pct}%। আপনার স্বাস্থ্যের সুরক্ষায় এবং ঘাটতি দূর করতে পুষ্টিবিদ নির্দেশিত সোডিয়াম, আঁশ ও প্রয়োজনীয় খনিজ উপাদানের প্রতি মনোযোগী হোন।"
+        else:
+            ai_verdict = f"আপনার পুষ্টি লক্ষ্যমাত্রার ওপর ভিত্তি করে আপনার গত {days} দিনের ডায়েট ট্র্যাক বিশ্লেষণ করা হয়েছে। আপনার ক্যালরি লক্ষ্যমাত্রা ও ম্যাক্রো অনুপাত সঠিক সীমার মধ্যে রয়েছে এবং ডায়েট অনুসরণ হার {adherence_pct}%। সুস্বাস্থ্য বজায় রাখতে পুষ্টি সমৃদ্ধ সুষম খাদ্য গ্রহণ অব্যাহত রাখুন।"
+
     return {
         "period_days": days,
         "days_with_data": days_with_data,
@@ -554,4 +602,5 @@ async def get_health_summary(
         "micronutrient_targets": micronutrient_targets,
         "current_weight_kg": current_weight,
         "clinical_insights": clinical_insights,
+        "ai_verdict": ai_verdict,
     }

@@ -20,6 +20,7 @@ import {
   Crown,
   Droplet,
   Utensils,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -45,6 +46,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { profileData, logout } = useAuth();
   const { isPro, subscribe, unsubscribe } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [strictMode, setStrictMode] = useState(() => localStorage.getItem('strictMode') === 'true');
+
+  const handleToggleStrict = (val: boolean) => {
+    setStrictMode(val);
+    localStorage.setItem('strictMode', val ? 'true' : 'false');
+    window.dispatchEvent(new Event('strictModeChanged'));
+  };
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -151,6 +160,37 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           >
             <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${
               isPro ? 'left-[18px]' : 'left-0.5'
+            }`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Strict Mode Universal Toggle */}
+      <div className="p-3.5 rounded-2xl border mb-5 bg-cream/50 border-ink/5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center ${
+              strictMode ? 'bg-accent text-white' : 'bg-ink/10 text-ink-muted'
+            }`}>
+              <Shield size={12} />
+            </div>
+            <div>
+              <div className="font-bn font-bold text-xs text-ink">
+                {isBn ? 'স্ট্রিক্ট মোড' : 'Strict Mode'}
+              </div>
+              <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body font-bold">
+                {isBn ? 'Graph-RAG ডাটা' : 'Verified Graph-RAG'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => handleToggleStrict(!strictMode)}
+            className={`relative w-9 h-5 rounded-full transition-all duration-300 ${
+              strictMode ? 'bg-accent' : 'bg-ink/15'
+            }`}
+          >
+            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${
+              strictMode ? 'left-[18px]' : 'left-0.5'
             }`} />
           </button>
         </div>

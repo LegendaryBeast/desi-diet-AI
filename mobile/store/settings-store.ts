@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface SettingsState {
   language: 'en' | 'bn';
   notificationsEnabled: boolean;
+  strictMode: boolean;
   mealTimes: {
     breakfast: string; // HH:mm
     lunch: string;
@@ -12,6 +13,7 @@ interface SettingsState {
   };
   setLanguage: (lang: 'en' | 'bn') => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
+  setStrictMode: (enabled: boolean) => Promise<void>;
   setMealTime: (slot: 'breakfast' | 'lunch' | 'snack' | 'dinner', time: string) => Promise<void>;
   hydrate: () => Promise<void>;
 }
@@ -19,6 +21,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   language: 'en',
   notificationsEnabled: false,
+  strictMode: false,
   mealTimes: {
     breakfast: '08:00',
     lunch: '13:00',
@@ -33,6 +36,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await AsyncStorage.setItem('notifications_enabled', String(enabled));
     set({ notificationsEnabled: enabled });
   },
+  setStrictMode: async (enabled) => {
+    await AsyncStorage.setItem('strict_mode', String(enabled));
+    set({ strictMode: enabled });
+  },
   setMealTime: async (slot, time) => {
     const newTimes = { ...get().mealTimes, [slot]: time };
     await AsyncStorage.setItem('meal_times', JSON.stringify(newTimes));
@@ -40,14 +47,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   hydrate: async () => {
     try {
-      const [lang, notifs, timesStr] = await Promise.all([
+      const [lang, notifs, strict, timesStr] = await Promise.all([
         AsyncStorage.getItem('app_language'),
         AsyncStorage.getItem('notifications_enabled'),
+        AsyncStorage.getItem('strict_mode'),
         AsyncStorage.getItem('meal_times'),
       ]);
       set((state) => ({
         language: (lang as 'en' | 'bn') || state.language,
         notificationsEnabled: notifs === 'true',
+        strictMode: strict === 'true',
         mealTimes: timesStr ? JSON.parse(timesStr) : state.mealTimes,
       }));
     } catch (e) {

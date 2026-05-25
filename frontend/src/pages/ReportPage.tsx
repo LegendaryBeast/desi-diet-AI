@@ -9,7 +9,7 @@ import {
   BarChart2, Flame, Zap, Droplet, Wind, AlertCircle,
   RefreshCw, Scale, Activity, TrendingUp, Target,
   CheckCircle2, ChevronRight, Loader2, Calendar,
-  Mail, Download, Heart
+  Mail, Download, Heart, Brain, ShieldCheck
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { reportsApi, type HealthSummaryReport } from '../lib/api';
@@ -98,12 +98,15 @@ export const ReportPage = () => {
     };
 
     const avgCalories = report.avg_daily_calories || 0;
-    const complianceRate = activeTargets.target_calories ? (avgCalories / activeTargets.target_calories) : 0.85;
+    const totalProtein = report.macro_summary?.protein_g || 0;
+    const totalCarbs = report.macro_summary?.carbs_g || 0;
+    const totalFat = report.macro_summary?.fat_g || 0;
+    const totalFiber = report.macro_summary?.fiber_g || 0;
 
-    const avgProtein = report.macro_summary?.protein_g ? (report.macro_summary.protein_g / period) : (activeTargets.protein_g * complianceRate);
-    const avgCarbs = report.macro_summary?.carbs_g ? (report.macro_summary.carbs_g / period) : (activeTargets.carbs_g * complianceRate);
-    const avgFat = report.macro_summary?.fat_g ? (report.macro_summary.fat_g / period) : (activeTargets.fat_g * complianceRate);
-    const avgFiber = report.macro_summary?.fiber_g ? (report.macro_summary.fiber_g / period) : (activeTargets.fiber_g * complianceRate);
+    const avgProtein = totalProtein / report.period_days;
+    const avgCarbs = totalCarbs / report.period_days;
+    const avgFat = totalFat / report.period_days;
+    const avgFiber = totalFiber / report.period_days;
 
     const deficiencies = report.micronutrient_targets || [];
 
@@ -120,6 +123,19 @@ export const ReportPage = () => {
     const fatStatus = isOptimal(avgFat, activeTargets.fat_g);
     const fiberStatus = isOptimal(avgFiber, activeTargets.fiber_g);
 
+    // Micronutrient groups
+    const VITAMIN_NAMES = [
+      "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+      "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
+      "Pantothenic acid (B5)", "Biotin (B7)"
+    ];
+    const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
+    const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
+
+    const vitamins = deficiencies.filter(n => VITAMIN_NAMES.includes(n.name));
+    const minerals = deficiencies.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+    const fatty = deficiencies.filter(n => FATTY_NAMES.includes(n.name));
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -132,14 +148,12 @@ export const ReportPage = () => {
             .logo { font-size: 28px; font-weight: bold; color: #8FB41E; letter-spacing: -0.5px; }
             .meta-info { text-align: right; font-size: 12px; color: #7A8487; }
             .user-box { background-color: #FFFDF9; border: 1px solid #EBF0D8; padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; }
-            h2 { font-size: 18px; color: #1C2123; border-left: 5px solid #A7C924; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; }
+            h2 { font-size: 16px; color: #1C2123; border-left: 5px solid #A7C924; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; }
             table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
             th { background-color: #EBF0D8; color: #1C2123; padding: 10px 12px; text-align: left; border: 1px solid #DFE3D1; font-weight: bold; }
             td { padding: 10px 12px; border: 1px solid #DFE3D1; }
             .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
-            .food-tag { display: inline-block; background-color: #FFFDF9; border: 1px solid #DFE3D1; border-radius: 16px; padding: 6px 14px; margin: 5px; font-size: 12px; color: #e05a1c; font-weight: bold; }
             .footer { margin-top: 50px; border-top: 1px solid #DFE3D1; padding-top: 15px; font-size: 11px; color: #7A8487; text-align: center; line-height: 1.8; }
-            .clinical-box { border-left: 4px solid #A7C924; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
             @media print {
               body { padding: 0; }
               .no-print { display: none; }
@@ -168,13 +182,46 @@ export const ReportPage = () => {
             </table>
           </div>
 
+          ${report.ai_verdict ? `
+            <div style="background-color: #FFFDF9; border: 1px dashed #A7C924; padding: 18px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; line-height: 1.6;">
+              <div style="font-weight: bold; color: #8FB41E; font-size: 14px; margin-bottom: 6px;">
+                📋 এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)
+              </div>
+              <p style="margin: 0; color: #1C2123; font-style: italic; font-weight: 500;">
+                "${report.ai_verdict}"
+              </p>
+            </div>
+          ` : ''}
+
+          <h2>📋 সামগ্রিক স্বাস্থ্যের সারসংক্ষেপ (Overall Health Summary)</h2>
+          <table style="margin-bottom: 20px;">
+            <thead>
+              <tr>
+                <th>বিশ্লেষিত দিন</th>
+                <th>গড় ক্যালোরি/দিন</th>
+                <th>লক্ষ্য ক্যালোরি</th>
+                <th>অনুসরণ হার (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>${report.days_with_data}/${report.period_days} দিন</strong></td>
+                <td><strong>${Math.round(report.avg_daily_calories)} kcal</strong></td>
+                <td><strong>${report.target_calories} kcal</strong></td>
+                <td><strong>${report.adherence_pct}%</strong></td>
+              </tr>
+            </tbody>
+          </table>
+
           <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
-          <table>
+          <table style="margin-bottom: 20px;">
             <thead>
               <tr>
                 <th>পুষ্টি উপাদান</th>
-                <th>গড় দৈনিক গ্রহণ</th>
-                <th>লক্ষ্যমাত্রা</th>
+                <th>দৈনিক গড় গ্রহণ</th>
+                <th>দৈনিক লক্ষ্য</th>
+                <th>${report.period_days} দিনের মোট গ্রহণ</th>
+                <th>মোট লক্ষ্যমাত্রা</th>
                 <th>পূরণ হার (%)</th>
                 <th>অবস্থা</th>
               </tr>
@@ -184,6 +231,8 @@ export const ReportPage = () => {
                 <td><strong>ক্যালোরি (Calories)</strong></td>
                 <td>${Math.round(avgCalories)} kcal</td>
                 <td>${activeTargets.target_calories} kcal</td>
+                <td>${Math.round(avgCalories * report.days_with_data)} kcal</td>
+                <td>${activeTargets.target_calories * report.period_days} kcal</td>
                 <td>${Math.round((avgCalories / activeTargets.target_calories) * 100)}%</td>
                 <td><span class="status-badge" style="background-color: ${caloriesStatus.bg}; color: ${caloriesStatus.color};">${caloriesStatus.label}</span></td>
               </tr>
@@ -191,6 +240,8 @@ export const ReportPage = () => {
                 <td><strong>আমিষ (Protein)</strong></td>
                 <td>${Math.round(avgProtein)}g</td>
                 <td>${activeTargets.protein_g}g</td>
+                <td>${Math.round(totalProtein)}g</td>
+                <td>${activeTargets.protein_g * report.period_days}g</td>
                 <td>${Math.round((avgProtein / activeTargets.protein_g) * 100)}%</td>
                 <td><span class="status-badge" style="background-color: ${proteinStatus.bg}; color: ${proteinStatus.color};">${proteinStatus.label}</span></td>
               </tr>
@@ -198,6 +249,8 @@ export const ReportPage = () => {
                 <td><strong>শর্করা (Carbs)</strong></td>
                 <td>${Math.round(avgCarbs)}g</td>
                 <td>${activeTargets.carbs_g}g</td>
+                <td>${Math.round(totalCarbs)}g</td>
+                <td>${activeTargets.carbs_g * report.period_days}g</td>
                 <td>${Math.round((avgCarbs / activeTargets.carbs_g) * 100)}%</td>
                 <td><span class="status-badge" style="background-color: ${carbsStatus.bg}; color: ${carbsStatus.color};">${carbsStatus.label}</span></td>
               </tr>
@@ -205,6 +258,8 @@ export const ReportPage = () => {
                 <td><strong>চর্বি (Fat)</strong></td>
                 <td>${Math.round(avgFat)}g</td>
                 <td>${activeTargets.fat_g}g</td>
+                <td>${Math.round(totalFat)}g</td>
+                <td>${activeTargets.fat_g * report.period_days}g</td>
                 <td>${Math.round((avgFat / activeTargets.fat_g) * 100)}%</td>
                 <td><span class="status-badge" style="background-color: ${fatStatus.bg}; color: ${fatStatus.color};">${fatStatus.label}</span></td>
               </tr>
@@ -212,56 +267,177 @@ export const ReportPage = () => {
                 <td><strong>আঁশ (Fiber)</strong></td>
                 <td>${Math.round(avgFiber)}g</td>
                 <td>${activeTargets.fiber_g}g</td>
+                <td>${Math.round(totalFiber)}g</td>
+                <td>${activeTargets.fiber_g * report.period_days}g</td>
                 <td>${Math.round((avgFiber / activeTargets.fiber_g) * 100)}%</td>
                 <td><span class="status-badge" style="background-color: ${fiberStatus.bg}; color: ${fiberStatus.color};">${fiberStatus.label}</span></td>
               </tr>
             </tbody>
           </table>
 
-          <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Gaps)</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>পুষ্টি উপাদান</th>
-                <th>গড় গ্রহণ</th>
-                <th>লক্ষ্যমাত্রা</th>
-                <th>পূরণ হার (%)</th>
-                <th>অবস্থা</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${deficiencies.map(def => {
-                const status = isOptimal(def.consumed / period, def.target / period);
-                return `
-                  <tr>
-                    <td><strong>${def.name_bn || def.name} (${def.name})</strong></td>
-                    <td>${Math.round(def.consumed / period)} ${def.unit}</td>
-                    <td>${Math.round(def.target / period)} ${def.unit}</td>
-                    <td>${Math.round(def.percentage)}%</td>
-                    <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-
           ${report.clinical_insights && report.clinical_insights.length > 0 ? `
-            <h2>🧠 এআই ও ক্লিনিক্যাল পুষ্টি পরামর্শ (Clinical Insights)</h2>
-            <div style="margin-top: 10px;">
-              ${report.clinical_insights.map((insight: any) => {
-                const isError = insight.type === 'error';
-                const isWarning = insight.type === 'warning';
-                const borderTheme = isError ? '#C62828' : isWarning ? '#EF6C00' : '#2E7D32';
-                const bgTheme = isError ? '#FFEBEE' : isWarning ? '#FFF3E0' : '#E8F5E9';
-                return `
-                  <div class="clinical-box" style="border-left-color: ${borderTheme}; background-color: ${bgTheme};">
-                    <strong style="color: ${borderTheme}; display: block; margin-bottom: 4px;">⚠️ ${insight.title}</strong>
-                    <div style="color: #1C2123;">${insight.message}</div>
-                    ${insight.reference ? `<div style="font-size: 11px; color: #7A8487; margin-top: 6px; font-style: italic;">সূত্র: ${insight.reference}</div>` : ''}
-                  </div>
-                `;
-              }).join('')}
-            </div>
+            <h2>🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical Nutrition Insights)</h2>
+            <table style="margin-bottom: 20px;">
+              <thead>
+                <tr>
+                  <th style="width: 25%;">সতর্কবার্তা / উপাদান</th>
+                  <th style="width: 55%;">পুষ্টিবিদ মূল্যায়ন ও পরামর্শ</th>
+                  <th style="width: 20%;">রেফারেন্স গাইডলাইন</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${report.clinical_insights.map(ins => {
+                  const badgeColor = ins.type === 'error' ? '#C62828' : '#EF6C00';
+                  const badgeBg = ins.type === 'error' ? '#FFEBEE' : '#FFF3E0';
+                  return `
+                    <tr>
+                      <td>
+                        <span class="status-badge" style="background-color: ${badgeBg}; color: ${badgeColor}; margin-bottom: 4px;">${ins.title}</span>
+                        ${ins.disease ? `<br><small style="color: #7A8487; font-size: 10px;">শারীরিক অবস্থা: ${ins.disease}</small>` : ''}
+                      </td>
+                      <td>${ins.message}</td>
+                      <td><em style="color: #7A8487; font-size: 11px;">${ins.reference || 'Bangladesh Dietary Guidelines'}</em></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${report.calorie_history && report.calorie_history.length > 0 ? `
+            <h2>📅 প্রতিদিনের ক্যালোরি বিবরণী (Daily Calorie Consumption Log)</h2>
+            <table style="margin-bottom: 20px;">
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>ক্যালোরি গ্রহণ</th>
+                  <th>পরিকল্পিত ক্যালোরি</th>
+                  <th>পূরণ হার (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${report.calorie_history.map(day => {
+                  const pct = day.calories_target > 0 ? Math.round((day.calories_consumed / day.calories_target) * 100) : 100;
+                  return `
+                    <tr>
+                      <td>${day.date}</td>
+                      <td>${day.calories_consumed} kcal</td>
+                      <td>${day.calories_target} kcal</td>
+                      <td>${pct}%</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${report.weight_history && report.weight_history.length > 0 ? `
+            <h2>⚖️ ওজন পরিবর্তনের ইতিহাস (Weight Tracking History)</h2>
+            <table style="margin-bottom: 20px;">
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>ওজন (কেজি)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${report.weight_history.map(log => `
+                  <tr>
+                    <td>${log.date}</td>
+                    <td>${log.weight_kg} kg</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Tracker)</h2>
+          
+          ${vitamins.length > 0 ? `
+            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #8FB41E; font-size: 14px;">🍊 ভিটামিন (Vitamins)</h3>
+            <table style="margin-bottom: 20px;">
+              <thead>
+                <tr>
+                  <th>ভিটামিন</th>
+                  <th>গড় দৈনিক গ্রহণ</th>
+                  <th>লক্ষ্যমাত্রা</th>
+                  <th>পূরণ হার (%)</th>
+                  <th>অবস্থা</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${vitamins.map(nut => {
+                  const status = isOptimal(nut.consumed, nut.target);
+                  return `
+                    <tr>
+                      <td><strong>${nut.name_bn || nut.name} (${nut.name})</strong></td>
+                      <td>${Math.round(nut.consumed)} ${nut.unit}</td>
+                      <td>${Math.round(nut.target)} ${nut.unit}</td>
+                      <td>${Math.round(nut.percentage)}%</td>
+                      <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${minerals.length > 0 ? `
+            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #3b82f6; font-size: 14px;">💎 খনিজ (Minerals)</h3>
+            <table style="margin-bottom: 20px;">
+              <thead>
+                <tr>
+                  <th>খনিজ</th>
+                  <th>গড় দৈনিক গ্রহণ</th>
+                  <th>লক্ষ্যমাত্রা</th>
+                  <th>পূরণ হার (%)</th>
+                  <th>অবস্থা</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${minerals.map(nut => {
+                  const status = isOptimal(nut.consumed, nut.target);
+                  return `
+                    <tr>
+                      <td><strong>${nut.name_bn || nut.name} (${nut.name})</strong></td>
+                      <td>${Math.round(nut.consumed)} ${nut.unit}</td>
+                      <td>${Math.round(nut.target)} ${nut.unit}</td>
+                      <td>${Math.round(nut.percentage)}%</td>
+                      <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${fatty.length > 0 ? `
+            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #10b981; font-size: 14px;">🌱 ফ্যাটি অ্যাসিড (Fatty Acids)</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>ফ্যাটি অ্যাসিড</th>
+                  <th>গড় দৈনিক গ্রহণ</th>
+                  <th>লক্ষ্যমাত্রা</th>
+                  <th>পূরণ হার (%)</th>
+                  <th>অবস্থা</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${fatty.map(nut => {
+                  const status = isOptimal(nut.consumed, nut.target);
+                  return `
+                    <tr>
+                      <td><strong>${nut.name_bn || nut.name} (${nut.name})</strong></td>
+                      <td>${Math.round(nut.consumed)} ${nut.unit}</td>
+                      <td>${Math.round(nut.target)} ${nut.unit}</td>
+                      <td>${Math.round(nut.percentage)}%</td>
+                      <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
           ` : ''}
 
           <div class="footer">
@@ -418,6 +594,29 @@ export const ReportPage = () => {
                 
                 {/* Left Columns (Charts and Nutrient Stats) - Takes 2/3 space */}
                 <div className="lg:col-span-2 space-y-4">
+
+                  {/* AI Dietitian Verdict Card */}
+                  {report.ai_verdict && (
+                    <div className="bg-gradient-to-br from-cream/40 via-white to-green-50/20 p-4 rounded-2xl border border-accent/20 shadow-sm space-y-2.5 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-accent/5 rounded-bl-full pointer-events-none" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-accent/10 text-accent rounded-xl">
+                          <Brain className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h2 className="font-bn font-black text-xs text-ink leading-tight">এআই ও সামগ্রিক পুষ্টি মূল্যায়ন (Clinical AI Assessment)</h2>
+                          <p className="text-[0.52rem] font-bn text-ink-faint leading-none mt-0.5">PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত</p>
+                        </div>
+                      </div>
+                      <p className="font-bn text-[0.68rem] text-ink/90 leading-relaxed font-medium pl-2 border-l-2 border-accent/40 bg-cream/10 py-1 pr-1.5 rounded italic">
+                        "{report.ai_verdict}"
+                      </p>
+                      <div className="flex items-center justify-between text-[0.52rem] font-bn text-ink-faint pt-1 border-t border-ink/5">
+                        <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3 text-accent" /> অনুমোদিত ক্লিনিক্যাল পুষ্টি নির্দেশিকা</span>
+                        <span className="font-semibold italic">DesiDiet AI Engine</span>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Side-by-side Charts Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -533,36 +732,114 @@ export const ReportPage = () => {
                       )}
                     </div>
 
-                    {/* Macro vs Target Bar */}
+                    {/* Macro vs Target Bar & Table */}
                     <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-1 h-3.5 bg-green-500 rounded-full" />
-                        <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো গ্রহণ বনাম লক্ষ্য</h2>
+                        <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো পুষ্টি খতিয়ান (Macros Summary)</h2>
                       </div>
-                      <div className="space-y-2.5">
+                      <div className="space-y-4">
                         {[
-                          { label: 'প্রোটিন', consumed: report.macro_summary.protein_g, target: report.macro_summary.target_protein_g, color: 'bg-emerald-500', unit: 'g' },
-                          { label: 'শর্করা', consumed: report.macro_summary.carbs_g, target: report.macro_summary.target_carbs_g, color: 'bg-blue-500', unit: 'g' },
-                          { label: 'চর্বি', consumed: report.macro_summary.fat_g, target: report.macro_summary.target_fat_g, color: 'bg-amber-500', unit: 'g' },
-                          { label: 'ফাইবার', consumed: report.macro_summary.fiber_g, target: report.period_days * 30, color: 'bg-green-500', unit: 'g' },
+                          { label: 'আমিষ (Protein)', consumed: report.macro_summary.protein_g, target: report.macro_summary.target_protein_g, color: 'bg-emerald-500', unit: 'g' },
+                          { label: 'শর্করা (Carbs)', consumed: report.macro_summary.carbs_g, target: report.macro_summary.target_carbs_g, color: 'bg-blue-500', unit: 'g' },
+                          { label: 'চর্বি (Fat)', consumed: report.macro_summary.fat_g, target: report.macro_summary.target_fat_g, color: 'bg-amber-500', unit: 'g' },
+                          { label: 'আঁশ (Fiber)', consumed: report.macro_summary.fiber_g, target: report.period_days * 30, color: 'bg-purple-500', unit: 'g' },
                         ].map((m, i) => {
-                          const pct = m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;
+                          const pct = m.target > 0 ? Math.round((m.consumed / m.target) * 100) : 0;
+                          const avgDaily = m.consumed / report.period_days;
+                          const targetDaily = m.target / report.period_days;
+                          
+                          let statusLabel = 'সঠিক';
+                          let statusColor = 'text-green-600 bg-green-50';
+                          if (pct < 70) {
+                            statusLabel = 'ঘাটতি';
+                            statusColor = 'text-red-600 bg-red-50';
+                          } else if (pct > 115) {
+                            statusLabel = 'অতিরিক্ত';
+                            statusColor = 'text-amber-600 bg-amber-50';
+                          }
+
                           return (
-                            <div key={i} className="font-bn">
-                              <div className="flex justify-between text-[0.68rem] mb-0.5">
+                            <div key={i} className="font-bn border-b border-ink/5 pb-2.5 last:border-b-0 last:pb-0">
+                              <div className="flex justify-between items-center text-[0.68rem] mb-1">
                                 <span className="font-bold text-ink">{m.label}</span>
-                                <span className="text-ink-faint">{m.consumed.toFixed(0)}{m.unit} / {m.target.toFixed(0)}{m.unit} ({pct}%)</span>
+                                <span className={`text-[0.52rem] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
+                                  {statusLabel} ({pct}%)
+                                </span>
                               </div>
+                              
+                              <div className="grid grid-cols-3 gap-2 text-[0.62rem] text-ink-muted mb-1.5">
+                                <div>
+                                  <span className="text-[0.52rem] text-ink-faint block">দৈনিক গড় গ্রহণ</span>
+                                  <strong className="text-ink font-display">{avgDaily.toFixed(1)}{m.unit}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-[0.52rem] text-ink-faint block">দৈনিক লক্ষ্য</span>
+                                  <strong className="text-ink font-display">{targetDaily.toFixed(1)}{m.unit}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-[0.52rem] text-ink-faint block">{report.period_days} দিনের মোট</span>
+                                  <strong className="text-ink font-display">{m.consumed.toFixed(0)}{m.unit} / {m.target.toFixed(0)}{m.unit}</strong>
+                                </div>
+                              </div>
+
                               <div className="h-1.5 bg-cream rounded-full overflow-hidden">
                                 <div className={`h-full ${m.color} rounded-full transition-all duration-700`}
-                                  style={{ width: `${pct}%` }} />
-                              </div>
+                                  style={{ width: `${Math.min(100, pct)}%` }} />
+                                </div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
                   </div>
+
+                  {/* Clinical Insights Section */}
+                  {report.clinical_insights && report.clinical_insights.length > 0 && (
+                    <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-3.5 bg-rose-500 rounded-full" />
+                        <h2 className="font-bn font-black text-xs text-ink">🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical AI Insights)</h2>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {report.clinical_insights.map((ins, i) => {
+                          const isError = ins.type === 'error';
+                          return (
+                            <div key={i} className={`p-3 rounded-xl border flex flex-col justify-between font-bn transition-all hover:shadow ${
+                              isError 
+                                ? 'bg-red-50/20 border-red-100 text-red-950' 
+                                : 'bg-amber-50/10 border-amber-100 text-amber-950'
+                            }`}>
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-1.5">
+                                  <AlertCircle className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isError ? 'text-red-500' : 'text-amber-500'}`} />
+                                  <div>
+                                    <h3 className="font-bold text-[0.68rem] leading-snug">{ins.title}</h3>
+                                    {ins.disease && (
+                                      <span className={`inline-block text-[0.48rem] font-bold px-1 py-0.2 rounded mt-0.5 ${
+                                        isError ? 'bg-red-100/60 text-red-700' : 'bg-amber-100/60 text-amber-700'
+                                      }`}>
+                                        শারীরিক অবস্থা: {ins.disease}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-[0.62rem] text-ink-muted leading-relaxed font-medium">
+                                  {ins.message}
+                                </p>
+                              </div>
+                              {ins.reference && (
+                                <div className="mt-2 pt-1.5 border-t border-ink/5 flex items-center justify-between text-[0.48rem] text-ink-faint leading-none">
+                                  <span>রেফারেন্স:</span>
+                                  <span className="font-bold italic text-accent">{ins.reference}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Micronutrient Tracker */}
                   {report.micronutrient_targets.length > 0 && (() => {
@@ -653,55 +930,6 @@ export const ReportPage = () => {
                       পিডিএফ রিপোর্ট প্রিন্ট / সেভ
                     </button>
                   </div>
-
-                  {/* AI & Clinical Insights */}
-                  {report.clinical_insights && report.clinical_insights.length > 0 && (
-                    <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Heart className="w-5 h-5 text-accent animate-pulse" />
-                        <h3 className="font-display font-black text-sm text-ink">এআই ও ক্লিনিক্যাল পরামর্শ</h3>
-                      </div>
-                      <p className="font-bn text-xs text-ink-muted leading-relaxed">
-                        জাতীয় পুষ্টি নির্দেশিকা (NDG) এবং আপনার রোগ ও ডায়েট প্রোফাইল অনুযায়ী পুষ্টির ঘাটতি বা অতিরিক্ততার ক্লিনিক্যাল বিশ্লেষণ:
-                      </p>
-
-                      <div className="space-y-3">
-                        {report.clinical_insights.map((insight: any, index: number) => {
-                          const isError = insight.type === 'error';
-                          const isWarning = insight.type === 'warning';
-                          
-                          let cardBg = "bg-emerald-50/40 border-emerald-500/20 text-emerald-800";
-                          let iconColor = "text-emerald-600";
-                          let titleColor = "text-emerald-950";
-                          
-                          if (isError) {
-                            cardBg = "bg-red-50/40 border-red-500/20 text-red-800";
-                            iconColor = "text-red-600";
-                            titleColor = "text-red-950";
-                          } else if (isWarning) {
-                            cardBg = "bg-amber-50/40 border-amber-500/20 text-amber-800";
-                            iconColor = "text-amber-600";
-                            titleColor = "text-amber-950";
-                          }
-
-                          return (
-                            <div key={index} className={`p-4 rounded-xl border flex flex-col gap-2 ${cardBg}`}>
-                              <div className="flex items-center gap-2">
-                                <AlertCircle className={`w-4 h-4 shrink-0 ${iconColor}`} />
-                                <strong className={`font-bn font-bold text-xs ${titleColor}`}>{insight.title}</strong>
-                              </div>
-                              <p className="font-bn text-xs leading-relaxed opacity-90">{insight.message}</p>
-                              {insight.reference && (
-                                <span className="self-start font-bn text-[0.6rem] font-bold bg-white/70 px-2 py-0.5 rounded border border-black/5 opacity-80 mt-1">
-                                  সূত্র: {insight.reference}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Email Report Form */}
                   <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">

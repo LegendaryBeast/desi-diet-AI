@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Dimensions, ImageBackground, Image } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Dimensions, ImageBackground, Image, Switch } from 'react-native';
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +8,8 @@ import { Search, Crown, Play, ChevronLeft, ChevronRight, Check, Flame, Apple, Ac
 import Svg, { Path, Circle } from 'react-native-svg';
 import { HomeScreenSkeleton } from '../../components/SkeletonLoader';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useSettingsStore } from '../../store/settings-store';
+import ProModal from '../../components/ui/ProModal';
 
 const { width } = Dimensions.get('window');
 
@@ -75,6 +77,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const haptics = useHaptics();
   const [refreshing, setRefreshing] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
+  const { strictMode, setStrictMode } = useSettingsStore();
 
   const { data: profileData, isPending: isProfilePending, refetch: refetchProfile } = useQuery({
     queryKey: ['profile'],
@@ -161,10 +165,38 @@ export default function HomeScreen() {
             <Search size={16} color={design.textGray} />
             <Text style={styles.searchBarText}>খাবারের ডাটাবেজ খুঁজুন...</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.upgradeBtn}>
+          <TouchableOpacity 
+            style={styles.upgradeBtn}
+            onPress={() => { haptics.light(); setShowProModal(true); }}
+          >
             <Crown size={14} color={design.yellow} />
             <Text style={styles.upgradeText}>Upgrade</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* STRICT MODE UNIVERSAL TOGGLE */}
+        <View style={styles.strictModeCard}>
+          <View style={styles.strictModeLeft}>
+            <View style={[styles.strictModeIconBox, strictMode && styles.strictModeIconBoxActive]}>
+              <Shield size={16} color={strictMode ? colors.white : design.textGray} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.strictModeTitle}>স্ট্রিক্ট মোড (Strict Mode)</Text>
+              <Text style={styles.strictModeSubtitle}>
+                {strictMode ? 'শুধুমাত্র ভেরিফাইড Graph-RAG ডাটা ব্যবহৃত হবে' : 'এআই ড্রিভেন ডাটা ও সতর্কতা ব্যবহৃত হবে'}
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={strictMode}
+            onValueChange={(val) => {
+              haptics.light();
+              setStrictMode(val);
+            }}
+            trackColor={{ false: 'rgba(0,0,0,0.1)', true: design.lime }}
+            thumbColor={colors.white}
+            ios_backgroundColor="rgba(0,0,0,0.08)"
+          />
         </View>
       </View>
 
@@ -350,6 +382,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
 
+        <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
       </View>
     </ScrollView>
   );
@@ -538,5 +571,51 @@ const styles = StyleSheet.create({
   weightUnit: { fontSize: 20, fontFamily: fonts.body },
   weightNote: { fontFamily: fonts.body, fontSize: 10, color: design.textGray, textAlign: 'right' },
   keepItUp: { fontFamily: fonts.bodyBold, fontSize: 12, color: design.textBlack, marginTop: 2 },
+
+  strictModeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.glass,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  strictModeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  strictModeIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EBF0D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  strictModeIconBoxActive: {
+    backgroundColor: colors.primary,
+  },
+  strictModeTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  strictModeSubtitle: {
+    fontFamily: fonts.bn,
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
 
 });

@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, ActivityIndicator, TextInput, Alert,
+  RefreshControl, ActivityIndicator, TextInput, Alert, Platform,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -135,10 +135,15 @@ export default function ReportScreen() {
 
       const complianceRate = activeTargets.target_calories ? (avgCalories / activeTargets.target_calories) : 0.85;
 
-      const avgProtein = healthSummary?.macro_summary?.protein_g ? (healthSummary.macro_summary.protein_g / selectedDuration) : (activeTargets.protein_g * complianceRate);
-      const avgCarbs = healthSummary?.macro_summary?.carbs_g ? (healthSummary.macro_summary.carbs_g / selectedDuration) : (activeTargets.carbs_g * complianceRate);
-      const avgFat = healthSummary?.macro_summary?.fat_g ? (healthSummary.macro_summary.fat_g / selectedDuration) : (activeTargets.fat_g * complianceRate);
-      const avgFiber = healthSummary?.macro_summary?.fiber_g ? (healthSummary.macro_summary.fiber_g / selectedDuration) : (activeTargets.fiber_g * complianceRate);
+      const totalProtein = healthSummary?.macro_summary?.protein_g || (activeTargets.protein_g * complianceRate * selectedDuration);
+      const totalCarbs = healthSummary?.macro_summary?.carbs_g || (activeTargets.carbs_g * complianceRate * selectedDuration);
+      const totalFat = healthSummary?.macro_summary?.fat_g || (activeTargets.fat_g * complianceRate * selectedDuration);
+      const totalFiber = healthSummary?.macro_summary?.fiber_g || (activeTargets.fiber_g * complianceRate * selectedDuration);
+
+      const avgProtein = totalProtein / selectedDuration;
+      const avgCarbs = totalCarbs / selectedDuration;
+      const avgFat = totalFat / selectedDuration;
+      const avgFiber = totalFiber / selectedDuration;
 
       const deficiencies = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
         ? healthSummary.micronutrient_targets.map((micro: any) => ({
@@ -187,9 +192,9 @@ export default function ReportScreen() {
               .logo { font-size: 24px; font-weight: bold; color: #8FB41E; }
               .meta-info { text-align: right; font-size: 11px; color: #7A8487; }
               .user-box { background-color: #FFFDF9; border: 1px solid #EBF0D8; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 12px; }
-              h2 { font-size: 16px; color: #1C2123; border-left: 4px solid #A7C924; padding-left: 8px; margin-top: 24px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-              th { background-color: #EBF0D8; color: #1C2123; padding: 8px; text-align: left; border: 1px solid #DFE3D1; }
+              h2 { font-size: 14px; color: #1C2123; border-left: 4px solid #A7C924; padding-left: 8px; margin-top: 24px; margin-bottom: 10px; font-weight: bold; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; margin-bottom: 15px; }
+              th { background-color: #EBF0D8; color: #1C2123; padding: 8px; text-align: left; border: 1px solid #DFE3D1; font-weight: bold; }
               td { padding: 8px; border: 1px solid #DFE3D1; }
               .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
               .food-tag { display: inline-block; background-color: #FFFDF9; border: 1px solid #DFE3D1; border-radius: 12px; padding: 4px 10px; margin: 4px; font-size: 11px; }
@@ -218,13 +223,26 @@ export default function ReportScreen() {
               </table>
             </div>
 
+            ${healthSummary?.ai_verdict ? `
+              <div style="background-color: #FFFDF9; border: 1px dashed #A7C924; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 12px; line-height: 1.5;">
+                <div style="font-weight: bold; color: #8FB41E; font-size: 13px; margin-bottom: 4px;">
+                  📋 এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)
+                </div>
+                <p style="margin: 0; color: #1C2123; font-style: italic; font-weight: 500;">
+                  "${healthSummary.ai_verdict}"
+                </p>
+              </div>
+            ` : ''}
+
             <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
             <table>
               <thead>
                 <tr>
                   <th>পুষ্টি উপাদান</th>
-                  <th>গড় দৈনিক গ্রহণ</th>
-                  <th>লক্ষ্যমাত্রা</th>
+                  <th>দৈনিক গড় গ্রহণ</th>
+                  <th>দৈনিক লক্ষ্য</th>
+                  <th>${selectedDuration} দিনের মোট গ্রহণ</th>
+                  <th>মোট লক্ষ্যমাত্রা</th>
                   <th>পূরণ হার (%)</th>
                   <th>অবস্থা</th>
                 </tr>
@@ -234,6 +252,8 @@ export default function ReportScreen() {
                   <td><strong>ক্যালোরি (Calories)</strong></td>
                   <td>${Math.round(avgCalories)} kcal</td>
                   <td>${activeTargets.target_calories} kcal</td>
+                  <td>${Math.round(avgCalories * selectedDuration)} kcal</td>
+                  <td>${activeTargets.target_calories * selectedDuration} kcal</td>
                   <td>${Math.round((avgCalories / activeTargets.target_calories) * 100)}%</td>
                   <td><span class="status-badge" style="background-color: ${caloriesStatus.bg}; color: ${caloriesStatus.color};">${caloriesStatus.label}</span></td>
                 </tr>
@@ -241,6 +261,8 @@ export default function ReportScreen() {
                   <td><strong>আমিষ (Protein)</strong></td>
                   <td>${Math.round(avgProtein)}g</td>
                   <td>${activeTargets.protein_g}g</td>
+                  <td>${Math.round(totalProtein)}g</td>
+                  <td>${activeTargets.protein_g * selectedDuration}g</td>
                   <td>${Math.round((avgProtein / activeTargets.protein_g) * 100)}%</td>
                   <td><span class="status-badge" style="background-color: ${proteinStatus.bg}; color: ${proteinStatus.color};">${proteinStatus.label}</span></td>
                 </tr>
@@ -248,6 +270,8 @@ export default function ReportScreen() {
                   <td><strong>শর্করা (Carbs)</strong></td>
                   <td>${Math.round(avgCarbs)}g</td>
                   <td>${activeTargets.carbs_g}g</td>
+                  <td>${Math.round(totalCarbs)}g</td>
+                  <td>${activeTargets.carbs_g * selectedDuration}g</td>
                   <td>${Math.round((avgCarbs / activeTargets.carbs_g) * 100)}%</td>
                   <td><span class="status-badge" style="background-color: ${carbsStatus.bg}; color: ${carbsStatus.color};">${carbsStatus.label}</span></td>
                 </tr>
@@ -255,6 +279,8 @@ export default function ReportScreen() {
                   <td><strong>চর্বি (Fat)</strong></td>
                   <td>${Math.round(avgFat)}g</td>
                   <td>${activeTargets.fat_g}g</td>
+                  <td>${Math.round(totalFat)}g</td>
+                  <td>${activeTargets.fat_g * selectedDuration}g</td>
                   <td>${Math.round((avgFat / activeTargets.fat_g) * 100)}%</td>
                   <td><span class="status-badge" style="background-color: ${fatStatus.bg}; color: ${fatStatus.color};">${fatStatus.label}</span></td>
                 </tr>
@@ -262,19 +288,52 @@ export default function ReportScreen() {
                   <td><strong>আঁশ (Fiber)</strong></td>
                   <td>${Math.round(avgFiber)}g</td>
                   <td>${activeTargets.fiber_g}g</td>
+                  <td>${Math.round(totalFiber)}g</td>
+                  <td>${activeTargets.fiber_g * selectedDuration}g</td>
                   <td>${Math.round((avgFiber / activeTargets.fiber_g) * 100)}%</td>
                   <td><span class="status-badge" style="background-color: ${fiberStatus.bg}; color: ${fiberStatus.color};">${fiberStatus.label}</span></td>
                 </tr>
               </tbody>
             </table>
 
-            <h2>🩺 ভিটামিন ও খনিজ ঘাটতি এবং সতর্কতা (Micronutrient Gaps)</h2>
+            ${healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 ? `
+              <h2>🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical Nutrition Insights)</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 25%;">সতর্কবার্তা / উপাদান</th>
+                    <th style="width: 55%;">পুষ্টিবিদ মূল্যায়ন ও পরামর্শ</th>
+                    <th style="width: 20%;">রেফারেন্স গাইডলাইন</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${healthSummary.clinical_insights.map((ins: any) => {
+                    const badgeColor = ins.type === 'error' ? '#C62828' : '#EF6C00';
+                    const badgeBg = ins.type === 'error' ? '#FFEBEE' : '#FFF3E0';
+                    return `
+                      <tr>
+                        <td>
+                          <span class="status-badge" style="background-color: ${badgeBg}; color: ${badgeColor}; margin-bottom: 4px;">${ins.title}</span>
+                          ${ins.disease ? `<br><small style="color: #7A8487; font-size: 10px;">শারীরিক অবস্থা: ${ins.disease}</small>` : ''}
+                        </td>
+                        <td>${ins.message}</td>
+                        <td><em style="color: #7A8487; font-size: 11px;">${ins.reference || 'Bangladesh Dietary Guidelines'}</em></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+
+            <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Summary)</h2>
             <table>
               <thead>
                 <tr>
                   <th>পুষ্টি উপাদান</th>
-                  <th>গড় গ্রহণ</th>
-                  <th>লক্ষ্যমাত্রা</th>
+                  <th>গড় দৈনিক গ্রহণ</th>
+                  <th>দৈনিক লক্ষ্য</th>
+                  <th>${selectedDuration} দিনের মোট গ্রহণ</th>
+                  <th>মোট লক্ষ্যমাত্রা</th>
                   <th>পূরণ হার (%)</th>
                   <th>অবস্থা</th>
                 </tr>
@@ -287,6 +346,8 @@ export default function ReportScreen() {
                       <td><strong>${def.nameBn} (${def.nameEn})</strong></td>
                       <td>${Math.round(def.avg)} ${def.unit}</td>
                       <td>${def.target} ${def.unit}</td>
+                      <td>${Math.round(def.avg * selectedDuration)} ${def.unit}</td>
+                      <td>${def.target * selectedDuration} ${def.unit}</td>
                       <td>${Math.round(def.percentage)}%</td>
                       <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
                     </tr>
@@ -304,25 +365,6 @@ export default function ReportScreen() {
               <span class="food-tag"><strong>রুই মাছ</strong> (${Math.round(selectedDuration * 0.6)} বার)</span>
             </div>
 
-            ${healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 ? `
-              <h2>🧠 এআই ও ক্লিনিক্যাল পুষ্টি পরামর্শ (Clinical & AI Insights)</h2>
-              <div style="margin-top: 10px;">
-                ${healthSummary.clinical_insights.map(insight => {
-                  const isError = insight.type === 'error';
-                  const isWarning = insight.type === 'warning';
-                  const borderTheme = isError ? '#C62828' : isWarning ? '#EF6C00' : '#2E7D32';
-                  const bgTheme = isError ? '#FFEBEE' : isWarning ? '#FFF3E0' : '#E8F5E9';
-                  return `
-                    <div style="border-left: 4px solid ${borderTheme}; background-color: ${bgTheme}; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px;">
-                      <strong style="color: ${borderTheme}; display: block; margin-bottom: 4px;">⚠️ ${insight.title}</strong>
-                      <div style="color: #1C2123; line-height: 1.6;">${insight.message}</div>
-                      ${insight.reference ? `<div style="font-size: 10px; color: #7A8487; margin-top: 6px; font-style: italic;">সূত্র: ${insight.reference}</div>` : ''}
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : ''}
-
             <div class="footer">
               এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
               © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
@@ -331,8 +373,21 @@ export default function ReportScreen() {
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'আপনার ডেসিব্ল্যাক রিপোর্ট শেয়ার করুন' });
+      if (Platform.OS === 'web') {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.open();
+          printWindow.document.write(htmlContent);
+          printWindow.document.close();
+          // Call print directly after load
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+        }
+      } else {
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'আপনার ডেসিব্ল্যাক রিপোর্ট শেয়ার করুন' });
+      }
     } catch (err) {
       Alert.alert('ত্রুটি', 'পিডিএফ রিপোর্ট তৈরি করতে ব্যর্থ হয়েছে।');
     } finally {
@@ -544,43 +599,6 @@ export default function ReportScreen() {
           })}
         </View>
       </View>
-
-      {/* ── Clinical & AI Nutritional Insights Card ─────────────────────── */}
-      {healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 && (
-        <View style={styles.clinicalCard}>
-          <View style={styles.clinicalHeader}>
-            <Heart size={20} color={colors.primary} />
-            <Text style={styles.clinicalTitle}>এআই ও ক্লিনিক্যাল পুষ্টি পরামর্শ</Text>
-          </View>
-          <Text style={styles.clinicalDesc}>
-            জাতীয় পুষ্টি নির্দেশিকা (NDG) এবং আপনার রোগ ও ডায়েট প্রোফাইল অনুযায়ী পুষ্টির ঘাটতি/অতিরিক্ততার ক্লিনিক্যাল বিশ্লেষণ:
-          </Text>
-
-          <View style={styles.insightsList}>
-            {healthSummary.clinical_insights.map((insight: any, index: number) => {
-              const isError = insight.type === 'error';
-              const isWarning = insight.type === 'warning';
-              const borderTheme = isError ? colors.error : isWarning ? colors.warning : colors.primary;
-              const bgTheme = isError ? '#FFEBEE' : isWarning ? '#FFF3E0' : '#E8F5E9';
-              
-              return (
-                <View key={index} style={[styles.insightRow, { borderColor: borderTheme, backgroundColor: bgTheme + '40' }]}>
-                  <View style={styles.insightRowHeader}>
-                    <AlertTriangle size={16} color={borderTheme} style={{ marginRight: 6 }} />
-                    <Text style={[styles.insightRowTitle, { color: borderTheme }]}>{insight.title}</Text>
-                  </View>
-                  <Text style={styles.insightRowMsg}>{insight.message}</Text>
-                  {insight.reference && (
-                    <View style={styles.refBadge}>
-                      <Text style={styles.refBadgeText}>সূত্র: {insight.reference}</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
 
       {isLoading ? (
         <View style={styles.loadingBox}>
