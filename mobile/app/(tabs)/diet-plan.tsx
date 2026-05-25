@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw } from 'lucide-react-native';
-import { dietPlanChatApi, profileApi } from '../../lib/api';
+import { dietPlanChatApi, profileApi, mealPlanApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
 import EventSource from 'react-native-sse';
@@ -33,17 +33,46 @@ export default function DietPlanChatScreen() {
   const haptics = useHaptics();
 
   useEffect(() => {
-    // Fetch profile to personalize welcome message
+    // Fetch profile to see if it exists
     profileApi.get().then((res) => {
       if (res.data?.profile) {
-        const msg = `হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?`;
+        // Profile exists! Automatically generate plan just like the web app
+        const greetingMsg = 'হ্যালো!  আমি পুষ্টি এআই। আমি দেখতে পাচ্ছি যে আপনার একটি স্বাস্থ্য প্রোফাইল আগে থেকেই তৈরি করা আছে।\n\nআপনার প্রোফাইল তথ্য অনুযায়ী আজকের বিশেষ ডায়েট পরিকল্পনা স্বয়ংক্রিয়ভাবে তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳';
         setMessages([{
           role: 'assistant',
-          content: msg,
+          content: greetingMsg,
           id: 'welcome',
         }]);
+        setStreaming(true);
+
+        mealPlanApi.daily('bn', true).then((planRes) => {
+          setPlanReady(true);
+          haptics.success();
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'আপনার ডায়েট পরিকল্পনা সফলভাবে তৈরি হয়েছে! নিচের বাটনে ক্লিক করে আজকের সুষম খাবার তালিকাটি দেখুন। 🥗✨',
+              id: `ready_${Date.now()}`,
+            }
+          ]);
+        }).catch(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'দুঃখিত, স্বয়ংক্রিয় পরিকল্পনা তৈরি করা যায়নি। অনুগ্রহ করে চ্যাটে লিখে আপনার তথ্য দিন বা পরে আবার চেষ্টা করুন।',
+              id: `error_${Date.now()}`,
+            }
+          ]);
+        }).finally(() => {
+          setStreaming(false);
+        });
       }
-    }).catch(() => { });
+    }).catch(() => {
+      // Fallback to standard hello welcome message if profile doesn't exist
+      setMessages([WELCOME_MSG]);
+    });
   }, []);
 
   useEffect(() => {
