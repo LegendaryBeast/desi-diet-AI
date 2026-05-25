@@ -19,7 +19,7 @@ interface Message {
 
 const WELCOME_MSG: Message = {
   role: 'assistant',
-  content: 'হ্যালো! 👋 আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?',
+  content: 'হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?',
   id: 'welcome',
 };
 
@@ -36,7 +36,7 @@ export default function DietPlanChatScreen() {
     // Fetch profile to personalize welcome message
     profileApi.get().then((res) => {
       if (res.data?.profile) {
-        const msg = `হ্যালো! 👋 আমি পুষ্টি এআই। আমি দেখতে পাচ্ছি যে আপনার একটি স্বাস্থ্য প্রোফাইল আগে থেকেই তৈরি করা আছে। আমি আপনাকে কীভাবে সহায়তা করতে পারি?`;
+        const msg = `হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?`;
         setMessages([{
           role: 'assistant',
           content: msg,
