@@ -143,6 +143,8 @@ export default function DietPlanChatScreen() {
       );
       setStreaming(false);
     }
+  };
+
   const handlePresetPress = async (type: 'diet' | 'report' | 'calorie') => {
     haptics.medium();
     if (type === 'diet') {
