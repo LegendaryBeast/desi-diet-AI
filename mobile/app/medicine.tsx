@@ -73,8 +73,6 @@ export default function MedicineRemindersScreen() {
   };
 
   const [tab, setTab] = useState<'list' | 'add'>('list');
-  const [addMode, setAddMode] = useState<'ai' | 'manual'>('ai');
-  const [input, setInput] = useState('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -227,40 +225,7 @@ export default function MedicineRemindersScreen() {
     queryFn: async () => (await medicineApi.list()).data,
   });
 
-  // Mutation to add medicine via AI parsing
-  const addMutation = useMutation({
-    mutationFn: async (text: string) => (await medicineApi.add(text, 'bn')).data,
-    onSuccess: (data) => {
-      haptics.success();
-      setSuccessMsg(data.confirmation || 'ওষুধ সফলভাবে যোগ করা হয়েছে!');
-      setInput('');
-      queryClient.invalidateQueries({ queryKey: ['medicine_reminders'] });
 
-      // Automatically register alarm & notification for each parsed medicine
-      if (data.medicines && Array.isArray(data.medicines)) {
-        data.medicines.forEach((med: any) => {
-          scheduleNotifications(
-            med.id || med.name,
-            med.name,
-            med.dose,
-            med.times,
-            med.with_food,
-            med.notes,
-            true,
-            true
-          );
-        });
-      }
-
-      setTab('list');
-      setTimeout(() => setSuccessMsg(null), 4000);
-    },
-    onError: (err: any) => {
-      haptics.error();
-      setErrorMsg(err?.response?.data?.detail || 'ওষুধ যোগ করতে সমস্যা হয়েছে');
-      setTimeout(() => setErrorMsg(null), 4000);
-    },
-  });
 
   // Mutation to add medicine manually
   const addManualMutation = useMutation({
@@ -311,10 +276,7 @@ export default function MedicineRemindersScreen() {
     },
   });
 
-  const handleAdd = () => {
-    if (!input.trim()) return;
-    addMutation.mutate(input);
-  };
+
 
   const handleAddManual = () => {
     if (!manualName.trim()) {
@@ -510,243 +472,167 @@ export default function MedicineRemindersScreen() {
         )}
 
         {tab === 'add' && (
-          <View style={{ gap: 16 }}>
-            {/* Mode Selectors */}
-            <View style={styles.modeGroup}>
-              <TouchableOpacity
-                style={[styles.modeBtn, addMode === 'ai' && styles.modeBtnActive]}
-                onPress={() => {
-                  haptics.light();
-                  setAddMode('ai');
-                }}
-              >
-                <Mic size={14} color={addMode === 'ai' ? colors.white : colors.textSecondary} />
-                <Text style={[styles.modeLabel, addMode === 'ai' && styles.modeLabelActive]}>AI দিয়ে যোগ করুন</Text>
-              </TouchableOpacity>
+          <View style={styles.addFormContainer}>
+            <View style={styles.formIconBox}>
+              <Pill size={20} color={colors.white} />
+            </View>
+            <Text style={styles.addTitle}>নতুন ওষুধ যোগ করুন</Text>
+            <Text style={styles.addSubTitle}>ওষুধের নাম, ডোজ এবং সময় নির্ধারণ করুন</Text>
 
-              <TouchableOpacity
-                style={[styles.modeBtn, addMode === 'manual' && styles.modeBtnActive]}
-                onPress={() => {
-                  haptics.light();
-                  setAddMode('manual');
-                }}
-              >
-                <Plus size={14} color={addMode === 'manual' ? colors.white : colors.textSecondary} />
-                <Text style={[styles.modeLabel, addMode === 'manual' && styles.modeLabelActive]}>ম্যানুয়ালি যোগ করুন</Text>
-              </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>ওষুধের নাম *</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="যেমন: Metformin, Napa..."
+                placeholderTextColor={colors.textSecondary}
+                value={manualName}
+                onChangeText={setManualName}
+              />
             </View>
 
-            {addMode === 'ai' ? (
-              <View style={styles.addFormContainer}>
-                <View style={styles.formIconBox}>
-                  <Mic size={20} color={colors.white} />
-                </View>
-                <Text style={styles.addTitle}>AI দিয়ে ওষুধ যোগ করুন</Text>
-                <Text style={styles.addSubTitle}>বাংলায় বলুন বা টাইপ করুন কোন ওষুধ কখন খেতে হবে</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>ডোজ / পরিমাণ</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="যেমন: 500mg, ১টি ট্যাবলেট..."
+                placeholderTextColor={colors.textSecondary}
+                value={manualDose}
+                onChangeText={setManualDose}
+              />
+            </View>
 
-                <TextInput
-                  style={styles.textArea}
-                  placeholder="যেমন: সকালে মেটফরমিন ৫০০ mg খাবারের পর এবং রাতে গ্লিমেপিরাইড ২mg..."
-                  placeholderTextColor={colors.textSecondary}
-                  multiline
-                  numberOfLines={4}
-                  value={input}
-                  onChangeText={setInput}
-                />
-
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>খাবারের সাথে নির্দেশনা</Text>
+              <View style={styles.toggleRow}>
                 <TouchableOpacity
-                  style={[styles.submitBtn, (!input.trim() || addMutation.isPending) && styles.submitBtnDisabled]}
-                  onPress={handleAdd}
-                  disabled={!input.trim() || addMutation.isPending}
+                  style={[styles.instructionBtn, manualWithFood && styles.instructionBtnActive]}
+                  onPress={() => {
+                    haptics.light();
+                    setManualWithFood(true);
+                  }}
                 >
-                  {addMutation.isPending ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Text style={styles.submitBtnText}>রিমাইন্ডার তৈরি করুন</Text>
-                  )}
+                  <Text style={[styles.instructionLabel, manualWithFood && styles.instructionLabelActive]}>
+                    খাবারের সাথে/পর
+                  </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.instructionBtn, !manualWithFood && styles.instructionBtnActive]}
+                  onPress={() => {
+                    haptics.light();
+                    setManualWithFood(false);
+                  }}
+                >
+                  <Text style={[styles.instructionLabel, !manualWithFood && styles.instructionLabelActive]}>
+                    খালি পেটে
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
-                {/* Quick Examples */}
-                <View style={styles.examplesWrapper}>
-                  <Text style={styles.examplesLabel}>উদাহরণ সমূহ:</Text>
-                  {EXAMPLES.map((ex, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.exampleItem}
-                      onPress={() => {
-                        haptics.light();
-                        setInput(ex);
-                      }}
-                    >
-                      <Text style={styles.exampleText}>"{ex}"</Text>
-                    </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>সময় নির্ধারণ করুন *</Text>
+              <View style={styles.timeSelectorRow}>
+                <View style={styles.spinnerContainer}>
+                  <ScrollView style={styles.spinner} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    {HOURS.map(h => (
+                      <TouchableOpacity
+                        key={h}
+                        style={[styles.spinnerItem, selectedHour === h && styles.spinnerItemActive]}
+                        onPress={() => setSelectedHour(h)}
+                      >
+                        <Text style={[styles.spinnerText, selectedHour === h && styles.spinnerTextActive]}>{h}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <Text style={styles.spinnerSeparator}>:</Text>
+                  <ScrollView style={styles.spinner} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    {MINUTES.map(m => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[styles.spinnerItem, selectedMinute === m && styles.spinnerItemActive]}
+                        onPress={() => setSelectedMinute(m)}
+                      >
+                        <Text style={[styles.spinnerText, selectedMinute === m && styles.spinnerTextActive]}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <TouchableOpacity style={styles.addTimeBtn} onPress={handleAddManualTime}>
+                  <Plus size={16} color={colors.white} />
+                  <Text style={styles.addTimeBtnText}>যোগ</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Selected Times List */}
+              {manualTimes.length > 0 && (
+                <View style={styles.timeChipsContainer}>
+                  {manualTimes.map(t => (
+                    <View key={t} style={styles.timeChip}>
+                      <Clock size={10} color={colors.textPrimary} />
+                      <Text style={styles.timeChipText}>{t}</Text>
+                      <TouchableOpacity onPress={() => handleRemoveManualTime(t)} style={styles.timeChipRemove}>
+                        <Text style={styles.timeChipRemoveText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
                   ))}
                 </View>
+              )}
+            </View>
+
+            {/* Alarm Settings Toggles */}
+            <View style={styles.alarmSettingsContainer}>
+              <Text style={styles.alarmSettingsTitle}>রিমাইন্ডার ও এলার্ম সেটিংস</Text>
+              <View style={styles.settingToggleRow}>
+                <View>
+                  <Text style={styles.toggleText}>পুশ নোটিফিকেশন</Text>
+                  <Text style={styles.toggleSubText}>নির্ধারিত সময়ে পুশ নোটিফিকেশন পাঠাবে</Text>
+                </View>
+                <Switch
+                  value={enableNotification}
+                  onValueChange={setEnableNotification}
+                  trackColor={{ false: '#D1D1D1', true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : colors.white}
+                />
               </View>
-            ) : (
-              <View style={styles.addFormContainer}>
-                <View style={styles.formIconBox}>
-                  <Pill size={20} color={colors.white} />
+
+              <View style={styles.settingToggleRow}>
+                <View>
+                  <Text style={styles.toggleText}>অ্যালার্ম সাউন্ড</Text>
+                  <Text style={styles.toggleSubText}>নোটিফিকেশনের সাথে সাউন্ড প্লে হবে</Text>
                 </View>
-                <Text style={styles.addTitle}>ম্যানুয়ালি ওষুধ যোগ করুন</Text>
-                <Text style={styles.addSubTitle}>ওষুধের নাম, ডোজ এবং সময় নির্ধারণ করুন</Text>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>ওষুধের নাম *</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="যেমন: Metformin, Napa..."
-                    placeholderTextColor={colors.textSecondary}
-                    value={manualName}
-                    onChangeText={setManualName}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>ডোজ / পরিমাণ</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="যেমন: 500mg, ১টি ট্যাবলেট..."
-                    placeholderTextColor={colors.textSecondary}
-                    value={manualDose}
-                    onChangeText={setManualDose}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>খাবারের সাথে নির্দেশনা</Text>
-                  <View style={styles.toggleRow}>
-                    <TouchableOpacity
-                      style={[styles.instructionBtn, manualWithFood && styles.instructionBtnActive]}
-                      onPress={() => {
-                        haptics.light();
-                        setManualWithFood(true);
-                      }}
-                    >
-                      <Text style={[styles.instructionLabel, manualWithFood && styles.instructionLabelActive]}>
-                        খাবারের সাথে/পর
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.instructionBtn, !manualWithFood && styles.instructionBtnActive]}
-                      onPress={() => {
-                        haptics.light();
-                        setManualWithFood(false);
-                      }}
-                    >
-                      <Text style={[styles.instructionLabel, !manualWithFood && styles.instructionLabelActive]}>
-                        খালি পেটে
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>সময় নির্ধারণ করুন *</Text>
-                  <View style={styles.timeSelectorRow}>
-                    <View style={styles.spinnerContainer}>
-                      <ScrollView style={styles.spinner} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                        {HOURS.map(h => (
-                          <TouchableOpacity
-                            key={h}
-                            style={[styles.spinnerItem, selectedHour === h && styles.spinnerItemActive]}
-                            onPress={() => setSelectedHour(h)}
-                          >
-                            <Text style={[styles.spinnerText, selectedHour === h && styles.spinnerTextActive]}>{h}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                      <Text style={styles.spinnerSeparator}>:</Text>
-                      <ScrollView style={styles.spinner} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                        {MINUTES.map(m => (
-                          <TouchableOpacity
-                            key={m}
-                            style={[styles.spinnerItem, selectedMinute === m && styles.spinnerItemActive]}
-                            onPress={() => setSelectedMinute(m)}
-                          >
-                            <Text style={[styles.spinnerText, selectedMinute === m && styles.spinnerTextActive]}>{m}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-
-                    <TouchableOpacity style={styles.addTimeBtn} onPress={handleAddManualTime}>
-                      <Plus size={16} color={colors.white} />
-                      <Text style={styles.addTimeBtnText}>যোগ</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Selected Times List */}
-                  {manualTimes.length > 0 && (
-                    <View style={styles.timeChipsContainer}>
-                      {manualTimes.map(t => (
-                        <View key={t} style={styles.timeChip}>
-                          <Clock size={10} color={colors.textPrimary} />
-                          <Text style={styles.timeChipText}>{t}</Text>
-                          <TouchableOpacity onPress={() => handleRemoveManualTime(t)} style={styles.timeChipRemove}>
-                            <Text style={styles.timeChipRemoveText}>×</Text>
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                {/* Alarm Settings Toggles */}
-                <View style={styles.alarmSettingsContainer}>
-                  <Text style={styles.alarmSettingsTitle}>রিমাইন্ডার ও এলার্ম সেটিংস</Text>
-                  <View style={styles.settingToggleRow}>
-                    <View>
-                      <Text style={styles.toggleText}>পুশ নোটিফিকেশন</Text>
-                      <Text style={styles.toggleSubText}>নির্ধারিত সময়ে পুশ নোটিফিকেশন পাঠাবে</Text>
-                    </View>
-                    <Switch
-                      value={enableNotification}
-                      onValueChange={setEnableNotification}
-                      trackColor={{ false: '#D1D1D1', true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? undefined : colors.white}
-                    />
-                  </View>
-
-                  <View style={styles.settingToggleRow}>
-                    <View>
-                      <Text style={styles.toggleText}>অ্যালার্ম সাউন্ড</Text>
-                      <Text style={styles.toggleSubText}>নোটিফিকেশনের সাথে সাউন্ড প্লে হবে</Text>
-                    </View>
-                    <Switch
-                      value={enableSound}
-                      onValueChange={setEnableSound}
-                      disabled={!enableNotification}
-                      trackColor={{ false: '#D1D1D1', true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? undefined : colors.white}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>বিশেষ নোট (ঐচ্ছিক)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="যেমন: ডাক্তারের পরামর্শ অনুযায়ী নিতে হবে..."
-                    placeholderTextColor={colors.textSecondary}
-                    value={manualNotes}
-                    onChangeText={setManualNotes}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.submitBtn, addManualMutation.isPending && styles.submitBtnDisabled]}
-                  onPress={handleAddManual}
-                  disabled={addManualMutation.isPending}
-                >
-                  {addManualMutation.isPending ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Text style={styles.submitBtnText}>সংরক্ষণ করুন</Text>
-                  )}
-                </TouchableOpacity>
+                <Switch
+                  value={enableSound}
+                  onValueChange={setEnableSound}
+                  disabled={!enableNotification}
+                  trackColor={{ false: '#D1D1D1', true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : colors.white}
+                />
               </View>
-            )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>विशेष নোট (ঐচ্ছিক)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="যেমন: ডাক্তারের পরামর্শ অনুযায়ী নিতে হবে..."
+                placeholderTextColor={colors.textSecondary}
+                value={manualNotes}
+                onChangeText={setManualNotes}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.submitBtn, addManualMutation.isPending && styles.submitBtnDisabled]}
+              onPress={handleAddManual}
+              disabled={addManualMutation.isPending}
+            >
+              {addManualMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.submitBtnText}>সংরক্ষণ করুন</Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
