@@ -49,6 +49,29 @@ export default function MedicineRemindersScreen() {
   const haptics = useHaptics();
   const queryClient = useQueryClient();
 
+  const triggerAlert = (
+    title: string,
+    message: string,
+    buttons?: { text: string; style?: 'cancel' | 'destructive' | 'default'; onPress?: () => void }[]
+  ) => {
+    if (Platform.OS === 'web') {
+      if (buttons && buttons.length > 0) {
+        const destructiveBtn = buttons.find(b => b.style === 'destructive');
+        const confirmBtn = buttons.find(b => b.text === 'মুছে ফেলুন' || b.text === 'হ্যাঁ' || b.text === 'OK');
+        const actionBtn = destructiveBtn || confirmBtn || buttons[buttons.length - 1];
+        
+        const confirmed = window.confirm(`${title}\n\n${message}`);
+        if (confirmed && actionBtn && actionBtn.onPress) {
+          actionBtn.onPress();
+        }
+      } else {
+        window.alert(`${title}\n\n${message}`);
+      }
+    } else {
+      Alert.alert(title, message, buttons);
+    }
+  };
+
   const [tab, setTab] = useState<'list' | 'add'>('list');
   const [addMode, setAddMode] = useState<'ai' | 'manual'>('ai');
   const [input, setInput] = useState('');
@@ -140,7 +163,7 @@ export default function MedicineRemindersScreen() {
     if (status !== 'granted') {
       const { status: newStatus } = await Notifications.requestPermissionsAsync();
       if (newStatus !== 'granted') {
-        Alert.alert('অনুমতি প্রয়োজন', 'পুশ নোটিফিকেশনের জন্য অনুমতি প্রয়োজন। সেটিংস থেকে অনুমতি দিন।');
+        triggerAlert('অনুমতি প্রয়োজন', 'পুশ নোটিফিকেশনের জন্য অনুমতি প্রয়োজন। সেটিংস থেকে অনুমতি দিন।');
         return;
       }
     }
@@ -284,7 +307,7 @@ export default function MedicineRemindersScreen() {
     },
     onError: () => {
       haptics.error();
-      Alert.alert('ত্রুটি', 'মুছতে সমস্যা হয়েছে');
+      triggerAlert('ত্রুটি', 'মুছতে সমস্যা হয়েছে');
     },
   });
 
@@ -295,11 +318,11 @@ export default function MedicineRemindersScreen() {
 
   const handleAddManual = () => {
     if (!manualName.trim()) {
-      Alert.alert('ত্রুটি', 'দয়া করে ওষুধের নাম লিখুন');
+      triggerAlert('ত্রুটি', 'দয়া করে ওষুধের নাম লিখুন');
       return;
     }
     if (manualTimes.length === 0) {
-      Alert.alert('ত্রুটি', 'কমপক্ষে একটি সময় নির্বাচন করুন');
+      triggerAlert('ত্রুটি', 'কমপক্ষে একটি সময় নির্বাচন করুন');
       return;
     }
 
@@ -314,7 +337,7 @@ export default function MedicineRemindersScreen() {
 
   const handleDelete = (id: string, name: string) => {
     haptics.light();
-    Alert.alert('রিমাইন্ডার মুছুন', `${name} রিমাইন্ডারটি কি মুছে ফেলতে চান?`, [
+    triggerAlert('রিমাইন্ডার মুছুন', `${name} রিমাইন্ডারটি কি মুছে ফেলতে চান?`, [
       { text: 'বাতিল', style: 'cancel' },
       {
         text: 'মুছে ফেলুন',
