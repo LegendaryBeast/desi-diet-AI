@@ -8,17 +8,21 @@ import { useRouter } from 'expo-router';
 import { profileApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth-store';
 import { useSettingsStore } from '../../store/settings-store';
+import { useTranslation } from '../../lib/translations';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
+import { useSubscription } from '../../context/SubscriptionContext';
 import {
   User, Scale, TrendingUp, HeartPulse, LogOut,
-  Pill, Bell, ChevronRight, Activity, Shield, Apple, BarChart3,
+  Pill, Bell, ChevronRight, Activity, Shield, Apple, BarChart3, Crown
 } from 'lucide-react-native';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
-  const { language, setLanguage, notificationsEnabled, setNotificationsEnabled } = useSettingsStore();
+  const { setLanguage, notificationsEnabled, setNotificationsEnabled } = useSettingsStore();
+  const { t, language } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
+  const { isPro } = useSubscription();
 
   const { data: profileData, refetch: refetchProfile } = useQuery({
     queryKey: ['profile'],
@@ -32,10 +36,10 @@ export default function ProfileScreen() {
   }, [refetchProfile]);
 
   const handleLogout = () => {
-    Alert.alert('প্রস্থান', 'আপনি কি নিশ্চিত যে প্রস্থান করতে চান?', [
-      { text: 'বাতিল', style: 'cancel' },
+    Alert.alert(t('logout'), t('logoutConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'প্রস্থান', style: 'destructive',
+        text: t('logoutBtnText'), style: 'destructive',
         onPress: async () => { await logout(); router.replace('/(auth)/welcome'); },
       },
     ]);
@@ -45,11 +49,11 @@ export default function ProfileScreen() {
   const targets = profileData?.targets;
 
   const GOAL_LABELS: Record<string, string> = {
-    weight_loss: 'ওজন কমানো', weight_gain: 'ওজন বাড়ানো',
-    maintain: 'ওজন ধরে রাখা', muscle_gain: 'মাংসপেশি বাড়ানো',
+    weight_loss: t('weightLoss'), weight_gain: t('weightGain'),
+    maintain: t('weightMaintain'), muscle_gain: t('muscleGain'),
   };
   const ACTIVITY_LABELS: Record<string, string> = {
-    sedentary: 'কম', light: 'মাঝারি', moderate: 'ভালো', active: 'বেশি',
+    sedentary: t('low'), light: t('medium'), moderate: t('moderate'), active: t('high'),
   };
 
   return (
@@ -63,18 +67,26 @@ export default function ProfileScreen() {
       <View style={styles.avatarSection}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
-            {profile?.name_bn?.[0] || profile?.name_en?.[0] || 'খ'}
+            {language === 'bn' ? (profile?.name_bn?.[0] || profile?.name_en?.[0] || 'খ') : (profile?.name_en?.[0] || profile?.name_bn?.[0] || 'U')}
           </Text>
         </View>
-        <Text style={styles.profileName}>{profile?.name_bn || profile?.name_en || 'ব্যবহারকারী'}</Text>
+        <View style={styles.profileNameContainer}>
+          <Text style={styles.profileName}>{language === 'bn' ? (profile?.name_bn || profile?.name_en || 'ব্যবহারকারী') : (profile?.name_en || profile?.name_bn || 'User')}</Text>
+          {isPro && (
+            <View style={styles.proBadge}>
+              <Crown size={12} color={colors.white} strokeWidth={2.5} />
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.profileMeta}>
-          {profile?.age} বছর · {profile?.gender === 'male' ? 'পুরুষ' : 'নারী'}
+          {profile?.age} {language === 'bn' ? 'বছর' : 'years'} · {profile?.gender === 'male' ? (language === 'bn' ? 'পুরুষ' : 'Male') : (language === 'bn' ? 'নারী' : 'Female')}
         </Text>
         <TouchableOpacity
           style={styles.editProfileBtn}
           onPress={() => router.push('/(auth)/onboarding/step-1')}
         >
-          <Text style={styles.editProfileText}>প্রোফাইল সম্পাদনা করুন</Text>
+          <Text style={styles.editProfileText}>{t('profileEdit')}</Text>
           <ChevronRight size={16} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -83,9 +95,9 @@ export default function ProfileScreen() {
       {profile && (
         <View style={styles.statsRow}>
           {[
-            { icon: Scale, label: 'ওজন', value: `${profile.weight_kg}`, unit: ' kg', color: colors.primary },
-            { icon: TrendingUp, label: 'উচ্চতা', value: `${profile.height_cm}`, unit: ' cm', color: colors.accent },
-            { icon: HeartPulse, label: 'ক্যালরি', value: `${targets?.target_calories || '--'}`, unit: '', color: colors.success },
+            { icon: Scale, label: language === 'bn' ? 'ওজন' : 'Weight', value: `${profile.weight_kg}`, unit: ' kg', color: colors.primary },
+            { icon: TrendingUp, label: t('height'), value: `${profile.height_cm}`, unit: ' cm', color: colors.accent },
+            { icon: HeartPulse, label: language === 'bn' ? 'ক্যালরি' : 'Calories', value: `${targets?.target_calories || '--'}`, unit: '', color: colors.success },
           ].map(({ icon: Icon, label, value, unit, color }) => (
             <View key={label} style={styles.statCard}>
               <Icon size={20} color={color} />
@@ -98,14 +110,14 @@ export default function ProfileScreen() {
 
       {/* ── Quick Tools Section ───────────────────────────────────────────── */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>অ্যাপ টুলস ও সেবাসমূহ</Text>
+        <Text style={styles.sectionTitle}>{language === 'bn' ? 'অ্যাপ টুলস ও সেবাসমূহ' : 'App Tools & Services'}</Text>
         <View style={styles.detailsCard}>
           <TouchableOpacity style={styles.toolRow} onPress={() => router.push('/foods')}>
             <View style={styles.toolRowLeft}>
               <View style={[styles.toolIconBox, { backgroundColor: '#EBF0D8' }]}>
                 <Apple size={18} color={colors.primary} />
               </View>
-              <Text style={styles.toolLabel}>খাবারের ডাটাবেজ (Foods)</Text>
+              <Text style={styles.toolLabel}>{language === 'bn' ? 'খাবারের ডাটাবেজ (Foods)' : 'Food Database (Foods)'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -115,7 +127,7 @@ export default function ProfileScreen() {
               <View style={[styles.toolIconBox, { backgroundColor: '#E2F2F5' }]}>
                 <Activity size={18} color={colors.accent} />
               </View>
-              <Text style={styles.toolLabel}>স্বাস্থ্য ট্র্যাকার (Health Log)</Text>
+              <Text style={styles.toolLabel}>{language === 'bn' ? 'স্বাস্থ্য ট্র্যাকার (Health Log)' : 'Health Tracker (Health Log)'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -125,7 +137,7 @@ export default function ProfileScreen() {
               <View style={[styles.toolIconBox, { backgroundColor: '#FFF7E6' }]}>
                 <Pill size={18} color="#B06000" />
               </View>
-              <Text style={styles.toolLabel}>ওষুধের সময়সূচী (Medicine)</Text>
+              <Text style={styles.toolLabel}>{language === 'bn' ? 'ওষুধের সময়সূচী (Medicine)' : 'Medicine Schedule (Medicine)'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -135,7 +147,7 @@ export default function ProfileScreen() {
               <View style={[styles.toolIconBox, { backgroundColor: '#EAF7EE' }]}>
                 <Shield size={18} color={colors.success} />
               </View>
-              <Text style={styles.toolLabel}>পুষ্টি উপাদানসমূহ (Micronutrients)</Text>
+              <Text style={styles.toolLabel}>{language === 'bn' ? 'পুষ্টি উপাদানসমূহ (Micronutrients)' : 'Nutrient Targets (Micronutrients)'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -145,18 +157,22 @@ export default function ProfileScreen() {
       {/* ── Profile Details ───────────────────────────────────────────────── */}
       {profile && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>প্রোফাইল তথ্য</Text>
+          <Text style={styles.sectionTitle}>{language === 'bn' ? 'প্রোফাইল তথ্য' : 'Profile Information'}</Text>
           <View style={styles.detailsCard}>
-            <DetailRow label="লক্ষ্য" value={GOAL_LABELS[profile.goal] || profile.goal} />
-            <DetailRow label="কর্ম তৎপরতা" value={ACTIVITY_LABELS[profile.activity_level] || profile.activity_level} />
             <DetailRow
-              label="স্বাস্থ্য অবস্থা"
-              value={(profile.medical_conditions || []).join(', ') || 'কোনো তথ্য নেই'}
+              label={language === 'bn' ? 'সাবস্ক্রিপশন প্ল্যান' : 'Subscription'}
+              value={isPro ? (language === 'bn' ? 'প্রিমিয়াম (PustiAI Pro)' : 'Premium (PustiAI Pro)') : (language === 'bn' ? 'ফ্রি প্ল্যান' : 'Free Plan')}
+            />
+            <DetailRow label={language === 'bn' ? 'লক্ষ্য' : 'Goal'} value={GOAL_LABELS[profile.goal] || profile.goal} />
+            <DetailRow label={language === 'bn' ? 'কর্ম তৎপরতা' : 'Activity Level'} value={ACTIVITY_LABELS[profile.activity_level] || profile.activity_level} />
+            <DetailRow
+              label={language === 'bn' ? 'স্বাস্থ্য অবস্থা' : 'Health Status'}
+              value={(profile.medical_conditions || []).join(', ') || (language === 'bn' ? 'কোনো তথ্য নেই' : 'No conditions logged')}
             />
             {targets && (
               <>
                 <DetailRow label="BMI" value={targets.bmi?.toFixed(1)} />
-                <DetailRow label="BMI অবস্থা" value={targets.bmi_category || ''} last />
+                <DetailRow label={language === 'bn' ? 'BMI অবস্থা' : 'BMI Status'} value={language === 'bn' ? (targets.bmi_category === 'normal' ? 'স্বাভাবিক' : targets.bmi_category) : targets.bmi_category || ''} last />
               </>
             )}
           </View>
@@ -167,13 +183,13 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Bell size={18} color={colors.primary} />
-          <Text style={styles.sectionTitle}>বিজ্ঞপ্তি সেটিংস</Text>
+          <Text style={styles.sectionTitle}>{t('notificationSettings')}</Text>
         </View>
         <View style={styles.detailsCard}>
           <View style={styles.switchRow}>
             <View>
-              <Text style={styles.switchLabel}>খাবারের অনুস্মারক</Text>
-              <Text style={styles.switchSub}>পরিকল্পনা অনুযায়ী বিজ্ঞপ্তি পাবেন</Text>
+              <Text style={styles.switchLabel}>{t('mealReminders')}</Text>
+              <Text style={styles.switchSub}>{t('mealRemindersSub')}</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -187,7 +203,7 @@ export default function ProfileScreen() {
 
       {/* ── Language Toggle ───────────────────────────────────────────────── */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>ভাষা</Text>
+        <Text style={styles.sectionTitle}>{language === 'bn' ? 'ভাষা' : 'Language'}</Text>
         <View style={styles.langRow}>
           {(['bn', 'en'] as const).map((lang) => (
             <TouchableOpacity
@@ -206,7 +222,7 @@ export default function ProfileScreen() {
       {/* ── Logout ────────────────────────────────────────────────────────── */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <LogOut size={20} color={colors.error} />
-        <Text style={styles.logoutText}>প্রস্থান করুন</Text>
+        <Text style={styles.logoutText}>{t('logoutBtnText')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -241,7 +257,33 @@ const styles = StyleSheet.create({
     borderWidth: 3, borderColor: colors.primary + '40',
   },
   avatarLetter: { fontFamily: fonts.display, fontSize: 36, color: colors.white },
+  profileNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   profileName: { fontFamily: fonts.bnBold, fontSize: 26, color: colors.textPrimary },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF6B35',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 3,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  proBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
   profileMeta: { fontFamily: fonts.bn, fontSize: 15, color: colors.textSecondary, marginTop: 4 },
   editProfileBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.md,

@@ -211,6 +211,33 @@ async def justify_food_recommendation(
     return {"explanation": explanation.strip()}
 
 
+@router.get("/{code}/alternatives", response_model=List[SafeFoodsResponse])
+async def get_food_alternatives(
+    code: str,
+    current_user = Depends(get_current_user)
+):
+    """Retrieve alternative foods belonging to the same food group that are safe for the user."""
+    profile = await prisma.profile.find_unique(where={"userId": current_user.id})
+    conditions = safe_list(profile.medicalConditions) if profile else []
+    goal = profile.goal if profile else "Maintain"
+
+    rag = _get_rag()
+    results = rag.get_alternatives(code=code, conditions=conditions, goal=goal, limit=10)
+    return [
+        SafeFoodsResponse(
+            code=r["code"],
+            name_en=r["name_en"],
+            name_bn=r["name_bn"],
+            calories=r.get("calories"),
+            protein=r.get("protein"),
+            fiber=r.get("fiber"),
+            food_group=r["food_group"],
+            preference_score=r.get("preference_score", 0),
+        )
+        for r in results
+    ]
+
+
 @router.get("/{code}", response_model=FoodDetailResponse)
 async def get_food_detail(code: str, current_user=Depends(get_current_user)):
     """Get detailed food info with dietary rules for user's conditions."""

@@ -5,11 +5,13 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
-import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw, CalendarDays, TrendingUp, Flame, ChevronRight } from 'lucide-react-native';
+import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw, CalendarDays, TrendingUp, Flame, ChevronRight, Plus } from 'lucide-react-native';
 import { dietPlanChatApi, profileApi, mealPlanApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
 import EventSource from 'react-native-sse';
+import { useTranslation } from '../../lib/translations';
+import ManualFoodLogModal from '../../components/meals/ManualFoodLogModal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -17,11 +19,8 @@ interface Message {
   id: string;
 }
 
-const WELCOME_MSG: Message = {
-  role: 'assistant',
-  content: 'হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?',
-  id: 'welcome',
-};
+const WELCOME_MSG_BN = 'হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?';
+const WELCOME_MSG_EN = 'Hello! I am Pusti AI. How can I help you today?';
 
 const cleanMarkdown = (text: string) => {
   if (!text) return '';
@@ -30,14 +29,28 @@ const cleanMarkdown = (text: string) => {
 
 export default function DietPlanChatScreen() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MSG]);
+  const { t, language } = useTranslation();
+  const welcomeText = language === 'bn' ? WELCOME_MSG_BN : WELCOME_MSG_EN;
+
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [planReady, setPlanReady] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const [showManualLog, setShowManualLog] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const haptics = useHaptics();
+
+  useEffect(() => {
+    setMessages([
+      {
+        role: 'assistant',
+        content: welcomeText,
+        id: 'welcome',
+      }
+    ]);
+  }, [language]);
 
   useEffect(() => {
     profileApi.get().then((res) => {
@@ -55,7 +68,13 @@ export default function DietPlanChatScreen() {
 
   const restartFlow = () => {
     haptics.light();
-    setMessages([WELCOME_MSG]);
+    setMessages([
+      {
+        role: 'assistant',
+        content: welcomeText,
+        id: 'welcome',
+      }
+    ]);
     setPlanReady(false);
     setInput('');
   };
@@ -74,6 +93,11 @@ export default function DietPlanChatScreen() {
     setMessages((prev) => [...prev, { role: 'assistant', content: '', id: assistantId }]);
 
     try {
+      try {
+        await profileApi.get();
+      } catch (err) {
+        console.warn("Axios pre-flight refresh check warning:", err);
+      }
       const token = await AsyncStorage.getItem('access_token');
 
       const es = new EventSource(dietPlanChatApi.streamUrl, {
@@ -84,7 +108,7 @@ export default function DietPlanChatScreen() {
         method: 'POST',
         body: JSON.stringify({
           message: content,
-          language: 'bn',
+          language: language,
           history: messages
             .filter((m) => m.role !== 'assistant' || m.content)
             .slice(-20)
@@ -105,13 +129,13 @@ export default function DietPlanChatScreen() {
               );
             } else if (data.status === 'generating_plan') {
               setMessages((prev) =>
-                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated + '\n\nপরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳' } : m)
+                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated + '\n\n' + (language === 'bn' ? 'পরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳' : 'Generating plan... please wait a moment. ⏳') } : m)
               );
             } else if (data.plan_ready) {
               setPlanReady(true);
               haptics.success();
               setMessages((prev) =>
-                prev.map((m) => m.id === assistantId ? { ...m, content: data.plan_ready.message_bn } : m)
+                prev.map((m) => m.id === assistantId ? { ...m, content: language === 'bn' ? (data.plan_ready.message_bn || data.plan_ready.message) : (data.plan_ready.message_en || data.plan_ready.message) } : m)
               );
             } else if (data.error) {
               setMessages((prev) =>
@@ -131,7 +155,7 @@ export default function DietPlanChatScreen() {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId && !accumulated
-              ? { ...m, content: 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' }
+              ? { ...m, content: language === 'bn' ? 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' : 'Sorry, I cannot answer right now. Please try again later.' }
               : m
           )
         );
@@ -142,7 +166,7 @@ export default function DietPlanChatScreen() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, content: 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' }
+            ? { ...m, content: language === 'bn' ? 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' : 'Sorry, I cannot answer right now. Please try again later.' }
             : m
         )
       );
@@ -155,43 +179,50 @@ export default function DietPlanChatScreen() {
     if (type === 'diet') {
       const userMsg: Message = {
         role: 'user',
-        content: 'আজকের জন্য আমার স্বাস্থ্য অবস্থা অনুযায়ী একটি খাবার পরিকল্পনা দিন।',
+        content: language === 'bn' ? 'আজকের জন্য আমার স্বাস্থ্য অবস্থা অনুযায়ী একটি খাবার পরিকল্পনা দিন।' : 'Give me a food plan for today based on my health status.',
         id: `u_${Date.now()}`
       };
-      setMessages([WELCOME_MSG, userMsg]);
+      setMessages([
+        {
+          role: 'assistant',
+          content: welcomeText,
+          id: 'welcome',
+        },
+        userMsg
+      ]);
       setStreaming(true);
 
       const assistantId = `a_${Date.now()}`;
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        content: 'আপনার প্রোফাইল তথ্য অনুযায়ী আজকের বিশেষ ডায়েট পরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳',
+        content: language === 'bn' ? 'আপনার প্রোফাইল তথ্য অনুযায়ী আজকের বিশেষ ডায়েট পরিকল্পনা তৈরি করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন। ⏳' : 'Generating today\'s special diet plan based on your profile... please wait a moment. ⏳',
         id: assistantId
       }]);
 
       try {
-        await mealPlanApi.daily('bn', true);
+        await mealPlanApi.daily(language, true);
         setPlanReady(true);
         haptics.success();
         setMessages((prev) =>
           prev.map((m) => m.id === assistantId ? {
             ...m,
-            content: 'আপনার ডায়েট পরিকল্পনা সফলভাবে তৈরি হয়েছে! নিচের বাটনে ক্লিক করে আজকের সুষম খাবার তালিকাটি দেখুন। 🥗✨'
+            content: language === 'bn' ? 'আপনার ডায়েট পরিকল্পনা সফলভাবে তৈরি হয়েছে! নিচের বাটনে ক্লিক করে আজকের সুষম খাবার তালিকাটি দেখুন। 🥗✨' : 'Your diet plan has been successfully generated! Click the button below to view today\'s balanced food list. 🥗✨'
           } : m)
         );
       } catch {
         setMessages((prev) =>
           prev.map((m) => m.id === assistantId ? {
             ...m,
-            content: 'দুঃখিত, পরিকল্পনা তৈরি করা যায়নি। অনুগ্রহ করে পরে আবার চেষ্টা করুন।'
+            content: language === 'bn' ? 'দুঃখিত, পরিকল্পনা তৈরি করা যায়নি। অনুগ্রহ করে পরে আবার চেষ্টা করুন।' : 'Sorry, the plan could not be generated. Please try again later.'
           } : m)
         );
       } finally {
         setStreaming(false);
       }
     } else if (type === 'report') {
-      sendMessage('আমার বর্তমান শারীরিক অবস্থা এবং পুষ্টির রিপোর্ট দেখান।');
+      sendMessage(language === 'bn' ? 'আমার বর্তমান শারীরিক অবস্থা এবং পুষ্টির রিপোর্ট দেখান।' : 'Show my current physical status and nutrition report.');
     } else if (type === 'calorie') {
-      sendMessage('আমার দৈনিক ক্যালোরি ও পুষ্টির হিসাব কীভাবে করা হয়েছে?');
+      sendMessage(language === 'bn' ? 'আমার দৈনিক ক্যালোরি ও পুষ্টির হিসাব কীভাবে করা হয়েছে?' : 'How is my daily calorie and nutrition calculated?');
     }
   };
 
@@ -205,15 +236,15 @@ export default function DietPlanChatScreen() {
         </View>
 
         <Text style={styles.presetUserHello}>
-          {userName ? `হাই, ${userName}` : 'হাই!'}
+          {userName ? (language === 'bn' ? `হাই, ${userName}` : `Hi, ${userName}`) : (language === 'bn' ? 'হাই!' : 'Hi!')}
         </Text>
 
         <Text style={styles.presetMainTitle}>
-          আমি আপনাকে আজ কীভাবে সাহায্য করতে পারি?
+          {language === 'bn' ? 'আমি আপনাকে আজ কীভাবে সাহায্য করতে পারি?' : 'How can I help you today?'}
         </Text>
 
         <Text style={styles.presetSubTitle}>
-          আপনার পুষ্টি, ডায়েট এবং স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন।
+          {language === 'bn' ? 'আপনার পুষ্টি, ডায়েট এবং স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন।' : 'Ask any questions regarding your nutrition, diet, and health.'}
         </Text>
 
         <View style={styles.presetGrid}>
@@ -227,8 +258,8 @@ export default function DietPlanChatScreen() {
               <CalendarDays size={20} color={colors.primary} />
             </View>
             <View style={styles.presetCardContent}>
-              <Text style={styles.presetCardTitle}>ডায়েট</Text>
-              <Text style={styles.presetCardSub}>আজকের মিল প্ল্যান</Text>
+              <Text style={styles.presetCardTitle}>{language === 'bn' ? 'ডায়েট' : 'Diet'}</Text>
+              <Text style={styles.presetCardSub}>{language === 'bn' ? 'আজকের মিল প্ল্যান' : 'Today\'s Meal Plan'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} style={styles.cardChevron} />
           </TouchableOpacity>
@@ -243,8 +274,8 @@ export default function DietPlanChatScreen() {
               <TrendingUp size={20} color={colors.accent} />
             </View>
             <View style={styles.presetCardContent}>
-              <Text style={styles.presetCardTitle}>রিপোর্ট</Text>
-              <Text style={styles.presetCardSub}>আপনার শারীরিক অবস্থা</Text>
+              <Text style={styles.presetCardTitle}>{language === 'bn' ? 'রিপোর্ট' : 'Report'}</Text>
+              <Text style={styles.presetCardSub}>{language === 'bn' ? 'আপনার শারীরিক অবস্থা' : 'Your Health Status'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} style={styles.cardChevron} />
           </TouchableOpacity>
@@ -259,8 +290,8 @@ export default function DietPlanChatScreen() {
               <Flame size={20} color="#FF8C00" />
             </View>
             <View style={styles.presetCardContent}>
-              <Text style={styles.presetCardTitle}>ক্যালোরি</Text>
-              <Text style={styles.presetCardSub}>পুষ্টির হিসাব নিকাশ</Text>
+              <Text style={styles.presetCardTitle}>{language === 'bn' ? 'ক্যালোরি' : 'Calorie'}</Text>
+              <Text style={styles.presetCardSub}>{language === 'bn' ? 'পুষ্টির হিসাব নিকাশ' : 'Nutrition Breakdown'}</Text>
             </View>
             <ChevronRight size={16} color={colors.textSecondary} style={styles.cardChevron} />
           </TouchableOpacity>
@@ -316,8 +347,8 @@ export default function DietPlanChatScreen() {
           <Bot size={22} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>পরিকল্পনা তৈরি</Text>
-          <Text style={styles.headerSub}>এআই পুষ্টিবিদ</Text>
+          <Text style={styles.headerTitle}>{language === 'bn' ? 'পরিকল্পনা তৈরি' : 'Generate Plan'}</Text>
+          <Text style={styles.headerSub}>{language === 'bn' ? 'এআই পুষ্টিবিদ' : 'AI Nutritionist'}</Text>
         </View>
         <TouchableOpacity onPress={restartFlow} style={styles.restartBtn}>
           <RotateCcw size={20} color={colors.textSecondary} />
@@ -325,7 +356,7 @@ export default function DietPlanChatScreen() {
       </View>
 
       {/* Conditionally render Empty State Preset or standard Message Log */}
-      {messages.length <= 1 && !streaming ? (
+      {messages.length === 0 && !streaming ? (
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollEmptyState}
@@ -346,9 +377,9 @@ export default function DietPlanChatScreen() {
               <View style={styles.planReadyCard}>
                 <View style={styles.planReadyHeader}>
                   <CheckCircle2 size={36} color={colors.success} />
-                  <Text style={styles.planReadyTitle}>ডায়েট পরিকল্পনা প্রস্তুত!</Text>
+                  <Text style={styles.planReadyTitle}>{language === 'bn' ? 'ডায়েট পরিকল্পনা প্রস্তুত!' : 'Diet Plan Ready!'}</Text>
                   <Text style={styles.planReadySub}>
-                    আপনার ব্যক্তিগত তথ্য অনুযায়ী একটি নতুন পরিকল্পনা তৈরি করা হয়েছে।
+                    {language === 'bn' ? 'আপনার ব্যক্তিগত তথ্য অনুযায়ী একটি নতুন পরিকল্পনা তৈরি করা হয়েছে।' : 'A new plan has been generated based on your personal information.'}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -359,7 +390,7 @@ export default function DietPlanChatScreen() {
                     router.replace('/(tabs)/meals');
                   }}
                 >
-                  <Text style={styles.viewPlanText}>সম্পূর্ণ পরিকল্পনা দেখুন</Text>
+                  <Text style={styles.viewPlanText}>{language === 'bn' ? 'সম্পূর্ণ পরিকল্পনা দেখুন' : 'View Full Plan'}</Text>
                 </TouchableOpacity>
               </View>
             ) : null
@@ -374,7 +405,7 @@ export default function DietPlanChatScreen() {
             style={[styles.input, inputFocused && styles.inputFocused]}
             value={input}
             onChangeText={setInput}
-            placeholder="আপনার উত্তর লিখুন..."
+            placeholder={language === 'bn' ? 'আপনার উত্তর লিখুন...' : 'Type your answer...'}
             placeholderTextColor={colors.textSecondary}
             multiline
             maxLength={200}
@@ -394,12 +425,50 @@ export default function DietPlanChatScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* FAB — Manual Food Log */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => { haptics.light(); setShowManualLog(true); }}
+        activeOpacity={0.85}
+      >
+        <Plus size={20} color={colors.white} strokeWidth={2.5} />
+        <Text style={styles.fabText}>{language === 'bn' ? 'খাবার যোগ' : 'Add Food'}</Text>
+      </TouchableOpacity>
+
+      {/* Manual Food Log Modal */}
+      <ManualFoodLogModal
+        visible={showManualLog}
+        onClose={() => setShowManualLog(false)}
+        onLogged={() => { /* parent can refresh if needed */ }}
+        language={language === 'bn' ? 'bn' : 'en'}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: radius.pill,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+    zIndex: 50,
+  },
+  fabText: { fontFamily: fonts.bnBold, fontSize: 14, color: colors.white },
 
   header: {
     flexDirection: 'row',

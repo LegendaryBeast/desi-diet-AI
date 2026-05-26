@@ -16,11 +16,13 @@ import {
   ImagePlus,
   Trash2,
   Shield,
+  CheckCircle2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   chatApi,
   mealTrackingApi,
+  mealPlanApi,
   type MealTrackingResponse,
   type MealTrackingListItem,
 } from '../../lib/api';
@@ -75,6 +77,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
 
   // Today's logs
   const [todayLogs, setTodayLogs] = useState<MealTrackingListItem[]>([]);
+  const [planItems, setPlanItems] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   // Voice recording
@@ -88,6 +91,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoNote, setPhotoNote] = useState('');
+  const [photoQuantityG, setPhotoQuantityG] = useState('');
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Helper to compute and emit totals
@@ -109,16 +113,30 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
   const fetchTodayLogs = useCallback(async () => {
     setLoadingLogs(true);
     try {
-      const items = await mealTrackingApi.today();
+      const [items, planRes] = await Promise.all([
+        mealTrackingApi.today(),
+        mealPlanApi.getDaily(lang).catch(() => null)
+      ]);
       setTodayLogs(items);
       emitTotals(items);
+
+      if (planRes && planRes.plan_data) {
+        const meals = (planRes.plan_data as any).meals || [];
+        const extracted: any[] = [];
+        meals.forEach((m: any) => {
+          (m.items || []).forEach((it: any) => {
+            extracted.push(it);
+          });
+        });
+        setPlanItems(extracted);
+      }
     } catch (err) {
       // soft fail — keep widget usable
       console.warn('Failed to load today\'s meal logs', err);
     } finally {
       setLoadingLogs(false);
     }
-  }, [emitTotals]);
+  }, [emitTotals, lang]);
 
   useEffect(() => {
     fetchTodayLogs();
@@ -205,24 +223,42 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
     setPhotoFile(null);
     setPhotoPreview(null);
     setPhotoNote('');
+    setPhotoQuantityG('');
     if (photoInputRef.current) photoInputRef.current.value = '';
   };
 
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [confirmedInputText, setConfirmedInputText] = useState('');
+
   // ── Submit handlers ─────────────────────────────────────────────────────
-  const submitText = async () => {
-    if (!text.trim()) return;
+  const submitText = async (previewMode = true) => {
+    const textToSubmit = previewMode ? text.trim() : confirmedInputText;
+    if (!textToSubmit) return;
+    
     setBusy(true);
     setError(null);
+    if (previewMode) {
+      setLastResult(null);
+      setIsConfirmed(false);
+      setConfirmedInputText(textToSubmit);
+    }
+    
     try {
       const res = await mealTrackingApi.log({
-        input: text.trim(),
+        input: textToSubmit,
         meal_slot: mealSlot,
         language: lang,
         strict_mode: strictMode,
+        preview: previewMode,
+        is_manual: true,
       });
       setLastResult(res);
-      setText('');
-      fetchTodayLogs();
+      if (!previewMode) {
+        setIsConfirmed(true);
+        setText('');
+        setConfirmedInputText('');
+        fetchTodayLogs();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log meal');
     } finally {
@@ -230,19 +266,30 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
     }
   };
 
-  const submitPhoto = async () => {
+  const submitPhoto = async (previewMode = true) => {
     if (!photoFile) return;
     setBusy(true);
     setError(null);
+    if (previewMode) {
+      setLastResult(null);
+      setIsConfirmed(false);
+    }
+    
     try {
+      const qtyG = photoNote.trim() && photoQuantityG ? parseFloat(photoQuantityG) : undefined;
       const res = await mealTrackingApi.logFromImage(photoFile, {
         meal_slot: mealSlot,
         language: lang,
-        note: photoNote || undefined,
+        food_name: photoNote.trim() || undefined,
+        quantity_g: qtyG,
+        preview: previewMode,
       });
       setLastResult(res);
-      clearPhoto();
-      fetchTodayLogs();
+      if (!previewMode) {
+        setIsConfirmed(true);
+        clearPhoto();
+        fetchTodayLogs();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze photo');
     } finally {
@@ -270,6 +317,44 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
     }),
     { protein_g: 0, carbs_g: 0, fat_g: 0 },
   );
+
+  const manualLogs = todayLogs.filter((log) => {
+    const inputText = log.input_text || '';
+    if (inputText.includes('[Manual]')) return true;
+    if (inputText.includes('[Plan]')) return false;
+
+    const slotKeywords = [
+      'সকালের নাস্তা',
+      'সকালের স্ন্যাক্স',
+      'দুপুরের খাবার',
+      'বিকেলের নাস্তা',
+      'রাতের খাবার',
+      'breakfast',
+      'morning snack',
+      'lunch',
+      'evening snack',
+      'dinner',
+      'snack'
+    ];
+    const lowerText = inputText.toLowerCase();
+
+    if (slotKeywords.some(kw => lowerText.includes(kw) && (lowerText.includes(':') || lowerText.includes('plan')))) {
+      return false;
+    }
+
+    for (const item of planItems) {
+      const nameEn = (item.name_en || '').toLowerCase();
+      const nameBn = (item.name_bn || '').toLowerCase();
+      if (
+        (nameEn && lowerText.includes(nameEn)) ||
+        (nameBn && lowerText.includes(nameBn))
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   return (
     <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-ink/5 space-y-6">
@@ -378,12 +463,12 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
               className="w-full bg-cream/50 border border-ink/10 rounded-2xl p-4 font-bn text-sm focus:outline-none focus:border-accent/60 focus:ring-2 ring-accent/10 resize-none"
             />
             <button
-              onClick={submitText}
+              onClick={() => submitText(true)}
               disabled={!text.trim() || busy}
               className="w-full px-5 py-3 bg-accent text-white rounded-2xl font-bn font-black flex items-center justify-center gap-2 hover:bg-ink transition-all disabled:opacity-40"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={16} />}
-              Log meal
+              {lang === 'bn' ? 'খাবার খুঁজুন ও পুষ্টি দেখুন' : 'Search & Preview'}
             </button>
           </div>
         )}
@@ -423,12 +508,12 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                 {isRecording ? 'Stop' : isTranscribing ? 'Transcribing' : 'Record'}
               </button>
               <button
-                onClick={submitText}
+                onClick={() => submitText(true)}
                 disabled={!text.trim() || busy || isRecording || isTranscribing}
                 className="flex-1 px-5 py-3 bg-accent text-white rounded-2xl font-bn font-black flex items-center justify-center gap-2 hover:bg-ink transition-all disabled:opacity-40"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={16} />}
-                Log meal
+                {lang === 'bn' ? 'খাবার খুঁজুন ও পুষ্টি দেখুন' : 'Search & Preview'}
               </button>
             </div>
           </div>
@@ -455,7 +540,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                 <ImagePlus className="w-8 h-8 text-ink-muted" />
                 <div className="font-bn font-bold text-ink">Take or upload a meal photo</div>
                 <div className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
-                  AI will identify foods and portions
+                  AI will identify foods via GraphRAG database
                 </div>
               </button>
             ) : (
@@ -464,7 +549,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                   <img
                     src={photoPreview!}
                     alt="meal"
-                    className="w-full max-h-72 object-cover rounded-2xl border border-ink/10"
+                    className="w-full max-h-60 object-cover rounded-2xl border border-ink/10"
                   />
                   <button
                     onClick={clearPhoto}
@@ -474,20 +559,45 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                     <X size={16} />
                   </button>
                 </div>
-                <input
-                  type="text"
-                  value={photoNote}
-                  onChange={(e) => setPhotoNote(e.target.value)}
-                  placeholder="Optional note (e.g. portion size, special prep)"
-                  className="w-full bg-cream/50 border border-ink/10 rounded-2xl px-4 py-2.5 font-bn text-sm focus:outline-none focus:border-accent/60"
-                />
+
+                {/* Food Name hint */}
+                <div className="space-y-1">
+                  <label className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
+                    🍛 Food Name <span className="text-ink-faint/60">(optional — helps GraphRAG find exact match)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={photoNote}
+                    onChange={(e) => setPhotoNote(e.target.value)}
+                    placeholder='e.g. "ভাত", "Rice", "Chicken curry"'
+                    className="w-full bg-cream/50 border border-ink/10 rounded-2xl px-4 py-2.5 font-bn text-sm focus:outline-none focus:border-accent/60"
+                  />
+                </div>
+
+                {/* Quantity hint */}
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-1">
+                    <label className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
+                      ⚖️ Quantity (grams)
+                    </label>
+                    <input
+                      type="number"
+                      value={photoQuantityG}
+                      onChange={(e) => setPhotoQuantityG(e.target.value)}
+                      placeholder="e.g. 150"
+                      min="1"
+                      className="w-full bg-cream/50 border border-ink/10 rounded-2xl px-4 py-2.5 font-bn text-sm focus:outline-none focus:border-accent/60"
+                    />
+                  </div>
+                </div>
+
                 <button
-                  onClick={submitPhoto}
+                  onClick={() => submitPhoto(true)}
                   disabled={busy}
                   className="w-full px-5 py-3 bg-accent text-white rounded-2xl font-bn font-black flex items-center justify-center gap-2 hover:bg-ink transition-all disabled:opacity-40"
                 >
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles size={16} />}
-                  {busy ? 'Analyzing photo…' : 'Identify & log meal'}
+                  {busy ? (lang === 'bn' ? 'ডাটাবেজ খুঁজছি...' : 'Searching database…') : (lang === 'bn' ? 'ছবি বিশ্লেষণ ও পুষ্টি দেখুন' : 'Analyze & Preview')}
                 </button>
               </div>
             )}
@@ -509,15 +619,29 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3"
+            className={`border rounded-2xl p-4 space-y-3 transition-all ${
+              isConfirmed 
+                ? 'bg-emerald-50/60 border-emerald-100' 
+                : 'bg-lime-50/50 border-lime-200 shadow-sm'
+            }`}
           >
             <div className="flex items-center justify-between">
               <div className="font-body font-bold text-ink flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-accent" />
-                Logged · {lastResult.total_calories} kcal
+                {isConfirmed ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Sparkles className="w-4 h-4 text-accent" />
+                )}
+                {isConfirmed 
+                  ? (lang === 'bn' ? 'সফলভাবে ডায়েরিতে যোগ হয়েছে!' : 'Logged Successfully!') 
+                  : (lang === 'bn' ? 'খাবারের পুষ্টির বিবরণ (প্রিভিউ)' : 'Food Nutrition Details (Preview)')
+                } · {lastResult.total_calories} kcal
               </div>
               <button
-                onClick={() => setLastResult(null)}
+                onClick={() => {
+                  setLastResult(null);
+                  setIsConfirmed(false);
+                }}
                 className="text-ink-faint hover:text-ink"
                 aria-label="Dismiss"
               >
@@ -541,21 +665,48 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
             {lastResult.ai_feedback && (
               <p className="font-bn text-sm text-ink leading-relaxed">{lastResult.ai_feedback}</p>
             )}
+            {!isConfirmed && (
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    if (mode === 'photo') {
+                      submitPhoto(false);
+                    } else {
+                      submitText(false);
+                    }
+                  }}
+                  disabled={busy}
+                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bn font-black text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all disabled:opacity-40"
+                >
+                  {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 size={13} />}
+                  {lang === 'bn' ? 'নিশ্চিত করুন ও যোগ করুন' : 'Confirm & Add to Tracker'}
+                </button>
+                <button
+                  onClick={() => {
+                    setLastResult(null);
+                    setIsConfirmed(false);
+                  }}
+                  className="px-3 py-2 bg-cream text-ink-muted border border-ink/5 rounded-xl font-bn font-bold text-xs hover:bg-cream/80 transition-all"
+                >
+                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Today's logs list */}
-      {todayLogs.length > 0 && (
+      {manualLogs.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
-              Today's logs · {todayLogs.length}
+              Today's logs · {manualLogs.length}
             </div>
             {loadingLogs && <Loader2 className="w-3 h-3 animate-spin text-ink-faint" />}
           </div>
           <div className="space-y-1.5">
-            {todayLogs.map((log) => {
+            {manualLogs.map((log) => {
               const slotMeta = SLOT_OPTIONS.find((s) => s.value === log.meal_slot);
               const Icon = slotMeta?.icon || Utensils;
               const time = new Date(log.logged_at).toLocaleTimeString([], {

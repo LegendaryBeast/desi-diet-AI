@@ -71,6 +71,47 @@ class Neo4jFoodEngine:
             result = session.run(query, conditions=conditions, goal=goal, limit=limit)
             return [dict(record) for record in result]
 
+    def get_alternatives(self, code: str, conditions: List[str], goal: str = "Maintain", limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieve alternative foods belonging to the same food group that are safe for the user."""
+        query = '''
+        MATCH (target:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+        WHERE target.code = $code OR toLower(target.name_en) = toLower($code) OR toLower(target.name_bn) = toLower($code)
+        WITH fg, target
+        
+        MATCH (f:Food)-[:BELONGS_TO]->(fg)
+        WHERE f.code <> target.code AND f.is_partial = false
+
+        OPTIONAL MATCH (ca:Condition)-[:AVOID_GROUP]->(fg)
+        WHERE ca.name IN $conditions OR ca.name = $goal
+        WITH f, fg, ca
+
+        WHERE ca IS NULL
+
+        OPTIONAL MATCH (cp:Condition)-[:PREFER_GROUP]->(fg)
+        WHERE cp.name IN $conditions OR cp.name = $goal
+        WITH f, fg, count(cp) AS preference_score
+
+        RETURN f.code AS code,
+               f.name_en AS name_en,
+               f.name_bn AS name_bn,
+               f.energy_kcal AS calories,
+               f.protein_g AS protein,
+               f.fiber_g AS fiber,
+               fg.name_en AS food_group,
+               preference_score
+        ORDER BY preference_score DESC, f.protein_g DESC
+        LIMIT $limit
+        '''
+        with self.driver.session() as session:
+            result = session.run(query, code=code, conditions=conditions, goal=goal, limit=limit)
+            records = [dict(record) for record in result]
+            
+            # If no alternatives in same food group are found (or target food code not found),
+            # fallback to generic safe foods matching user profile.
+            if not records:
+                return self.get_safe_foods(conditions=conditions, goal=goal, limit=limit)
+            return records
+
     def search_food(self, query_text: str) -> List[Dict[str, Any]]:
         """Search foods by Bengali or English name."""
         query = '''
@@ -93,6 +134,31 @@ class Neo4jFoodEngine:
         with self.driver.session() as session:
             result = session.run(query, qt=query_text)
             return [dict(record) for record in result]
+
+    def resolve_alias(self, query_text: str) -> Optional[Dict[str, Any]]:
+        """Resolve a synonym/alias to a target food item and return nutrition + conversion multiplier."""
+        query = '''
+        MATCH (a:FoodAlias)-[r:MAPS_TO]->(f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+        WHERE toLower(a.name) = toLower($qt)
+           OR toLower($qt) CONTAINS toLower(a.name)
+        RETURN f.code AS code,
+               f.name_en AS name_en,
+               f.name_bn AS name_bn,
+               f.energy_kcal AS calories,
+               f.protein_g AS protein,
+               f.fat_g AS fat,
+               f.carbohydrate_g AS carbs,
+               f.fiber_g AS fiber,
+               fg.name_en AS food_group,
+               a.multiplier AS multiplier,
+               a.name AS matched_alias
+        ORDER BY size(a.name) DESC
+        LIMIT 1
+        '''
+        with self.driver.session() as session:
+            result = session.run(query, qt=query_text).single()
+            return dict(result) if result else None
+
 
     def compare_meals(self, meal_1_codes: List[str], meal_2_codes: List[str], conditions: List[str]) -> Dict[str, Any]:
         """Evaluate and compare two meal combinations."""
@@ -224,8 +290,14 @@ class KhadokGraphRAG:
     def get_safe_foods(self, conditions, goal="Maintain", limit=40):
         return self._real.get_safe_foods(conditions, goal, limit)
 
+    def get_alternatives(self, code, conditions, goal="Maintain", limit=10):
+        return self._real.get_alternatives(code, conditions, goal, limit)
+
     def search_food(self, query_text):
         return self._real.search_food(query_text)
+
+    def resolve_alias(self, query_text):
+        return self._real.resolve_alias(query_text)
 
     def compare_meals(self, meal_1_codes, meal_2_codes, conditions):
         return self._real.compare_meals(meal_1_codes, meal_2_codes, conditions)

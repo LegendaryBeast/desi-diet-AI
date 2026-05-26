@@ -7,14 +7,15 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   Send, Bot, Sparkles, CalendarDays, TrendingUp, Flame, ChevronRight,
-  Image as ImageIcon, Mic, Camera, Crown, X
+  Image as ImageIcon, Mic, Camera, Crown, X, FileText, Download
 } from 'lucide-react-native';
-import { API_BASE_URL, profileApi } from '../../lib/api';
+import { API_BASE_URL, profileApi, chatApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useSubscription } from '../../context/SubscriptionContext';
 import ProModal from '../../components/ui/ProModal';
 import EventSource from 'react-native-sse';
+import { useTranslation } from '../../lib/translations';
 
 // Platform-guarded imports — expo-image-picker and expo-av don't work on web
 let ImagePicker: typeof import('expo-image-picker') | null = null;
@@ -32,7 +33,7 @@ interface Message {
   image?: string;
 }
 
-const QUICK_PROMPTS = [
+const QUICK_PROMPTS_BN = [
   'আমার জন্য ডায়েট পরিকল্পনা তৈরি করুন',
   'আমার জন্য আজকের নাস্তা কী?',
   'ডায়াবেটিস রোগীর জন্য কোন ফল ভালো?',
@@ -40,23 +41,33 @@ const QUICK_PROMPTS = [
   'কতটুকু পানি পান করা দরকার?',
 ];
 
-const WELCOME_MSG: Message = {
-  role: 'assistant',
-  content: 'হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?',
-  id: 'welcome',
-};
+const QUICK_PROMPTS_EN = [
+  'Create a diet plan for me',
+  'What is my breakfast for today?',
+  'Which fruit is good for diabetic patients?',
+  'What should I eat at night to lose weight?',
+  'How much water do I need to drink?',
+];
+
+const WELCOME_MSG_BN = 'হ্যালো!  আমি পুষ্টি এআই। আমি আপনাকে কীভাবে সহায়তা করতে পারি?';
+const WELCOME_MSG_EN = 'Hello! I am Pusti AI. How can I help you today?';
 
 const cleanMarkdown = (text: string) => {
   if (!text) return '';
-  return text.replace(/\*\*/g, '').replace(/###/g, '').trim();
+  return text.replace(/\*\*/g, '').replace(/###/g, '').replace(/\[HEALTH_REPORT_LINK\]/g, '').trim();
 };
 
 export default function ChatScreen() {
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MSG]);
+  const { t, language } = useTranslation();
+  const welcomeText = language === 'bn' ? WELCOME_MSG_BN : WELCOME_MSG_EN;
+  const quickPrompts = language === 'bn' ? QUICK_PROMPTS_BN : QUICK_PROMPTS_EN;
+
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [showQuickPrompts, setShowQuickPrompts] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [inputFocused, setInputFocused] = useState(false);
   const flatListRef = useRef<FlatList>(null);
@@ -72,10 +83,51 @@ export default function ChatScreen() {
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [attachedImageBase64, setAttachedImageBase64] = useState<string | null>(null);
 
-  // Audio recording states
+  // Voice recording states
   const [recording, setRecording] = useState<any | undefined>(undefined);
   const [isRecording, setIsRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+
+  // Web-only refs for MediaRecorder
+  const webMediaRecorderRef = useRef<any>(null);
+  const webAudioChunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    setLoadingHistory(true);
+    chatApi.history()
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          const formatted = res.data.map((msg: any, index: number) => ({
+            role: msg.role,
+            content: msg.content,
+            id: msg.id || `msg-${index}`,
+          }));
+          setMessages(formatted);
+          setShowQuickPrompts(false);
+        } else {
+          setMessages([
+            {
+              role: 'assistant',
+              content: welcomeText,
+              id: 'welcome',
+            }
+          ]);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed fetching chat history:", err);
+        setMessages([
+          {
+            role: 'assistant',
+            content: welcomeText,
+            id: 'welcome',
+          }
+        ]);
+      })
+      .finally(() => {
+        setLoadingHistory(false);
+      });
+  }, [language]);
 
   useEffect(() => {
     profileApi.get().then((res) => {
@@ -99,16 +151,32 @@ export default function ChatScreen() {
     }
   }, [messages]);
 
+  const showComingSoonAlert = () => {
+    haptics.light();
+    Alert.alert(
+      language === 'bn' ? 'শীঘ্রই আসছে!' : 'Coming Soon!',
+      language === 'bn'
+        ? 'এই ফিচারটি বর্তমানে উন্নয়নশীল পর্যায়ে রয়েছে এবং শীঘ্রই যুক্ত করা হবে।'
+        : 'This feature is currently under development and will be available soon.'
+    );
+  };
+
   // Image Attach Handlers — only available on native
   const pickImage = async () => {
     haptics.light();
     if (!ImagePicker) {
-      Alert.alert('শুধুমাত্র মোবাইলে', 'ছবি পাঠানো শুধুমাত্র মোবাইল অ্যাপে কাজ করে।');
+      Alert.alert(
+        language === 'bn' ? 'শুধুমাত্র মোবাইলে' : 'Mobile Only',
+        language === 'bn' ? 'ছবি পাঠানো শুধুমাত্র মোবাইল অ্যাপে কাজ করে।' : 'Sending images only works in the mobile app.'
+      );
       return;
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('অনুমতি প্রয়োজন', 'গ্যালারি থেকে ছবি নিতে অনুমতি দিন।');
+      Alert.alert(
+        language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission Required',
+        language === 'bn' ? 'গ্যালারি থেকে ছবি নিতে অনুমতি দিন।' : 'Please grant permission to access the gallery.'
+      );
       return;
     }
 
@@ -127,12 +195,18 @@ export default function ChatScreen() {
   const takePhoto = async () => {
     haptics.light();
     if (!ImagePicker) {
-      Alert.alert('শুধুমাত্র মোবাইলে', 'ক্যামেরা শুধুমাত্র মোবাইল অ্যাপে কাজ করে।');
+      Alert.alert(
+        language === 'bn' ? 'শুধুমাত্র মোবাইলে' : 'Mobile Only',
+        language === 'bn' ? 'ক্যামেরা শুধুমাত্র মোবাইল অ্যাপে কাজ করে।' : 'Camera only works in the mobile app.'
+      );
       return;
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('অনুমতি প্রয়োজন', 'ক্যামেরা দিয়ে ছবি তুলতে অনুমতি দিন।');
+      Alert.alert(
+        language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission Required',
+        language === 'bn' ? 'ক্যামেরা দিয়ে ছবি তুলতে অনুমতি দিন।' : 'Please grant camera permission.'
+      );
       return;
     }
 
@@ -147,29 +221,58 @@ export default function ChatScreen() {
     }
   };
 
-  // Voice Recording Handlers — only available on native
+  // ─── Voice: unified cross-platform handler ───────────────────────────────
+  // Voice is purely an alternative text input:
+  //   hold mic → speak → release → transcribed text fills the text box
+  //   the user then reviews/edits and sends normally.
+
   const startRecording = async () => {
-    if (!Audio) {
-      Alert.alert('শুধুমাত্র মোবাইলে', 'ভয়েস রেকর্ড শুধুমাত্র মোবাইল অ্যাপে কাজ করে।');
+    haptics.light();
+
+    // ── WEB path ──────────────────────────────────────────────────────────
+    if (Platform.OS === 'web') {
+      try {
+        const stream = await (navigator as any).mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+        const recorder = new (window as any).MediaRecorder(stream, { mimeType });
+        webMediaRecorderRef.current = recorder;
+        webAudioChunksRef.current = [];
+
+        recorder.ondataavailable = (e: any) => {
+          if (e.data && e.data.size > 0) webAudioChunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = async () => {
+          stream.getTracks().forEach((t: any) => t.stop());
+          const blob = new Blob(webAudioChunksRef.current, { type: mimeType });
+          await transcribeWebBlob(blob, mimeType);
+        };
+
+        recorder.start();
+        setIsRecording(true);
+      } catch {
+        Alert.alert(
+          language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission Required',
+          language === 'bn' ? 'ভয়েস রেকর্ড করতে মাইক্রোফোনের অনুমতি দিন।' : 'Please grant microphone permission.'
+        );
+      }
       return;
     }
+
+    // ── NATIVE path ───────────────────────────────────────────────────────
+    if (!Audio) return;
     try {
-      haptics.light();
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('অনুমতি প্রয়োজন', 'ভয়েস রেকর্ড করতে মাইক্রোফোনের অনুমতি দিন।');
+        Alert.alert(
+          language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission Required',
+          language === 'bn' ? 'ভয়েস রেকর্ড করতে মাইক্রোফোনের অনুমতি দিন।' : 'Please grant microphone permission.'
+        );
         return;
       }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(recording);
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      setRecording(rec);
       setIsRecording(true);
     } catch (err) {
       console.error('Failed to start recording', err);
@@ -177,23 +280,63 @@ export default function ChatScreen() {
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
     haptics.medium();
     setIsRecording(false);
+
+    // ── WEB path ──────────────────────────────────────────────────────────
+    if (Platform.OS === 'web') {
+      if (webMediaRecorderRef.current?.state !== 'inactive') {
+        webMediaRecorderRef.current?.stop(); // triggers onstop → transcribeWebBlob
+      }
+      return;
+    }
+
+    // ── NATIVE path ───────────────────────────────────────────────────────
+    if (!recording) return;
     try {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(undefined);
-
-      if (uri) {
-        await transcribeAudio(uri);
-      }
+      if (uri) await transcribeNativeUri(uri);
     } catch (err) {
       console.error('Failed to stop recording', err);
     }
   };
 
-  const transcribeAudio = async (uri: string) => {
+  // Upload a web Blob to the transcribe endpoint
+  const transcribeWebBlob = async (blob: Blob, mimeType: string) => {
+    setTranscribing(true);
+    try {
+      const ext = mimeType.includes('webm') ? 'webm' : 'mp4';
+      const formData = new FormData();
+      formData.append('file', blob, `recording.${ext}`);
+      formData.append('language', language);
+
+      const token = await AsyncStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/chat/transcribe`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!response.ok) throw new Error('Transcription failed');
+      const resData = await response.json();
+      if (resData.text) {
+        // Append transcription to text box — user reviews then sends
+        setInput((prev) => (prev ? `${prev} ${resData.text}` : resData.text));
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert(
+        language === 'bn' ? 'ত্রুটি' : 'Error',
+        language === 'bn' ? 'ভয়েস ইনপুট টেক্সটে রূপান্তর করা যায়নি।' : 'Could not transcribe voice input to text.'
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  // Upload a native file URI to the transcribe endpoint
+  const transcribeNativeUri = async (uri: string) => {
     setTranscribing(true);
     try {
       const formData = new FormData();
@@ -202,7 +345,7 @@ export default function ChatScreen() {
         name: Platform.OS === 'ios' ? 'recording.m4a' : 'recording.mp4',
         type: Platform.OS === 'ios' ? 'audio/m4a' : 'audio/mp4',
       } as any);
-      formData.append('language', 'bn');
+      formData.append('language', language);
 
       const token = await AsyncStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/chat/transcribe`, {
@@ -220,7 +363,10 @@ export default function ChatScreen() {
       }
     } catch (err) {
       console.error(err);
-      Alert.alert('ত্রুটি', 'ভয়েস ইনপুট টেক্সটে রূপান্তর করা যায়নি।');
+      Alert.alert(
+        language === 'bn' ? 'ত্রুটি' : 'Error',
+        language === 'bn' ? 'ভয়েস ইনপুট টেক্সটে রূপান্তর করা যায়নি।' : 'Could not transcribe voice input to text.'
+      );
     } finally {
       setTranscribing(false);
     }
@@ -243,7 +389,7 @@ export default function ChatScreen() {
 
     const userMsg: Message = {
       role: 'user',
-      content: content || 'ফটোগ্রাফি বা ছবি বিশ্লেষণ করুন।',
+      content: content || (language === 'bn' ? 'ফটোগ্রাফি বা ছবি বিশ্লেষণ করুন।' : 'Analyze photography or image.'),
       id: `u_${Date.now()}`,
       image: attachedImage || undefined,
     };
@@ -261,6 +407,11 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, { role: 'assistant', content: '', id: assistantId }]);
 
     try {
+      try {
+        await profileApi.get();
+      } catch (err) {
+        console.warn("Axios pre-flight refresh check warning:", err);
+      }
       const token = await AsyncStorage.getItem('access_token');
 
       const es = new EventSource(`${API_BASE_URL}/chat`, {
@@ -271,7 +422,7 @@ export default function ChatScreen() {
         method: 'POST',
         body: JSON.stringify({
           message: content || 'Identify foods in the attached image.',
-          language: 'bn',
+          language: language,
           history: messages
             .filter((m) => m.role !== 'assistant' || m.content)
             .slice(-10)
@@ -305,7 +456,7 @@ export default function ChatScreen() {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId && !accumulated
-              ? { ...m, content: 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' }
+              ? { ...m, content: language === 'bn' ? 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' : 'Sorry, I cannot answer right now. Please try again later.' }
               : m
           )
         );
@@ -316,7 +467,7 @@ export default function ChatScreen() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, content: 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' }
+            ? { ...m, content: language === 'bn' ? 'দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। পরে আবার চেষ্টা করুন।' : 'Sorry, I cannot answer right now. Please try again later.' }
             : m
         )
       );
@@ -350,9 +501,39 @@ export default function ChatScreen() {
               <View style={[styles.dot, styles.dot3]} />
             </View>
           ) : (
-            <Text style={[styles.msgText, isUser ? styles.msgTextUser : styles.msgTextBot]}>
-              {cleanMarkdown(item.content)}
-            </Text>
+            <View>
+              <Text style={[styles.msgText, isUser ? styles.msgTextUser : styles.msgTextBot]}>
+                {cleanMarkdown(item.content)}
+              </Text>
+              {!isUser && item.content.includes("[HEALTH_REPORT_LINK]") && (
+                <TouchableOpacity 
+                  style={styles.actionCard} 
+                  onPress={() => {
+                    haptics.medium();
+                    router.push('/(tabs)/report');
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.actionCardHeader}>
+                    <FileText size={18} color={colors.primary} />
+                    <Text style={styles.actionCardTitle}>
+                      {language === 'bn' ? 'স্বাস্থ্য রিপোর্ট ডাউনলোড (পিডিএফ)' : 'Download Health Report (PDF)'}
+                    </Text>
+                  </View>
+                  <Text style={styles.actionCardDesc}>
+                    {language === 'bn' 
+                      ? 'গত ৩, ৭ বা ৩০ দিনের সম্পূর্ণ পুষ্টি খতিয়ান, মেডিকেল সতর্কবার্তা ও এআই মূল্যায়ন সহ পিডিএফ ডাউনলোড করতে ট্যাপ করুন।' 
+                      : 'Download your complete clinical PDF report including nutrition, medical alerts, and AI analysis for 3, 7, or 30 days.'}
+                  </Text>
+                  <View style={styles.actionCardBtn}>
+                    <Download size={13} color={colors.white} style={{ marginRight: 6 }} />
+                    <Text style={styles.actionCardBtnText}>
+                      {language === 'bn' ? 'রিপোর্ট ডাউনলোড করুন' : 'Download PDF Report'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
       </View>
@@ -364,9 +545,9 @@ export default function ChatScreen() {
     if (type === 'diet') {
       router.push('/(tabs)/diet-plan');
     } else if (type === 'report') {
-      sendMessage('আমার বর্তমান শারীরিক অবস্থা এবং পুষ্টির রিপোর্ট দেখান।');
+      sendMessage(language === 'bn' ? 'আমার বর্তমান শারীরিক অবস্থা এবং পুষ্টির রিপোর্ট দেখান।' : 'Show my current physical status and nutrition report.');
     } else if (type === 'calorie') {
-      sendMessage('আমার দৈনিক ক্যালোরি ও পুষ্টির হিসাব কীভাবে করা হয়েছে?');
+      sendMessage(language === 'bn' ? 'আমার দৈনিক ক্যালোরি ও পুষ্টির হিসাব কীভাবে করা হয়েছে?' : 'How is my daily calorie and nutrition calculated?');
     }
   };
 
@@ -380,10 +561,11 @@ export default function ChatScreen() {
         iconColor: colors.primary,
         iconBg: colors.primary + '15',
         accentColor: colors.primary,
-        title: 'আজকের মিল প্ল্যান',
-        description:
-          'সকাল থেকে রাত পর্যন্ত আপনার স্বাস্থ্য লক্ষ্য ও খাদ্যাভ্যাস অনুযায্যী তৈরি পার্সোনালাইজড খাবার তালিকা দেখুন।',
-        badge: 'খাবার তালিকা দেখুন',
+        title: language === 'bn' ? 'আজকের মিল প্ল্যান' : 'Today\'s Meal Plan',
+        description: language === 'bn'
+          ? 'সকাল থেকে রাত পর্যন্ত আপনার স্বাস্থ্য লক্ষ্য ও খাদ্যাভ্যাস অনুযায্যী তৈরি পার্সোনালাইজড খাবার তালিকা দেখুন।'
+          : 'View personalized meal plans from breakfast to dinner tailored to your health goals and preferences.',
+        badge: language === 'bn' ? 'খাবার তালিকা দেখুন' : 'View Meals',
       },
       {
         type: 'report' as const,
@@ -391,10 +573,11 @@ export default function ChatScreen() {
         iconColor: colors.accent,
         iconBg: colors.accent + '15',
         accentColor: colors.accent,
-        title: 'আমার পুষ্টি বিশ্লেষণ',
-        description:
-          'আপনার বর্তমান ওজন, রক্তের শর্করা ও ক্যালোরি গ্রহণের হালনাগাদ রিপোর্ট সহ পুষ্টির ঘাটতি চিহ্নিত করুন।',
-        badge: 'রিপোর্ট দেখুন',
+        title: language === 'bn' ? 'আমার পুষ্টি বিশ্লেষণ' : 'My Nutrition Analysis',
+        description: language === 'bn'
+          ? 'আপনার বর্তমান ওজন, রক্তের শর্করা ও ক্যালোরি গ্রহণের হালনাগাদ রিপোর্ট সহ পুষ্টির ঘাটতি চিহ্নিত করুন।'
+          : 'Identify nutrient deficiencies with updated reports on your weight, blood sugar, and calorie intake.',
+        badge: language === 'bn' ? 'রিপোর্ট দেখুন' : 'View Report',
       },
       {
         type: 'calorie' as const,
@@ -402,10 +585,11 @@ export default function ChatScreen() {
         iconColor: '#FF8C00',
         iconBg: '#FF8C0015',
         accentColor: '#FF8C00',
-        title: 'ক্যালোরি ও পুষ্টি লক্ষ্যমাত্রা',
-        description:
-          'বয়স, উচ্চতা ও ওজন অনুযায্যী দৈনিক ক্যালোরি, প্রোটিন, কার্বোহাইড্রেট ও চর্বির সঠিক হিসাব জানুন।',
-        badge: 'লক্ষ্যমাত্রা জানুন',
+        title: language === 'bn' ? 'ক্যালোরি ও পুষ্টি লক্ষ্যমাত্রা' : 'Calorie & Nutrition Targets',
+        description: language === 'bn'
+          ? 'বয়স, উচ্চতা ও ওজন অনুযায্যী দৈনিক ক্যালোরি, প্রোটিন, কার্বোহাইড্রেট ও চর্বির সঠিক হিসাব জানুন।'
+          : 'Get accurate calculations for daily calories, protein, carbs, and fats based on age, height, and weight.',
+        badge: language === 'bn' ? 'লক্ষ্যমাত্রা জানুন' : 'Learn Targets',
       },
     ];
 
@@ -417,15 +601,15 @@ export default function ChatScreen() {
         </View>
 
         <Text style={styles.presetUserHello}>
-          {userName ? `হাই, ${userName}` : 'হাই!'}
+          {userName ? (language === 'bn' ? `হাই, ${userName}` : `Hi, ${userName}`) : (language === 'bn' ? 'হাই!' : 'Hi!')}
         </Text>
 
         <Text style={styles.presetMainTitle}>
-          আমি আপনাকে আজ কীভাবে সাহায্য করতে পারি?
+          {language === 'bn' ? 'আমি আপনাকে আজ কীভাবে সাহায্য করতে পারি?' : 'How can I help you today?'}
         </Text>
 
         <Text style={styles.presetSubTitle}>
-          আপনার পুষ্টি, ডায়েট এবং স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন বা নিচের বিকল্পগুলো বেছে নিন।
+          {language === 'bn' ? 'আপনার পুষ্টি, ডায়েট এবং স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন বা নিচের বিকল্পগুলো বেছে নিন।' : 'Ask any questions regarding your nutrition, diet, and health, or choose an option below.'}
         </Text>
 
         <View style={styles.presetGrid}>
@@ -473,8 +657,8 @@ export default function ChatScreen() {
           <Bot size={22} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>পুষ্টি এআই</Text>
-          <Text style={styles.headerSub}>ব্যক্তিগতকৃত পরামর্শ</Text>
+          <Text style={styles.headerTitle}>{language === 'bn' ? 'পুষ্টি এআই' : 'Pusti AI'}</Text>
+          <Text style={styles.headerSub}>{language === 'bn' ? 'ব্যক্তিগতকৃত পরামর্শ' : 'Personalized Coaching'}</Text>
         </View>
         {!isPro && (
           <TouchableOpacity style={styles.premiumBadge} onPress={() => { haptics.light(); setProTrigger('general'); setShowProModal(true); }}>
@@ -486,7 +670,14 @@ export default function ChatScreen() {
       </View>
 
       {/* Conditionally render Empty State Preset or standard Message Log */}
-      {messages.length <= 1 && !streaming ? (
+      {loadingHistory ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ fontFamily: fonts.bn, color: colors.textSecondary, marginTop: 12 }}>
+            {language === 'bn' ? 'বার্তা ইতিহাস লোড হচ্ছে...' : 'Loading message history...'}
+          </Text>
+        </View>
+      ) : messages.length <= 1 && !streaming ? (
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollEmptyState}
@@ -513,7 +704,7 @@ export default function ChatScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.quickPromptsList}
           >
-            {QUICK_PROMPTS.map((prompt, i) => (
+            {quickPrompts.map((prompt, i) => (
               <TouchableOpacity
                 key={i}
                 style={styles.quickPromptPill}
@@ -543,18 +734,14 @@ export default function ChatScreen() {
       <View style={styles.inputBar}>
         {/* Media Buttons */}
         <View style={styles.mediaButtons}>
-          <TouchableOpacity style={styles.mediaBtn} onPress={pickImage}>
+          <TouchableOpacity style={styles.mediaBtn} onPress={showComingSoonAlert}>
             <ImageIcon size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.mediaBtn} onPress={takePhoto}>
+          <TouchableOpacity style={styles.mediaBtn} onPress={showComingSoonAlert}>
             <Camera size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mediaBtn, isRecording && styles.mediaBtnActive]}
-            onPressIn={startRecording}
-            onPressOut={stopRecording}
-          >
-            <Mic size={20} color={isRecording ? colors.white : colors.textSecondary} />
+          <TouchableOpacity style={styles.mediaBtn} onPress={showComingSoonAlert}>
+            <Mic size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -562,7 +749,9 @@ export default function ChatScreen() {
           style={[styles.input, inputFocused && styles.inputFocused]}
           value={input}
           onChangeText={setInput}
-          placeholder={transcribing ? 'ভয়েস মেসেজ অনুবাদ হচ্ছে...' : 'আপনার প্রশ্ন লিখুন...'}
+          placeholder={transcribing 
+            ? (language === 'bn' ? 'ভয়েস মেসেজ অনুবাদ হচ্ছে...' : 'Transcribing voice message...') 
+            : (language === 'bn' ? 'আপনার প্রশ্ন লিখুন...' : 'Type your question...')}
           placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={600}
@@ -948,5 +1137,52 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bnBold,
     fontSize: 12.5,
     color: colors.textPrimary,
+  },
+  actionCard: {
+    backgroundColor: '#FFFDF9',
+    borderColor: '#EBF0D8',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 10,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  actionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  actionCardTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.primaryDark,
+    flex: 1,
+  },
+  actionCardDesc: {
+    fontFamily: fonts.bn,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  actionCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 8,
+    width: '100%',
+  },
+  actionCardBtnText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 12.5,
+    color: colors.white,
   },
 });

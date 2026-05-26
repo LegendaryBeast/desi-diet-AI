@@ -126,6 +126,7 @@ def _get_nutrient_unit_and_val(name: str, db_val_mg: float):
 async def get_health_summary(
     days: int = Query(7, ge=3, le=30),
     weight_kg: Optional[float] = Query(None),
+    lang: str = Query("bn"),
     current_user=Depends(get_current_user)
 ):
     """
@@ -527,16 +528,16 @@ async def get_health_summary(
                 if resolved_key != "sodium" and pct < 75:
                     clinical_insights.append({
                         "type": "warning",
-                        "title": f"{cond} ও {label_bn} ঘাটতি সতর্কতা",
-                        "message": f"আপনার {cond} ব্যবস্থাপনায় {label_bn} প্রয়োজনীয়। কিন্তু আপনার {days} দিনের গড় গ্রহণ ছিল মাত্র {round(consumed_val, 1)}{unit} (যা চাহিদা {round(target_val, 1)}{unit} এর তুলনায় মাত্র {pct}%)। ডায়েট ডাটাবেজ নির্দেশিকা: {notes_str}",
+                        "title": f"{cond} ও {label_bn} ঘাটতি সতর্কতা" if lang == "bn" else f"{cond} & {resolved_key.capitalize()} Deficiency Alert",
+                        "message": f"আপনার {cond} ব্যবস্থাপনায় {label_bn} প্রয়োজনীয়। কিন্তু আপনার {days} দিনের গড় গ্রহণ ছিল মাত্র {round(consumed_val, 1)}{unit} (যা চাহিদা {round(target_val, 1)}{unit} এর তুলনায় মাত্র {pct}%)। ডায়েট ডাটাবেজ নির্দেশিকা: {notes_str}" if lang == "bn" else f"{resolved_key.capitalize()} is required in your management of {cond}. However, your {days}-day average intake was only {round(consumed_val, 1)}{unit} (which is only {pct}% of the required {round(target_val, 1)}{unit}). Diet Database Guideline: {notes_str}",
                         "disease": cond,
                         "reference": ref_str
                     })
                 elif resolved_key == "sodium" and pct > 115:
                     clinical_insights.append({
                         "type": "error",
-                        "title": f"অতিরিক্ত সোডিয়াম ও {cond} ঝুঁকি",
-                        "message": f"আপনার {cond} ব্যবস্থাপনায় সোডিয়াম (লবণ) নিয়ন্ত্রণ আবশ্যক। কিন্তু আপনার গড় সোডিয়াম গ্রহণ {round(consumed_val * days, 1)}mg (সর্বোচ্চ দৈনিক নিরাপদ সীমা ২০০০mg এর চেয়ে {pct}% বেশি)। নির্দেশিকা: {notes_str}",
+                        "title": f"অতিরিক্ত সোডিয়াম ও {cond} ঝুঁকি" if lang == "bn" else f"Excessive Sodium & {cond} Risk",
+                        "message": f"আপনার {cond} ব্যবস্থাপনায় সোডিয়াম (লবণ) নিয়ন্ত্রণ আবশ্যক। কিন্তু আপনার গড় সোডিয়াম গ্রহণ {round(consumed_val * days, 1)}mg (সর্বোচ্চ দৈনিক নিরাপদ সীমা ২০০০mg এর চেয়ে {pct}% বেশি)। নির্দেশিকা: {notes_str}" if lang == "bn" else f"Sodium (salt) restriction is mandatory for managing your {cond}. However, your average sodium intake was {round(consumed_val, 1)}mg ({pct}% higher than the safe daily limit of 2000mg). Guideline: {notes_str}",
                         "disease": cond,
                         "reference": ref_str
                     })
@@ -546,8 +547,8 @@ async def get_health_summary(
     if not any(ins["disease"].lower() == "constipation" for ins in clinical_insights) and daily_fiber_consumed < 16:
         clinical_insights.append({
             "type": "warning",
-            "title": "ফাইবার (আঁশ) ঘাটতি সতর্কতা",
-            "message": f"আপনার দৈনিক গড় ফাইবার গ্রহণ ছিল মাত্র {round(daily_fiber_consumed, 1)}g (জাতীয় পুষ্টি লক্ষ্যমাত্রা ২৫-৩০g)। আঁশযুক্ত খাবারের ঘাটতি হজম প্রক্রিয়া ধীর করতে পারে।",
+            "title": "ফাইবার (আঁশ) ঘাটতি সতর্কতা" if lang == "bn" else "Fiber Deficiency Alert",
+            "message": f"আপনার দৈনিক গড় ফাইবার গ্রহণ ছিল মাত্র {round(daily_fiber_consumed, 1)}g (জাতীয় পুষ্টি লক্ষ্যমাত্রা ২৫-৩০g)। আঁশযুক্ত খাবারের ঘাটতি হজম প্রক্রিয়া ধীর করতে পারে।" if lang == "bn" else f"Your daily average fiber intake was only {round(daily_fiber_consumed, 1)}g (National nutrition target is 25-30g). Lack of fiber-rich foods can slow down digestion.",
             "disease": "Constipation",
             "reference": "Bangladesh National Dietary Guidelines"
         })
@@ -557,8 +558,8 @@ async def get_health_summary(
     if cal_micro and not any(ins["disease"].lower() == "osteoporosis" for ins in clinical_insights) and cal_micro["percentage"] < 70:
         clinical_insights.append({
             "type": "warning",
-            "title": "ক্যালসিয়াম ঘাটতি সতর্কতা",
-            "message": f"আপনার ক্যালসিয়াম গ্রহণ প্রয়োজনীয় লক্ষ্যমাত্রার তুলনায় কম (মাত্র {cal_micro['percentage']}% পূরণ হয়েছে)। দীর্ঘস্থায়ী ক্যালসিয়ামের ঘাটতি হাড় ও দাঁতের ক্ষয় ঝুঁকি বাড়িয়ে দেয়।",
+            "title": "ক্যালসিয়াম ঘাটতি সতর্কতা" if lang == "bn" else "Calcium Deficiency Alert",
+            "message": f"আপনার ক্যালসিয়াম গ্রহণ প্রয়োজনীয় লক্ষ্যমাত্রার তুলনায় কম (মাত্র {cal_micro['percentage']}% পূরণ হয়েছে)। দীর্ঘস্থায়ী ক্যালসিয়ামের ঘাটতি হাড় ও দাঁতের ক্ষয় ঝুঁকি বাড়িয়ে দেয়।" if lang == "bn" else f"Your calcium intake is below the target (only {cal_micro['percentage']}% met). Chronic calcium deficiency increases the risk of bone and tooth decay.",
             "disease": "Osteoporosis",
             "reference": "WHO Osteoporosis Guidelines"
         })
@@ -568,8 +569,8 @@ async def get_health_summary(
     if ir_micro and not any(ins["disease"].lower() == "anemia" for ins in clinical_insights) and ir_micro["percentage"] < 70:
         clinical_insights.append({
             "type": "warning",
-            "title": "আয়রণ ঘাটতি সতর্কতা",
-            "message": f"আপনার দৈনিক গড় আয়রন পূরণ হচ্ছে মাত্র {ir_micro['percentage']}%। শরীরে হিমোগ্লোবিন ও অক্সিজেন প্রবাহ সচল রাখতে লাল চালের ভাত, কলিজা বা কচু শাক খাদ্যতালিকায় বাড়ান।",
+            "title": "আয়রণ ঘাটতি সতর্কতা" if lang == "bn" else "Iron Deficiency Alert",
+            "message": f"আপনার দৈনিক গড় আয়রন পূরণ হচ্ছে মাত্র {ir_micro['percentage']}%। শরীরে হিমোগ্লোবিন ও অক্সিজেন প্রবাহ সচল রাখতে লাল চালের ভাত, কলিজা বা কচু শাক খাদ্যতালিকায় বাড়ান।" if lang == "bn" else f"Your daily average iron intake is only {ir_micro['percentage']}% of the target. To maintain healthy hemoglobin and oxygen flow, add brown rice, liver, or spinach to your diet.",
             "disease": "Anemia",
             "reference": "WHO Anemia Guidelines"
         })
@@ -595,9 +596,9 @@ Dietary Performance over the last {days} days:
 Clinical Insights / Alerts:
 {chr(10).join([f"- {ins['title']}: {ins['message']}" for ins in clinical_insights]) if clinical_insights else "No major nutrient warnings."}
 
-Write a highly professional, clinically sound, personalized, and motivating summary verdict / overall clinical assessment (এআই সামগ্রিক মূল্যায়ন ও রায়) in Bengali (বাংলা) for the user. Keep it between 2 to 3 sentences. Be specific to their medical conditions, macro balance, and micronutrient performance.
+Write a highly professional, clinically sound, personalized, and motivating summary verdict / overall clinical assessment (এআই সামগ্রিক মূল্যায়ন ও রায়) in {"Bengali (বাংলা)" if lang == "bn" else "English"} for the user. Keep it between 2 to 3 sentences. Be specific to their medical conditions, macro balance, and micronutrient performance.
 Do NOT use placeholders. Keep it highly premium and empathetic.
-Return ONLY a JSON object: {{"verdict": "your verdict in Bengali here"}}
+Return ONLY a JSON object: {{"verdict": "your verdict in {"Bengali" if lang == "bn" else "English"} here"}}
 """
         messages = [
             {"role": "system", "content": "You are a senior clinical dietitian and expert nutritionist. Return ONLY valid JSON."},
@@ -616,11 +617,18 @@ Return ONLY a JSON object: {{"verdict": "your verdict in Bengali here"}}
 
     # Fallback verdict in case of failure or empty response
     if not ai_verdict:
-        if conditions:
-            conds_str = ", ".join(conditions)
-            ai_verdict = f"আপনার {conds_str} শারীরিক জটিলতা ও লক্ষ্যমাত্রার ওপর ভিত্তি করে আপনার পুষ্টি গ্রহণ বিশ্লেষণ করা হয়েছে। আপনার গড় ক্যালোরি গ্রহণ {avg_calories} kcal এবং অনুসরণ হার {adherence_pct}%। আপনার স্বাস্থ্যের সুরক্ষায় এবং ঘাটতি দূর করতে পুষ্টিবিদ নির্দেশিত সোডিয়াম, আঁশ ও প্রয়োজনীয় খনিজ উপাদানের প্রতি মনোযোগী হোন।"
+        if lang == "bn":
+            if conditions:
+                conds_str = ", ".join(conditions)
+                ai_verdict = f"আপনার {conds_str} শারীরিক জটিলতা ও লক্ষ্যমাত্রার ওপর ভিত্তি করে আপনার পুষ্টি গ্রহণ বিশ্লেষণ করা হয়েছে। আপনার গড় ক্যালোরি গ্রহণ {avg_calories} kcal এবং অনুসরণ হার {adherence_pct}%। আপনার স্বাস্থ্যের সুরক্ষায় এবং ঘাটতি দূর করতে পুষ্টিবিদ নির্দেশিত সোডিয়াম, আঁশ ও প্রয়োজনীয় খনিজ উপাদানের প্রতি মনোযোগী হোন।"
+            else:
+                ai_verdict = f"আপনার পুষ্টি লক্ষ্যমাত্রার ওপর ভিত্তি করে আপনার গত {days} দিনের ডায়েট ট্র্যাক বিশ্লেষণ করা হয়েছে। আপনার ক্যালরি লক্ষ্যমাত্রা ও ম্যাক্রো অনুপাত সঠিক সীমার মধ্যে রয়েছে এবং ডায়েট অনুসরণ হার {adherence_pct}%। সুস্বাস্থ্য বজায় রাখতে পুষ্টি সমৃদ্ধ সুষম খাদ্য গ্রহণ অব্যাহত রাখুন।"
         else:
-            ai_verdict = f"আপনার পুষ্টি লক্ষ্যমাত্রার ওপর ভিত্তি করে আপনার গত {days} দিনের ডায়েট ট্র্যাক বিশ্লেষণ করা হয়েছে। আপনার ক্যালরি লক্ষ্যমাত্রা ও ম্যাক্রো অনুপাত সঠিক সীমার মধ্যে রয়েছে এবং ডায়েট অনুসরণ হার {adherence_pct}%। সুস্বাস্থ্য বজায় রাখতে পুষ্টি সমৃদ্ধ সুষম খাদ্য গ্রহণ অব্যাহত রাখুন।"
+            if conditions:
+                conds_str = ", ".join(conditions)
+                ai_verdict = f"Based on your medical conditions ({conds_str}) and targets, your nutritional intake has been analyzed. Your average calorie intake is {avg_calories} kcal and adherence rate is {adherence_pct}%. To protect your health, please focus on sodium, fiber, and essential minerals as advised by clinical guidelines."
+            else:
+                ai_verdict = f"Based on your nutritional targets, your dietary logs for the past {days} days have been analyzed. Your calorie intake and macro ratios are within safe limits with a {adherence_pct}% adherence rate. Keep eating a nutrient-dense, balanced diet to sustain good health."
 
     return {
         "period_days": days,

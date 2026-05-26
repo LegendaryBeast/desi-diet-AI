@@ -1,20 +1,22 @@
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, RefreshControl, ActivityIndicator, Alert, Image
+  ScrollView, RefreshControl, ActivityIndicator, Alert, Image, Modal, Platform
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   CalendarDays, Check, ArrowLeftRight,
   ChevronDown, ChevronUp, RefreshCw, Flame, History, Crown,
-  BarChart2, MessageSquare, Sparkles
+  BarChart2, MessageSquare, Sparkles, Plus, Trash2, Utensils
 } from 'lucide-react-native';
 import { useHaptics } from '../../hooks/useHaptics';
-import { mealPlanApi, foodsApi } from '../../lib/api';
+import { mealPlanApi, foodsApi, mealTrackingApi } from '../../lib/api';
 import { useSubscription } from '../../context/SubscriptionContext';
 import ProModal from '../../components/ui/ProModal';
+import { useTranslation } from '../../lib/translations';
+import ManualFoodLogModal from '../../components/meals/ManualFoodLogModal';
 
 type TabId = 'today' | 'tomorrow' | 'history';
 
@@ -53,12 +55,20 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'history', label: 'ইতিহাস', icon: History },
 ];
 
-const SLOT_TIMES: Record<string, string> = {
+const SLOT_TIMES_BN: Record<string, string> = {
   breakfast: 'সকাল ৭টা',
   morning_snack: 'সকাল ১০টা',
   lunch: 'দুপুর ১টা',
   evening_snack: 'বিকেল ৪টা',
   dinner: 'রাত ৮টা',
+};
+
+const SLOT_TIMES_EN: Record<string, string> = {
+  breakfast: '7:00 AM',
+  morning_snack: '10:00 AM',
+  lunch: '1:00 PM',
+  evening_snack: '4:00 PM',
+  dinner: '8:00 PM',
 };
 
 export default function MealsScreen() {
@@ -67,6 +77,9 @@ export default function MealsScreen() {
   const [generatingToday, setGeneratingToday] = useState(false);
   const [generatingTomorrow, setGeneratingTomorrow] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const { t, language } = useTranslation();
+  const slotTimes = language === 'bn' ? SLOT_TIMES_BN : SLOT_TIMES_EN;
 
   // Pro features integration
   const { isPro } = useSubscription();
@@ -79,6 +92,123 @@ export default function MealsScreen() {
 
   const [justifications, setJustifications] = useState<Record<string, string>>({});
   const [justificationLoading, setJustificationLoading] = useState<Record<string, boolean>>({});
+  const [showManualLog, setShowManualLog] = useState(false);
+
+  const [originalItems, setOriginalItems] = useState<Record<string, any>>({});
+  const [skippedCodes, setSkippedCodes] = useState<Record<string, string[]>>({});
+  const [loadingSwapKey, setLoadingSwapKey] = useState<string | null>(null);
+  const [togglingSlot, setTogglingSlot] = useState<string | null>(null);
+
+  const handleAutoSwap = async (meal: any, item: any, itemIndex: number) => {
+    const key = `${meal.slot}-${itemIndex}`;
+    setLoadingSwapKey(key);
+    haptics.light();
+
+    try {
+      // 1. Get or set original item
+      let originalItem = originalItems[key];
+      if (!originalItem) {
+        originalItem = item;
+        setOriginalItems(prev => ({ ...prev, [key]: item }));
+      }
+
+      // 2. Fetch alternatives for the original item
+      const code = originalItem.food_code || originalItem.code || originalItem.name_en || originalItem.name_bn || '';
+      if (!code) {
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      const res = await foodsApi.alternatives(code);
+      const alts = res.data || [];
+      if (alts.length === 0) {
+        Alert.alert(language === 'bn' ? 'কোনো বিকল্প পাওয়া যায়নি' : 'No alternatives found');
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      // 3. Find the first alternative that has not been skipped
+      const skipped = skippedCodes[key] || [];
+      let nextAlt = alts.find((a: any) => !skipped.includes(a.code) && a.code !== originalItem.code);
+
+      let newSkipped = [...skipped];
+
+      if (!nextAlt) {
+        // We've cycled through all options. Reset skipped list and revert to original item!
+        newSkipped = [];
+        setSkippedCodes(prev => ({ ...prev, [key]: [] }));
+        nextAlt = originalItem; // Revert to original
+      } else {
+        // Record this suggestion as skipped/shown
+        newSkipped.push(nextAlt.code);
+        setSkippedCodes(prev => ({ ...prev, [key]: newSkipped }));
+      }
+
+      // 4. Update the meal plan
+      const plan = activeTab === 'today' ? todayQ.data : tomorrowQ.data;
+      if (!plan) {
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      const newPlanData = JSON.parse(JSON.stringify(plan.plan_data));
+      const slotObj = newPlanData.meals.find((m: any) => m.slot === meal.slot);
+      if (!slotObj) {
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      // Keep amount_g from original item
+      const amount = originalItem.amount_g || originalItem.amount || 100;
+
+      let replacementItem;
+      if (nextAlt === originalItem) {
+        // Revert to original
+        replacementItem = originalItem;
+      } else {
+        const scale = amount / 100.0;
+        replacementItem = {
+          code: nextAlt.code,
+          food_code: nextAlt.code,
+          name_bn: nextAlt.name_bn,
+          name_en: nextAlt.name_en,
+          amount_g: amount,
+          calories: Math.round((nextAlt.calories || 0) * scale),
+          protein: Math.round((nextAlt.protein || 0) * scale),
+          carbs: Math.round((nextAlt.carbs || 0) * scale),
+          fat: Math.round((nextAlt.fat || 0) * scale),
+          fiber: Math.round((nextAlt.fiber || 0) * scale),
+          food_group: nextAlt.food_group,
+          emoji: originalItem.emoji || '🍽️',
+        };
+      }
+
+      // Swap the item
+      slotObj.items[itemIndex] = replacementItem;
+
+      // Recalculate calories
+      const totalCal = newPlanData.meals.reduce((sum: number, m: any) => {
+        return sum + m.items.reduce((s: number, i: any) => s + (i.calories || 0), 0);
+      }, 0);
+
+      // Perform request
+      await mealPlanApi.edit(plan.plan_id, newPlanData, totalCal);
+      
+      haptics.success();
+      queryClient.invalidateQueries({ queryKey: ['daily_plan', 0] });
+      queryClient.invalidateQueries({ queryKey: ['daily_plan', 1] });
+
+    } catch (e) {
+      console.log('Error auto-swapping item:', e);
+      haptics.error();
+      Alert.alert(
+        language === 'bn' ? 'ত্রুটি' : 'Error', 
+        language === 'bn' ? 'খাবার পরিবর্তন করতে ব্যর্থ হয়েছে।' : 'Failed to replace food item.'
+      );
+    } finally {
+      setLoadingSwapKey(null);
+    }
+  };
 
   const toggleFoodJustification = async (code: string, name: string) => {
     if (!code) return;
@@ -95,9 +225,9 @@ export default function MealsScreen() {
     try {
       const response = await foodsApi.justify(code, name);
       const data = response.data;
-      setJustifications((prev) => ({ ...prev, [cacheKey]: data.explanation || 'বিশ্লেষণ লোড করা সম্ভব হয়নি।' }));
+      setJustifications((prev) => ({ ...prev, [cacheKey]: data.explanation || (language === 'bn' ? 'বিশ্লেষণ লোড করা সম্ভব হয়নি।' : 'Could not load analysis.') }));
     } catch (e) {
-      setJustifications((prev) => ({ ...prev, [cacheKey]: 'বিশ্লেষণ লোড করতে সমস্যা হয়েছে।' }));
+      setJustifications((prev) => ({ ...prev, [cacheKey]: language === 'bn' ? 'বিশ্লেষণ লোড করতে সমস্যা হয়েছে।' : 'Problem loading analysis.' }));
     } finally {
       setJustificationLoading((prev) => ({ ...prev, [cacheKey]: false }));
     }
@@ -105,14 +235,20 @@ export default function MealsScreen() {
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const todayQ = useQuery({
-    queryKey: ['daily_plan', 0],
-    queryFn: async () => (await mealPlanApi.daily('bn', false, 0)).data,
+    queryKey: ['daily_plan', 0, language],
+    queryFn: async () => (await mealPlanApi.daily(language, false, 0)).data,
+    enabled: activeTab === 'today',
+  });
+
+  const todayLogsQ = useQuery({
+    queryKey: ['daily_tracking', language],
+    queryFn: async () => (await mealTrackingApi.today()).data || [],
     enabled: activeTab === 'today',
   });
 
   const tomorrowQ = useQuery({
-    queryKey: ['daily_plan', 1],
-    queryFn: async () => (await mealPlanApi.daily('bn', false, 1)).data,
+    queryKey: ['daily_plan', 1, language],
+    queryFn: async () => (await mealPlanApi.daily(language, false, 1)).data,
     enabled: activeTab === 'tomorrow' && isPro, // Query tomorrow plan only if user is pro
   });
 
@@ -122,14 +258,109 @@ export default function MealsScreen() {
     enabled: activeTab === 'history',
   });
 
+  // Refetch daily plan queries on screen focus to ensure checkbox completion syncs in real-time
+  useFocusEffect(
+    useCallback(() => {
+      todayQ.refetch();
+      todayLogsQ.refetch();
+      if (isPro) {
+        tomorrowQ.refetch();
+      }
+    }, [todayQ, todayLogsQ, tomorrowQ, isPro])
+  );
+
   // ── Mutation: Mark Complete ────────────────────────────────────────────────
   const markMutation = useMutation({
-    mutationFn: async ({ planId, slot, completed }: { planId: string; slot: string; completed: boolean }) => {
-      return mealPlanApi.markComplete(planId, slot, completed);
+    mutationFn: async ({ planId, slot, completed, items }: { planId: string; slot: string; completed: boolean; items: any[] }) => {
+      // 1. Toggle slot complete state
+      const res = await mealPlanApi.markComplete(planId, slot, completed);
+
+      try {
+        // 2. Fetch today's existing logs to match names
+        const todayLogsRes = await mealTrackingApi.today();
+        const logs = todayLogsRes.data || [];
+
+        if (completed) {
+          // Log all items that aren't already logged
+          const logPromises = items.map(async (food: any) => {
+            const foodNameEn = (food.name_en || '').toLowerCase();
+            const foodNameBn = (food.name_bn || '').toLowerCase();
+
+            const isAlreadyLogged = logs.some((log: any) => {
+              if (log.meal_slot !== slot) return false;
+              const logText = (log.input_text || '').toLowerCase();
+              return (
+                (foodNameEn && logText.includes(foodNameEn)) ||
+                (foodNameBn && logText.includes(foodNameBn))
+              );
+            });
+
+            if (!isAlreadyLogged) {
+              const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+              const foodName = food.name_en || food.name_bn || '';
+              const inputStr = `${amountStr} of ${foodName}`;
+
+              await mealTrackingApi.log({
+                input: inputStr,
+                meal_slot: slot,
+                language: 'bn',
+                direct_calories: food.calories ? Number(food.calories) : undefined,
+                direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
+                direct_carbs: undefined,
+                direct_fat: undefined,
+                direct_name: food.name_en || food.name_bn || undefined,
+                direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
+              });
+            }
+          });
+          await Promise.all(logPromises);
+        } else {
+          // Delete all logged items in this slot
+          const deletePromises = items.map(async (food: any) => {
+            const foodNameEn = (food.name_en || '').toLowerCase();
+            const foodNameBn = (food.name_bn || '').toLowerCase();
+
+            const matchedLogs = logs.filter((log: any) => {
+              if (log.meal_slot !== slot) return false;
+              const logText = (log.input_text || '').toLowerCase();
+              return (
+                (foodNameEn && logText.includes(foodNameEn)) ||
+                (foodNameBn && logText.includes(foodNameBn))
+              );
+            });
+
+            const delPromises = matchedLogs.map(async (log: any) => {
+              await mealTrackingApi.delete(log.id);
+            });
+            await Promise.all(delPromises);
+          });
+          await Promise.all(deletePromises);
+        }
+      } catch (err) {
+        console.warn('Failed to sync meal tracking logs on slot toggle:', err);
+      }
+
+      return res;
     },
     onSuccess: () => {
       haptics.success();
       queryClient.invalidateQueries({ queryKey: ['daily_plan', 0] });
+      queryClient.invalidateQueries({ queryKey: ['daily_tracking'] });
+      todayLogsQ.refetch();
+    },
+    onError: () => haptics.error(),
+  });
+
+  // ── Mutation: Delete Logged Meal ───────────────────────────────────────────
+  const deleteLogMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      return mealTrackingApi.delete(logId);
+    },
+    onSuccess: () => {
+      haptics.success();
+      queryClient.invalidateQueries({ queryKey: ['daily_plan', 0] });
+      todayLogsQ.refetch();
+      todayQ.refetch();
     },
     onError: () => haptics.error(),
   });
@@ -137,11 +368,13 @@ export default function MealsScreen() {
   // ── Refresh Handler ────────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (activeTab === 'today') await todayQ.refetch();
+    if (activeTab === 'today') {
+      await Promise.all([todayQ.refetch(), todayLogsQ.refetch()]);
+    }
     else if (activeTab === 'tomorrow' && isPro) await tomorrowQ.refetch();
     else if (activeTab === 'history') await historyQ.refetch();
     setRefreshing(false);
-  }, [activeTab, isPro]);
+  }, [activeTab, isPro, todayQ, todayLogsQ, tomorrowQ, historyQ]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const getCompletedSlots = (planResponse: any): string[] => {
@@ -158,7 +391,11 @@ export default function MealsScreen() {
     haptics.light();
     router.push({
       pathname: '/(tabs)/chat',
-      params: { prefill: `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।` }
+      params: { 
+        prefill: language === 'bn'
+          ? `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।`
+          : `I want to replace "${items.join(' • ')}" from my meal list and get suggestions for alternative foods.`
+      }
     });
   };
 
@@ -175,13 +412,16 @@ export default function MealsScreen() {
     else setGeneratingTomorrow(true);
 
     try {
-      await mealPlanApi.daily('bn', true, offset); // force = true
+      await mealPlanApi.daily(language, true, offset); // force = true
       queryClient.invalidateQueries({ queryKey: ['daily_plan', offset] });
       if (offset === 0) await todayQ.refetch();
       else await tomorrowQ.refetch();
       haptics.success();
     } catch {
-      Alert.alert('ত্রুটি', 'পরিকল্পনা তৈরি করতে পারেনি। পরে আবার চেষ্টা করুন।');
+      Alert.alert(
+        language === 'bn' ? 'ত্রুটি' : 'Error',
+        language === 'bn' ? 'পরিকল্পনা তৈরি করতে পারেনি। পরে আবার চেষ্টা করুন।' : 'Failed to generate plan. Please try again later.'
+      );
     } finally {
       if (offset === 0) setGeneratingToday(false);
       else setGeneratingTomorrow(false);
@@ -197,8 +437,8 @@ export default function MealsScreen() {
       <View key={meal.slot} style={[styles.mealCard, isCompleted && styles.mealCardDone]}>
         <View style={styles.mealRowTop}>
           <View style={styles.mealTitleGroup}>
-            <Text style={styles.mealSlot}>{meal.slot_bn || meal.slot}</Text>
-            <Text style={styles.mealTime}>{SLOT_TIMES[meal.slot] || ''}</Text>
+            <Text style={styles.mealSlot}>{language === 'bn' ? (meal.slot_bn || meal.slot) : (meal.slot_en || meal.slot)}</Text>
+            <Text style={styles.mealTime}>{slotTimes[meal.slot] || ''}</Text>
           </View>
 
           {allowActions && (
@@ -216,7 +456,7 @@ export default function MealsScreen() {
                 style={[styles.checkBtn, isCompleted && styles.checkBtnDone]}
                 onPress={() => {
                   haptics.light();
-                  markMutation.mutate({ planId, slot: meal.slot, completed: !isCompleted });
+                  markMutation.mutate({ planId, slot: meal.slot, completed: !isCompleted, items: meal.items || [] });
                 }}
                 disabled={markMutation.isPending}
               >
@@ -248,7 +488,7 @@ export default function MealsScreen() {
                       {item.amount_g || item.amount ? (
                         <Text style={styles.webFoodWeight}>
                           {item.amount_g || item.amount}g{' '}
-                          <Text style={styles.webFoodLabel}>পাওয়া যাবে:</Text>
+                          <Text style={styles.webFoodLabel}>{language === 'bn' ? 'পাওয়া যাবে:' : 'Available at:'}</Text>
                         </Text>
                       ) : null}
                       
@@ -281,6 +521,21 @@ export default function MealsScreen() {
                       <Text style={[styles.webFoodInfoText, justifications[foodKey] && { color: colors.accent }]}>ⓘ</Text>
                     </TouchableOpacity>
 
+                    {/* Swap Item Button */}
+                    {allowActions && (
+                      <TouchableOpacity
+                        style={styles.webFoodSwapBtn}
+                        onPress={() => handleAutoSwap(meal, item, idx)}
+                        disabled={loadingSwapKey !== null}
+                      >
+                        {loadingSwapKey === `${meal.slot}-${idx}` ? (
+                          <ActivityIndicator size="small" color={colors.accent} style={{ transform: [{ scale: 0.7 }] }} />
+                        ) : (
+                          <RefreshCw size={11} color={colors.accent} strokeWidth={2.8} />
+                        )}
+                      </TouchableOpacity>
+                    )}
+
                     {/* Checkbox Button */}
                     <TouchableOpacity
                       style={[styles.webFoodCheckBtn, isCompleted && styles.webFoodCheckBtnActive]}
@@ -299,7 +554,7 @@ export default function MealsScreen() {
                 {justificationLoading[foodKey] && (
                   <View style={styles.justificationLoadingBox}>
                     <ActivityIndicator size="small" color={colors.accent} />
-                    <Text style={styles.justificationLoadingText}>বিশ্লেষণ লোড হচ্ছে...</Text>
+                    <Text style={styles.justificationLoadingText}>{language === 'bn' ? 'বিশ্লেষণ লোড হচ্ছে...' : 'Loading analysis...'}</Text>
                   </View>
                 )}
 
@@ -307,7 +562,7 @@ export default function MealsScreen() {
                   <View style={styles.justificationBox}>
                     <View style={styles.justificationHeader}>
                       <View style={styles.justificationPing} />
-                      <Text style={styles.justificationTitle}>ডায়েটিশিয়ান বিশ্লেষণ (RAG Insight):</Text>
+                      <Text style={styles.justificationTitle}>{language === 'bn' ? 'ডায়েটিশিয়ান বিশ্লেষণ (RAG Insight):' : 'Dietitian Analysis (RAG Insight):'}</Text>
                     </View>
                     <Text style={styles.justificationText}>
                       {justifications[foodKey]}
@@ -335,7 +590,7 @@ export default function MealsScreen() {
       return (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>আজকের পরিকল্পনা লোড হচ্ছে...</Text>
+          <Text style={styles.loadingText}>{language === 'bn' ? 'আজকের পরিকল্পনা লোড হচ্ছে...' : 'Loading today\'s plan...'}</Text>
         </View>
       );
     }
@@ -345,9 +600,11 @@ export default function MealsScreen() {
       return (
         <View style={styles.emptyState}>
           <Image source={require('../../assets/pusti_bot.png')} style={styles.emptyIllustration} resizeMode="contain" />
-          <Text style={styles.emptyTitle}>আজকের পরিকল্পনা নেই</Text>
+          <Text style={styles.emptyTitle}>{language === 'bn' ? 'আজকের পরিকল্পনা নেই' : 'No plan for today'}</Text>
           <Text style={styles.emptyText}>
-            আপনার স্বাস্থ্য অবস্থা ও পছন্দ অনুযায়ী এআই একটি ব্যক্তিগত খাবার পরিকল্পনা তৈরি করবে।
+            {language === 'bn'
+              ? 'আপনার স্বাস্থ্য অবস্থা ও পছন্দ অনুযায়ী এআই একটি ব্যক্তিগত খাবার পরিকল্পনা তৈরি করবে।'
+              : 'AI will generate a personalized meal plan according to your health status and preferences.'}
           </Text>
 
           <TouchableOpacity
@@ -357,11 +614,14 @@ export default function MealsScreen() {
               haptics.medium();
               setGeneratingToday(true);
               try {
-                await mealPlanApi.daily('bn', true, 0);
+                await mealPlanApi.daily(language, true, 0);
                 queryClient.invalidateQueries({ queryKey: ['daily_plan', 0] });
                 await todayQ.refetch();
               } catch {
-                Alert.alert('ত্রুটি', 'পরিকল্পনা তৈরি করতে পারেনি। পরে আবার চেষ্টা করুন।');
+                Alert.alert(
+                  language === 'bn' ? 'ত্রুটি' : 'Error',
+                  language === 'bn' ? 'পরিকল্পনা তৈরি করতে পারেনি। পরে আবার চেষ্টা করুন।' : 'Failed to generate plan. Please try again later.'
+                );
               } finally {
                 setGeneratingToday(false);
               }
@@ -372,7 +632,7 @@ export default function MealsScreen() {
             ) : (
               <View style={styles.btnIconRow}>
                 <Sparkles size={18} color={colors.white} strokeWidth={2} />
-                <Text style={styles.generateBtnText}>এআই পরিকল্পনা তৈরি করুন</Text>
+                <Text style={styles.generateBtnText}>{language === 'bn' ? 'এআই পরিকল্পনা তৈরি করুন' : 'Generate AI Plan'}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -383,13 +643,17 @@ export default function MealsScreen() {
               haptics.light();
               router.push({
                 pathname: '/(tabs)/chat',
-                params: { prefill: 'আজকের জন্য আমার স্বাস্থ্য অবস্থা অনুযায়ী একটি খাবার পরিকল্পনা দিন।' }
+                params: { 
+                  prefill: language === 'bn'
+                    ? 'আজকের জন্য আমার স্বাস্থ্য অবস্থা অনুযায়ী একটি খাবার পরিকল্পনা দিন।'
+                    : 'Provide a meal plan according to my health status for today.'
+                }
               });
             }}
           >
             <View style={styles.btnIconRow}>
               <MessageSquare size={16} color={colors.primary} strokeWidth={2.2} />
-              <Text style={styles.askAiBtnText}>এআই-এর সাথে কথা বলুন</Text>
+              <Text style={styles.askAiBtnText}>{language === 'bn' ? 'এআই-এর সাথে কথা বলুন' : 'Talk to AI'}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -407,10 +671,12 @@ export default function MealsScreen() {
         <View style={styles.daySummary}>
           <View style={styles.daySummaryLeft}>
             <CalendarDays size={18} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.dayTitle}>আজকের খাবার</Text>
+            <Text style={styles.dayTitle}>{language === 'bn' ? 'আজকের খাবার' : 'Today\'s Meals'}</Text>
           </View>
           <View style={styles.daySummaryRight}>
-            <Text style={styles.dayProgress}>{completedCount}/{totalMeals} সম্পন্ন</Text>
+            <Text style={styles.dayProgress}>
+              {language === 'bn' ? `${completedCount}/${totalMeals} সম্পন্ন` : `${completedCount}/${totalMeals} Completed`}
+            </Text>
             <Text style={styles.dayCalTarget}>{planData?.target_calories} kcal</Text>
           </View>
         </View>
@@ -428,7 +694,20 @@ export default function MealsScreen() {
             }}
           >
             <BarChart2 size={14} color={colors.primaryDark} strokeWidth={2.5} />
-            <Text style={styles.targetDetailsText}>বিশ্লেষণ ও লক্ষ্য</Text>
+            <Text style={styles.targetDetailsText}>{language === 'bn' ? 'বিশ্লেষণ' : 'Targets'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.targetDetailsBtn, { borderColor: colors.accent, backgroundColor: colors.accent + '12' }]}
+            onPress={() => {
+              haptics.light();
+              setShowManualLog(true);
+            }}
+          >
+            <Plus size={14} color={colors.accent} strokeWidth={2.5} />
+            <Text style={[styles.targetDetailsText, { color: colors.accent }]}>
+              {language === 'bn' ? 'খাবার যোগ' : 'Add Food'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -446,7 +725,7 @@ export default function MealsScreen() {
                   <Crown size={13} color={colors.white} />
                 )}
                 <Text style={[styles.regeneratePlanText, !isPro && styles.regeneratePlanTextPro]}>
-                  পুনরায় তৈরি
+                  {language === 'bn' ? 'নতুন করে' : 'Regen'}
                 </Text>
               </>
             )}
@@ -456,6 +735,191 @@ export default function MealsScreen() {
         {(planData?.meals || []).map((meal: any) =>
           renderMealCard(meal, planId, completedSlots, true)
         )}
+
+        {/* Today's Manual/Visual Log List */}
+        {renderLoggedMeals(planData)}
+      </View>
+    );
+  };
+
+  const SLOT_LABELS_BN: Record<string, string> = {
+    breakfast: 'সকালের নাস্তা',
+    morning_snack: 'সকালের স্ন্যাক্স',
+    lunch: 'দুপুরের খাবার',
+    evening_snack: 'বিকেলের নাস্তা',
+    dinner: 'রাতের খাবার',
+    snack: 'স্ন্যাক্স',
+    other: 'অন্যান্য খাবার',
+  };
+
+  const SLOT_LABELS_EN: Record<string, string> = {
+    breakfast: 'Breakfast',
+    morning_snack: 'Morning Snack',
+    lunch: 'Lunch',
+    evening_snack: 'Evening Snack',
+    dinner: 'Dinner',
+    snack: 'Snack',
+    other: 'Other Food',
+  };
+
+  const renderLoggedMeals = (todayPlanData: any) => {
+    const allLogs = todayLogsQ.data || [];
+    const logs = allLogs.filter((log: any) => {
+      const inputText = log.input_text || '';
+      if (inputText.includes('[Manual]')) return true;
+      if (inputText.includes('[Plan]')) return false;
+
+      const slotKeywords = [
+        'সকালের নাস্তা',
+        'সকালের স্ন্যাক্স',
+        'দুপুরের খাবার',
+        'বিকেলের নাস্তা',
+        'রাতের খাবার',
+        'breakfast',
+        'morning snack',
+        'lunch',
+        'evening snack',
+        'dinner',
+        'snack'
+      ];
+      const lowerText = inputText.toLowerCase();
+
+      if (slotKeywords.some(kw => lowerText.includes(kw) && (lowerText.includes(':') || lowerText.includes('plan')))) {
+        return false;
+      }
+
+      const plannedMeals = todayPlanData?.meals || [];
+      for (const meal of plannedMeals) {
+        const items = meal.items || [];
+        for (const item of items) {
+          const nameEn = (item.name_en || '').toLowerCase();
+          const nameBn = (item.name_bn || '').toLowerCase();
+          if (
+            (nameEn && lowerText.includes(nameEn)) ||
+            (nameBn && lowerText.includes(nameBn))
+          ) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+    if (logs.length === 0) return null;
+
+    const totalCals = logs.reduce((sum: number, log: any) => sum + (log.total_calories || 0), 0);
+
+    return (
+      <View style={styles.loggedSection}>
+        <View style={styles.loggedHeaderRow}>
+          <Text style={styles.loggedSectionTitle}>
+            {language === 'bn' ? 'আজকের লগ করা খাবার' : 'Today\'s Logged Foods'}
+          </Text>
+          <View style={styles.loggedTotalBadge}>
+            <Flame size={12} color={colors.primary} />
+            <Text style={styles.loggedTotalText}>
+              {totalCals} kcal
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.loggedList}>
+          {logs.map((log: any) => {
+            const dateObj = new Date(log.logged_at);
+            const time = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            const slotLabel = language === 'bn' 
+              ? (SLOT_LABELS_BN[log.meal_slot] || SLOT_LABELS_BN.other)
+              : (SLOT_LABELS_EN[log.meal_slot] || SLOT_LABELS_EN.other);
+
+            return (
+              <View key={log.id} style={styles.loggedCard}>
+                <View style={styles.loggedCardTop}>
+                  <View style={styles.loggedCardLeft}>
+                    <View style={styles.loggedIconBox}>
+                      <Utensils size={14} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.loggedFoodName} numberOfLines={2}>
+                        {log.input_text}
+                      </Text>
+                      <View style={styles.loggedMetaRow}>
+                        <Text style={styles.loggedSlotLabel}>{slotLabel}</Text>
+                        {time ? <Text style={styles.loggedMetaSep}>•</Text> : null}
+                        {time ? <Text style={styles.loggedTime}>{time}</Text> : null}
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.loggedCardRight}>
+                    <Text style={styles.loggedCalText}>{log.total_calories} kcal</Text>
+                    
+                    <TouchableOpacity
+                      style={styles.loggedDeleteBtn}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      onPress={() => {
+                        const title = language === 'bn' ? 'খাবারটি ডিলিট করতে চান?' : 'Delete logged food?';
+                        const message = language === 'bn' ? 'এই রেকর্ডটি আপনার আজকের ডায়েরি থেকে মুছে ফেলা হবে।' : 'This record will be permanently deleted from today\'s journal.';
+                        
+                        if (Platform.OS === 'web') {
+                          const confirmDelete = window.confirm(`${title}\n\n${message}`);
+                          if (confirmDelete) {
+                            deleteLogMutation.mutate(log.id);
+                          }
+                        } else {
+                          Alert.alert(
+                            title,
+                            message,
+                            [
+                              { text: language === 'bn' ? 'বাতিল' : 'Cancel', style: 'cancel' },
+                              { 
+                                text: language === 'bn' ? 'ডিলিট করুন' : 'Delete', 
+                                style: 'destructive',
+                                onPress: () => deleteLogMutation.mutate(log.id)
+                              }
+                            ]
+                          );
+                        }
+                      }}
+                      disabled={deleteLogMutation.isPending}
+                    >
+                      <Trash2 size={13} color={colors.error} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Macro Badges */}
+                {log.macros && (log.macros.protein_g > 0 || log.macros.carbs_g > 0 || log.macros.fat_g > 0) && (
+                  <View style={styles.loggedMacrosRow}>
+                    {log.macros.protein_g > 0 && (
+                      <View style={styles.loggedMacroBadge}>
+                        <Text style={styles.loggedMacroText}>
+                          💪 {language === 'bn' ? 'প্রোটিন' : 'Protein'}: {Math.round(log.macros.protein_g)}g
+                        </Text>
+                      </View>
+                    )}
+                    {log.macros.carbs_g > 0 && (
+                      <View style={styles.loggedMacroBadge}>
+                        <Text style={styles.loggedMacroText}>
+                          🍞 {language === 'bn' ? 'কার্বস' : 'Carbs'}: {Math.round(log.macros.carbs_g)}g
+                        </Text>
+                      </View>
+                    )}
+                    {log.macros.fat_g > 0 && (
+                      <View style={styles.loggedMacroBadge}>
+                        <Text style={styles.loggedMacroText}>
+                          🥑 {language === 'bn' ? 'ফ্যাট' : 'Fat'}: {Math.round(log.macros.fat_g)}g
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
       </View>
     );
   };
@@ -468,7 +932,7 @@ export default function MealsScreen() {
       return (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>আগামীকালের পরিকল্পনা লোড হচ্ছে...</Text>
+          <Text style={styles.loadingText}>{language === 'bn' ? 'আগামীকালের পরিকল্পনা লোড হচ্ছে...' : 'Loading tomorrow\'s plan...'}</Text>
         </View>
       );
     }
@@ -478,9 +942,9 @@ export default function MealsScreen() {
       return (
         <View style={styles.emptyState}>
           <Image source={require('../../assets/pusti_bot.png')} style={styles.emptyIllustration} resizeMode="contain" />
-          <Text style={styles.emptyTitle}>আগামীকালের পরিকল্পনা নেই</Text>
+          <Text style={styles.emptyTitle}>{language === 'bn' ? 'আগামীকালের পরিকল্পনা নেই' : 'No plan for tomorrow'}</Text>
           <Text style={styles.emptyText}>
-            আগামীকালের খাবারের তালিকা দেখতে এআই পরিকল্পনা তৈরি করুন।
+            {language === 'bn' ? 'আগামীকালের খাবারের তালিকা দেখতে এআই পরিকল্পনা তৈরি করুন।' : 'Generate an AI plan to view tomorrow\'s meal list.'}
           </Text>
 
           <TouchableOpacity
@@ -490,11 +954,14 @@ export default function MealsScreen() {
               haptics.medium();
               setGeneratingTomorrow(true);
               try {
-                await mealPlanApi.daily('bn', true, 1);
+                await mealPlanApi.daily(language, true, 1);
                 queryClient.invalidateQueries({ queryKey: ['daily_plan', 1] });
                 await tomorrowQ.refetch();
               } catch {
-                Alert.alert('ত্রুটি', 'পরিকল্পনা তৈরি করতে পারেনি। পরে আবার চেষ্টা করুন।');
+                Alert.alert(
+                  language === 'bn' ? 'ত্রুটি' : 'Error',
+                  language === 'bn' ? 'পরিকল্পনা তৈরি করতে পারেনি। পরে আবার চেষ্টা করুন।' : 'Failed to generate plan. Please try again later.'
+                );
               } finally {
                 setGeneratingTomorrow(false);
               }
@@ -505,7 +972,7 @@ export default function MealsScreen() {
             ) : (
               <View style={styles.btnIconRow}>
                 <Sparkles size={18} color={colors.white} strokeWidth={2} />
-                <Text style={styles.generateBtnText}>আগামীকালের পরিকল্পনা তৈরি করুন</Text>
+                <Text style={styles.generateBtnText}>{language === 'bn' ? 'আগামীকালের পরিকল্পনা তৈরি করুন' : 'Generate Tomorrow\'s Plan'}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -522,7 +989,7 @@ export default function MealsScreen() {
         <View style={styles.daySummary}>
           <View style={styles.daySummaryLeft}>
             <CalendarDays size={18} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.dayTitle}>আগামীকালের খাবার তালিকা</Text>
+            <Text style={styles.dayTitle}>{language === 'bn' ? 'আগামীকালের খাবার তালিকা' : 'Tomorrow\'s Meal List'}</Text>
           </View>
           <View style={styles.daySummaryRight}>
             <Text style={styles.dayCalTarget}>{planData?.target_calories} kcal</Text>
@@ -545,7 +1012,7 @@ export default function MealsScreen() {
                   <Crown size={13} color={colors.white} />
                 )}
                 <Text style={[styles.regeneratePlanText, !isPro && styles.regeneratePlanTextPro]}>
-                  পুনরায় তৈরি করুন
+                  {language === 'bn' ? 'পুনরায় তৈরি করুন' : 'Regenerate Plan'}
                 </Text>
               </>
             )}
@@ -565,7 +1032,7 @@ export default function MealsScreen() {
       return (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>ইতিহাস লোড হচ্ছে...</Text>
+          <Text style={styles.loadingText}>{language === 'bn' ? 'ইতিহাস লোড হচ্ছে...' : 'Loading history...'}</Text>
         </View>
       );
     }
@@ -587,8 +1054,12 @@ export default function MealsScreen() {
       return (
         <View style={styles.emptyState}>
           <Image source={require('../../assets/pusti_bot.png')} style={styles.emptyIllustration} resizeMode="contain" />
-          <Text style={styles.emptyTitle}>কোনো ইতিহাস পাওয়া যায়নি</Text>
-          <Text style={styles.emptyText}>খাবার গ্রহণের নিয়মিত ট্র্যাকিং শুরু করলে এখানে তালিকা দেখতে পাবেন।</Text>
+          <Text style={styles.emptyTitle}>{language === 'bn' ? 'কোনো ইতিহাস পাওয়া যায়নি' : 'No history found'}</Text>
+          <Text style={styles.emptyText}>
+            {language === 'bn' 
+              ? 'খাবার গ্রহণের নিয়মিত ট্র্যাকিং শুরু করলে এখানে তালিকা দেখতে পাবেন।' 
+              : 'Once you start tracking your food intake regularly, you will see the history here.'}
+          </Text>
         </View>
       );
     }
@@ -614,7 +1085,7 @@ export default function MealsScreen() {
               >
                 <View style={styles.historyMeta}>
                   <Text style={styles.historyDate}>
-                    {date.toLocaleDateString('bn-BD', { weekday: 'short', month: 'long', day: 'numeric' })}
+                    {date.toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
                   </Text>
                 </View>
                 <View style={styles.historyRight}>
@@ -642,11 +1113,16 @@ export default function MealsScreen() {
     <View style={styles.container}>
       {/* Sticky Header */}
       <View style={styles.header}>
-        <Text style={styles.screenTitle}>খাবার পরিকল্পনা</Text>
+        <Text style={styles.screenTitle}>{language === 'bn' ? 'খাবার পরিকল্পনা' : 'Meal Plan'}</Text>
         <View style={styles.tabBar}>
           {TABS.map(({ id, label, icon: Icon }) => {
             const isActive = activeTab === id;
             const isLocked = id === 'tomorrow' && !isPro;
+
+            let localizedLabel = label;
+            if (id === 'today') localizedLabel = language === 'bn' ? 'আজকের খাবার' : 'Today\'s Meals';
+            else if (id === 'tomorrow') localizedLabel = language === 'bn' ? 'আগামীকাল' : 'Tomorrow';
+            else if (id === 'history') localizedLabel = language === 'bn' ? 'ইতিহাস' : 'History';
 
             return (
               <TouchableOpacity
@@ -669,7 +1145,7 @@ export default function MealsScreen() {
                   strokeWidth={2.2}
                 />
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                  {label}
+                  {localizedLabel}
                 </Text>
                 {isLocked && (
                   <View style={styles.proBadge}>
@@ -694,6 +1170,26 @@ export default function MealsScreen() {
         {activeTab === 'history' && renderHistory()}
       </ScrollView>
 
+      {/* FAB — Manual Food Log */}
+      {activeTab === 'today' && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => { haptics.light(); setShowManualLog(true); }}
+          activeOpacity={0.85}
+        >
+          <Plus size={20} color={colors.white} strokeWidth={2.5} />
+          <Text style={styles.fabText}>{language === 'bn' ? 'খাবার যোগ' : 'Add Food'}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Manual Food Log Modal */}
+      <ManualFoodLogModal
+        visible={showManualLog}
+        onClose={() => setShowManualLog(false)}
+        onLogged={() => { todayQ.refetch(); todayLogsQ.refetch(); }}
+        language={language === 'bn' ? 'bn' : 'en'}
+      />
+
       {/* Pro upgrade modal */}
       <ProModal
         isOpen={showProModal}
@@ -705,6 +1201,26 @@ export default function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: radius.pill,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+    zIndex: 100,
+  },
+  fabText: { fontFamily: fonts.bnBold, fontSize: 14, color: colors.white },
+
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1183,6 +1699,201 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.primary,
   },
+  webFoodSwapBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitleText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+  },
+  modalCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: fonts.bodyBold,
+  },
+  currentFoodBanner: {
+    backgroundColor: '#F9FAFB',
+    padding: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  currentFoodLabel: {
+    fontFamily: fonts.bn,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  currentFoodName: {
+    fontFamily: fonts.bnBold,
+    fontSize: 15,
+    color: colors.accent,
+  },
+  suggestedHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  suggestedTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  modalLoadingBox: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  modalLoadingText: {
+    fontFamily: fonts.bn,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  modalEmptyBox: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  modalEmptyText: {
+    fontFamily: fonts.bn,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  singleSuggestionContainer: {
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+  },
+  suggestionCardBig: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  suggestionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  suggestionCardGroupText: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.primary,
+    backgroundColor: colors.primary + '12',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  suggestionCardProgressText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  suggestionCardNameText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 20,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  suggestionMacrosRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: colors.white,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  macroPill: {
+    alignItems: 'center',
+  },
+  macroPillLabel: {
+    fontFamily: fonts.bn,
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  macroPillVal: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  suggestionActionsRow: {
+    flexDirection: 'column',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  suggestionAcceptBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md - 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  suggestionAcceptBtnText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 15,
+    color: colors.white,
+  },
+  suggestionNextBtn: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: radius.md,
+    paddingVertical: spacing.md - 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionNextBtnText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
   historyCard: {
     backgroundColor: colors.glass,
     borderRadius: radius.lg,
@@ -1226,5 +1937,134 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     padding: spacing.md,
+  },
+  loggedSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(167, 201, 36, 0.15)',
+    marginBottom: spacing.xxl,
+  },
+  loggedHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  loggedSectionTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 20,
+    color: colors.textPrimary,
+  },
+  loggedTotalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary + '18',
+    borderRadius: radius.pill,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  loggedTotalText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.primary,
+  },
+  loggedList: {
+    gap: spacing.sm,
+  },
+  loggedCard: {
+    backgroundColor: colors.glass,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.15)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  loggedCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  loggedCardLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  loggedIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loggedFoodName: {
+    fontFamily: fonts.bnBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  loggedMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  loggedSlotLabel: {
+    fontFamily: fonts.bn,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  loggedMetaSep: {
+    fontFamily: fonts.bn,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginHorizontal: 4,
+  },
+  loggedTime: {
+    fontFamily: fonts.bn,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  loggedCardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loggedCalText: {
+    fontFamily: fonts.display,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  loggedDeleteBtn: {
+    padding: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.error + '10',
+  },
+  loggedMacrosRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.03)',
+  },
+  loggedMacroBadge: {
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    borderRadius: radius.sm,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  loggedMacroText: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
   },
 });

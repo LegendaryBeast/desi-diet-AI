@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { medicineApi } from '../lib/api';
 import { colors, fonts } from '../lib/theme';
+import { useTranslation } from '../lib/translations';
 import {
   ArrowLeft,
   Pill,
@@ -48,6 +49,7 @@ export default function MedicineRemindersScreen() {
   const router = useRouter();
   const haptics = useHaptics();
   const queryClient = useQueryClient();
+  const { t, language } = useTranslation();
 
   const triggerAlert = (
     title: string,
@@ -57,7 +59,7 @@ export default function MedicineRemindersScreen() {
     if (Platform.OS === 'web') {
       if (buttons && buttons.length > 0) {
         const destructiveBtn = buttons.find(b => b.style === 'destructive');
-        const confirmBtn = buttons.find(b => b.text === 'মুছে ফেলুন' || b.text === 'হ্যাঁ' || b.text === 'OK');
+        const confirmBtn = buttons.find(b => b.text === 'মুছে ফেলুন' || b.text === 'Delete' || b.text === 'হ্যাঁ' || b.text === 'Yes' || b.text === 'OK');
         const actionBtn = destructiveBtn || confirmBtn || buttons[buttons.length - 1];
         
         const confirmed = window.confirm(`${title}\n\n${message}`);
@@ -220,19 +222,19 @@ export default function MedicineRemindersScreen() {
   };
 
   // Queries
-  const { data: reminders, isLoading: listLoading } = useQuery({
+  const { data: reminders, isLoading: listLoading, isError, error, refetch: refetchReminders } = useQuery({
     queryKey: ['medicine_reminders'],
     queryFn: async () => (await medicineApi.list()).data,
+    retry: false,
   });
 
 
 
-  // Mutation to add medicine manually
   const addManualMutation = useMutation({
     mutationFn: async (data: any) => (await medicineApi.addManual(data)).data,
     onSuccess: (data) => {
       haptics.success();
-      setSuccessMsg('ওষুধ সফলভাবে যোগ করা হয়েছে!');
+      setSuccessMsg(t('medAddedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['medicine_reminders'] });
 
       // Schedule local alarm and notifications based on manual options
@@ -258,7 +260,7 @@ export default function MedicineRemindersScreen() {
     },
     onError: (err: any) => {
       haptics.error();
-      setErrorMsg(err?.response?.data?.detail || 'ওষুধ যোগ করতে সমস্যা হয়েছে');
+      setErrorMsg(err?.response?.data?.detail || t('medAddedError'));
       setTimeout(() => setErrorMsg(null), 4000);
     },
   });
@@ -272,7 +274,7 @@ export default function MedicineRemindersScreen() {
     },
     onError: () => {
       haptics.error();
-      triggerAlert('ত্রুটি', 'মুছতে সমস্যা হয়েছে');
+      triggerAlert(language === 'bn' ? 'ত্রুটি' : 'Error', language === 'bn' ? 'মুছতে সমস্যা হয়েছে' : 'Failed to delete');
     },
   });
 
@@ -280,11 +282,11 @@ export default function MedicineRemindersScreen() {
 
   const handleAddManual = () => {
     if (!manualName.trim()) {
-      triggerAlert('ত্রুটি', 'দয়া করে ওষুধের নাম লিখুন');
+      triggerAlert(language === 'bn' ? 'ত্রুটি' : 'Error', language === 'bn' ? 'দয়া করে ওষুধের নাম লিখুন' : 'Please enter medicine name');
       return;
     }
     if (manualTimes.length === 0) {
-      triggerAlert('ত্রুটি', 'কমপক্ষে একটি সময় নির্বাচন করুন');
+      triggerAlert(language === 'bn' ? 'ত্রুটি' : 'Error', language === 'bn' ? 'কমপক্ষে একটি সময় নির্বাচন করুন' : 'Select at least one time');
       return;
     }
 
@@ -299,10 +301,10 @@ export default function MedicineRemindersScreen() {
 
   const handleDelete = (id: string, name: string) => {
     haptics.light();
-    triggerAlert('রিমাইন্ডার মুছুন', `${name} রিমাইন্ডারটি কি মুছে ফেলতে চান?`, [
-      { text: 'বাতিল', style: 'cancel' },
+    triggerAlert(t('deleteReminder'), language === 'bn' ? `${name} রিমাইন্ডারটি কি মুছে ফেলতে চান?` : `Are you sure you want to delete ${name} reminder?`, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'মুছে ফেলুন',
+        text: t('delete'),
         style: 'destructive',
         onPress: () => {
           cancelNotifications(id);
@@ -338,8 +340,8 @@ export default function MedicineRemindersScreen() {
           <ArrowLeft size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleBox}>
-          <Text style={styles.headerTitle}>ওষুধের সময়সূচী</Text>
-          <Text style={styles.headerSubtitle}>মেডিসিন রিমাইন্ডার এবং পুশ বিজ্ঞপ্তি</Text>
+          <Text style={styles.headerTitle}>{t('medSchedule')}</Text>
+          <Text style={styles.headerSubtitle}>{t('medSubtitle')}</Text>
         </View>
       </View>
 
@@ -354,7 +356,7 @@ export default function MedicineRemindersScreen() {
             }}
           >
             <List size={14} color={tab === 'list' ? colors.white : colors.textSecondary} />
-            <Text style={[styles.tabLabel, tab === 'list' && styles.tabLabelActive]}>রিমাইন্ডার সমূহ</Text>
+            <Text style={[styles.tabLabel, tab === 'list' && styles.tabLabelActive]}>{t('remindersList')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -365,7 +367,7 @@ export default function MedicineRemindersScreen() {
             }}
           >
             <Plus size={14} color={tab === 'add' ? colors.white : colors.textSecondary} />
-            <Text style={[styles.tabLabel, tab === 'add' && styles.tabLabelActive]}>নতুন ওষুধ যোগ করুন</Text>
+            <Text style={[styles.tabLabel, tab === 'add' && styles.tabLabelActive]}>{t('addNewMed')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -391,12 +393,23 @@ export default function MedicineRemindersScreen() {
           <View style={{ gap: 12 }}>
             {listLoading ? (
               <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 24 }} />
+            ) : isError ? (
+              <View style={styles.emptyContainer}>
+                <AlertCircle size={36} color={colors.error} style={{ opacity: 0.8 }} />
+                <Text style={styles.errorText}>{t('loadError')}</Text>
+                <Text style={styles.errorSubtext}>
+                  {error instanceof Error ? error.message : t('loadErrorSub')}
+                </Text>
+                <TouchableOpacity style={styles.quickAddBtn} onPress={() => refetchReminders()}>
+                  <Text style={styles.quickAddBtnText}>{t('tryAgain')}</Text>
+                </TouchableOpacity>
+              </View>
             ) : !reminders || reminders.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Pill size={36} color={colors.textSecondary} style={{ opacity: 0.5 }} />
-                <Text style={styles.emptyText}>কোনো ওষুধ যোগ করা হয়নি</Text>
+                <Text style={styles.emptyText}>{t('noMedAdded')}</Text>
                 <TouchableOpacity style={styles.quickAddBtn} onPress={() => setTab('add')}>
-                  <Text style={styles.quickAddBtnText}>নতুন ওষুধ যোগ করুন</Text>
+                  <Text style={styles.quickAddBtnText}>{t('addNewMed')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -417,7 +430,7 @@ export default function MedicineRemindersScreen() {
                       <View style={styles.metaRow}>
                         <Clock size={12} color={colors.textSecondary} />
                         <Text style={styles.medSchedule}>
-                          {Array.isArray(rem.times) ? rem.times.join(', ') : rem.times || 'সময় নেই'}
+                          {Array.isArray(rem.times) ? rem.times.join(', ') : rem.times || (language === 'bn' ? 'সময় নেই' : 'No time')}
                         </Text>
                       </View>
 
@@ -425,7 +438,7 @@ export default function MedicineRemindersScreen() {
                         <View style={styles.metaRow}>
                           <Utensils size={12} color={colors.textSecondary} />
                           <Text style={styles.medNote}>
-                            {rem.with_food ? 'খাবারের সাথে/পর' : 'খালি পেটে'}
+                            {rem.with_food ? t('withFood') : t('emptyStomach')}
                           </Text>
                         </View>
                       ) : null}
@@ -435,24 +448,24 @@ export default function MedicineRemindersScreen() {
                         {meta.notification ? (
                           <View style={[styles.badge, styles.badgeActive]}>
                             <Bell size={10} color={colors.primary} />
-                            <Text style={styles.badgeTextActive}>বিজ্ঞপ্তি সক্রিয়</Text>
+                            <Text style={styles.badgeTextActive}>{t('activeNotify')}</Text>
                           </View>
                         ) : (
                           <View style={[styles.badge, styles.badgeInactive]}>
                             <BellOff size={10} color={colors.textSecondary} />
-                            <Text style={styles.badgeTextInactive}>বিজ্ঞপ্তি বন্ধ</Text>
+                            <Text style={styles.badgeTextInactive}>{t('inactiveNotify')}</Text>
                           </View>
                         )}
 
                         {meta.sound ? (
                           <View style={[styles.badge, styles.badgeActive]}>
                             <Volume2 size={10} color={colors.primary} />
-                            <Text style={styles.badgeTextActive}>অ্যালার্ম চালু</Text>
+                            <Text style={styles.badgeTextActive}>{t('activeAlarm')}</Text>
                           </View>
                         ) : (
                           <View style={[styles.badge, styles.badgeInactive]}>
                             <VolumeX size={10} color={colors.textSecondary} />
-                            <Text style={styles.badgeTextInactive}>অ্যালার্ম বন্ধ</Text>
+                            <Text style={styles.badgeTextInactive}>{t('inactiveAlarm')}</Text>
                           </View>
                         )}
                       </View>
@@ -476,14 +489,14 @@ export default function MedicineRemindersScreen() {
             <View style={styles.formIconBox}>
               <Pill size={20} color={colors.white} />
             </View>
-            <Text style={styles.addTitle}>নতুন ওষুধ যোগ করুন</Text>
-            <Text style={styles.addSubTitle}>ওষুধের নাম, ডোজ এবং সময় নির্ধারণ করুন</Text>
+            <Text style={styles.addTitle}>{t('addNewMed')}</Text>
+            <Text style={styles.addSubTitle}>{language === 'bn' ? 'ওষুধের নাম, ডোজ এবং সময় নির্ধারণ করুন' : 'Set medicine name, dose, and time'}</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>ওষুধের নাম *</Text>
+              <Text style={styles.inputLabel}>{t('inputMedName')}</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="যেমন: Metformin, Napa..."
+                placeholder={language === 'bn' ? 'যেমন: Metformin, Napa...' : 'e.g. Metformin, Napa...'}
                 placeholderTextColor={colors.textSecondary}
                 value={manualName}
                 onChangeText={setManualName}
@@ -491,10 +504,10 @@ export default function MedicineRemindersScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>ডোজ / পরিমাণ</Text>
+              <Text style={styles.inputLabel}>{t('inputMedDose')}</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="যেমন: 500mg, ১টি ট্যাবলেট..."
+                placeholder={language === 'bn' ? 'যেমন: 500mg, ১টি ট্যাবলেট...' : 'e.g. 500mg, 1 tablet...'}
                 placeholderTextColor={colors.textSecondary}
                 value={manualDose}
                 onChangeText={setManualDose}
@@ -502,7 +515,7 @@ export default function MedicineRemindersScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>খাবারের সাথে নির্দেশনা</Text>
+              <Text style={styles.inputLabel}>{t('inputFoodInst')}</Text>
               <View style={styles.toggleRow}>
                 <TouchableOpacity
                   style={[styles.instructionBtn, manualWithFood && styles.instructionBtnActive]}
@@ -512,7 +525,7 @@ export default function MedicineRemindersScreen() {
                   }}
                 >
                   <Text style={[styles.instructionLabel, manualWithFood && styles.instructionLabelActive]}>
-                    খাবারের সাথে/পর
+                    {t('withFood')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -523,14 +536,14 @@ export default function MedicineRemindersScreen() {
                   }}
                 >
                   <Text style={[styles.instructionLabel, !manualWithFood && styles.instructionLabelActive]}>
-                    খালি পেটে
+                    {t('emptyStomach')}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>সময় নির্ধারণ করুন *</Text>
+              <Text style={styles.inputLabel}>{t('inputTime')}</Text>
               <View style={styles.timeSelectorRow}>
                 <View style={styles.spinnerContainer}>
                   <ScrollView style={styles.spinner} nestedScrollEnabled showsVerticalScrollIndicator={false}>
@@ -560,7 +573,7 @@ export default function MedicineRemindersScreen() {
 
                 <TouchableOpacity style={styles.addTimeBtn} onPress={handleAddManualTime}>
                   <Plus size={16} color={colors.white} />
-                  <Text style={styles.addTimeBtnText}>যোগ</Text>
+                  <Text style={styles.addTimeBtnText}>{t('add')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -582,11 +595,11 @@ export default function MedicineRemindersScreen() {
 
             {/* Alarm Settings Toggles */}
             <View style={styles.alarmSettingsContainer}>
-              <Text style={styles.alarmSettingsTitle}>রিমাইন্ডার ও এলার্ম সেটিংস</Text>
+              <Text style={styles.alarmSettingsTitle}>{t('reminderSettings')}</Text>
               <View style={styles.settingToggleRow}>
                 <View>
-                  <Text style={styles.toggleText}>পুশ নোটিফিকেশন</Text>
-                  <Text style={styles.toggleSubText}>নির্ধারিত সময়ে পুশ নোটিফিকেশন পাঠাবে</Text>
+                  <Text style={styles.toggleText}>{t('pushNotification')}</Text>
+                  <Text style={styles.toggleSubText}>{t('pushNotificationSub')}</Text>
                 </View>
                 <Switch
                   value={enableNotification}
@@ -598,8 +611,8 @@ export default function MedicineRemindersScreen() {
 
               <View style={styles.settingToggleRow}>
                 <View>
-                  <Text style={styles.toggleText}>অ্যালার্ম সাউন্ড</Text>
-                  <Text style={styles.toggleSubText}>নোটিফিকেশনের সাথে সাউন্ড প্লে হবে</Text>
+                  <Text style={styles.toggleText}>{t('alarmSound')}</Text>
+                  <Text style={styles.toggleSubText}>{t('alarmSoundSub')}</Text>
                 </View>
                 <Switch
                   value={enableSound}
@@ -612,10 +625,10 @@ export default function MedicineRemindersScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>विशेष নোট (ঐচ্ছিক)</Text>
+              <Text style={styles.inputLabel}>{t('specialNote')}</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="যেমন: ডাক্তারের পরামর্শ অনুযায়ী নিতে হবে..."
+                placeholder={language === 'bn' ? 'যেমন: ডাক্তারের পরামর্শ অনুযায়ী নিতে হবে...' : 'e.g. As directed by doctor...'}
                 placeholderTextColor={colors.textSecondary}
                 value={manualNotes}
                 onChangeText={setManualNotes}
@@ -630,7 +643,7 @@ export default function MedicineRemindersScreen() {
               {addManualMutation.isPending ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
-                <Text style={styles.submitBtnText}>সংরক্ষণ করুন</Text>
+                <Text style={styles.submitBtnText}>{t('save')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1158,5 +1171,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bnBold,
     fontSize: 11,
     color: colors.textPrimary,
+  },
+  errorText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  errorSubtext: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    marginTop: 2,
+    marginBottom: 6,
   },
 });

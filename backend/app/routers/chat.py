@@ -24,76 +24,302 @@ logger = logging.getLogger(__name__)
 
 
 async def perform_meal_logging(user_id: str, input_text: str, meal_slot: str, language: str) -> dict:
-    from app.routers.meal_tracking import MEAL_TRACKING_SYSTEM_PROMPT
     from app.utils import to_json_string
+    from rag_engine import KhadokGraphRAG
 
-    # Fetch user profile for personalized feedback
-    profile = await prisma.profile.find_unique(where={"userId": user_id})
-    conditions = safe_list(profile.medicalConditions) if profile else []
-    goal = profile.goal if profile else "maintain"
-    target_cals = 2000  # fallback
+    # 1. Use LLM only to extract item names and portion sizes — no nutrient generation
+    PARSER_PROMPT = """You are a professional clinical dietitian food parser.
+The user will describe what they ate in natural language (Bangla or English).
+Identify each distinct food item and return:
+1. "query": Best English keyword to search in a food database (e.g. "rice", "egg", "dal", "banana").
+2. "portion_g": Estimated portion in grams (standard Bangladeshi serving if unspecified).
+3. "fallback_name": Friendly name in the user's language.
 
-    # Try to get real calorie target from a recent meal plan
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    plan = await prisma.mealplan.find_first(
-        where={
-            "userId": user_id,
-            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
-        }
-    )
-    if plan:
-        target_cals = plan.calorieTarget
+Return ONLY valid JSON:
+{
+  "items": [
+    {"query": "egg", "portion_g": 50.0, "fallback_name": "ডিম"},
+    {"query": "rice", "portion_g": 150.0, "fallback_name": "ভাত"}
+  ]
+}"""
 
-    # Build LLM prompt
-    user_context = (
-        f"User conditions: {', '.join(conditions) or 'None'}. "
-        f"Goal: {goal}. Daily calorie target: {target_cals} kcal. "
-        f"Meal slot: {meal_slot or 'unspecified'}."
-    )
     messages = [
-        {"role": "system", "content": MEAL_TRACKING_SYSTEM_PROMPT},
-        {"role": "user", "content": f"{user_context}\n\nUser ate: {input_text}"},
+        {"role": "system", "content": PARSER_PROMPT},
+        {"role": "user", "content": f"User ate: {input_text}"},
     ]
 
-    raw = await llm_client.chat_completion(
-        messages=messages,
-        temperature=0.3,
-        max_tokens=1024,
-        response_format={"type": "json_object"},
-    )
-
     try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        data = {}
+        raw = await llm_client.chat_completion(
+            messages=messages,
+            temperature=0.3,
+            max_tokens=512,
+            response_format={"type": "json_object"},
+        )
+        items_to_process = json.loads(raw).get("items", [])
+    except Exception:
+        logger.exception("Failed to parse chat meal input")
+        items_to_process = []
 
-    parsed_items = data.get("parsed_items", [])
-    total_calories = data.get("total_calories", 0)
-    macros = data.get("macros", {"protein_g": 0, "carbs_g": 0, "fat_g": 0})
-    ai_feedback = data.get("ai_feedback", "")
+    # 2. Strict Graph-RAG / Database Plan lookup — no LLM nutrient data allowed
+    rag = KhadokGraphRAG()
+    parsed_items = []
+    total_calories = 0.0
+    protein_total = 0.0
+    carbs_total = 0.0
+    fat_total = 0.0
+    not_found_foods = []
 
-    # Save to DB
+    # Fetch today's daily meal plan from the database to match exact planned items
+    planned_items = []
+    try:
+        from datetime import timedelta
+        from app.utils import from_json_string
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_plan = await prisma.mealplan.find_first(
+            where={
+                "userId":   user_id,
+                "planType": "daily",
+                "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
+            }
+        )
+        if today_plan and today_plan.planData:
+            p_data = from_json_string(today_plan.planData)
+            for m in p_data.get("meals", []):
+                planned_items.extend(m.get("items", []))
+    except Exception:
+        logger.exception("Failed to load today's planned items for chat matching")
+
+    for item in items_to_process:
+        query_term = item.get("query", "")
+        portion_g = float(item.get("portion_g") or 100.0)
+        scale = portion_g / 100.0
+
+        # Match with today's planned items first for 100% exact plan database logging
+        matched_plan_item = None
+        fallback_name_lower = (item.get("fallback_name") or "").lower().strip()
+        query_term_lower = query_term.lower().strip()
+
+        for pi in planned_items:
+            pi_bn = (pi.get("name_bn") or "").lower()
+            pi_en = (pi.get("name_en") or "").lower()
+            pi_code = (pi.get("food_code") or pi.get("code") or "").lower()
+
+            if pi_code and pi_code == query_term_lower:
+                matched_plan_item = pi
+                break
+            if fallback_name_lower and (fallback_name_lower in pi_bn or pi_bn in fallback_name_lower):
+                matched_plan_item = pi
+                break
+            if query_term_lower and (query_term_lower in pi_en or pi_en in query_term_lower):
+                matched_plan_item = pi
+                break
+            # Word overlap for cooked dishes (e.g. "মাগুর" or "ফুলকপি")
+            if fallback_name_lower and len(fallback_name_lower) > 2:
+                clean_term = fallback_name_lower.replace("তরকারি", "").replace("ঝোল", "").replace("ভাজি", "").replace("রান্না করা", "").replace("দো পেঁয়াজা", "").replace("দো পেয়াজা", "").strip()
+                clean_pi_bn = pi_bn.replace("তরকারি", "").replace("ঝোল", "").replace("ভাজি", "").replace("রান্না করা", "").replace("দো পেঁয়াজা", "").replace("দো পেয়াজা", "").strip()
+                if clean_term and (clean_term in clean_pi_bn or clean_pi_bn in clean_term):
+                    matched_plan_item = pi
+                    break
+
+        db_food = None
+        if matched_plan_item:
+            pi_code = matched_plan_item.get("food_code") or matched_plan_item.get("code")
+            if pi_code:
+                try:
+                    with rag.get_neo4j_driver().session() as session:
+                        q = """
+                        MATCH (f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+                        WHERE f.code = $code
+                        RETURN f.code AS code,
+                               f.name_en AS name_en,
+                               coalesce(f.name_bn, f.name_en) AS name_bn,
+                               f.energy_kcal AS calories,
+                               f.protein_g AS protein,
+                               f.fat_g AS fat,
+                               f.carbohydrate_g AS carbs,
+                               fg.name_en AS food_group
+                        """
+                        res = session.run(q, code=pi_code).single()
+                        if res:
+                            db_food = dict(res)
+                except Exception:
+                    logger.exception("Failed to fetch matched plan food from Neo4j")
+
+            if not db_food:
+                db_food = {
+                    "code": pi_code,
+                    "name_bn": matched_plan_item.get("name_bn"),
+                    "name_en": matched_plan_item.get("name_en"),
+                    "calories": float(matched_plan_item.get("calories") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                    "protein": float(matched_plan_item.get("protein_g") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                    "carbs": float(matched_plan_item.get("carbs_g") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                    "fat": float(matched_plan_item.get("fat_g") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                }
+
+        # Fallback to standard Neo4j RAG search if not found in plan
+        if not db_food:
+            db_matches = rag.search_food(query_term)
+            db_food = db_matches[0] if db_matches else None
+
+        if db_food:
+            # ✅ Verified — use database values only
+            db_cal  = float(db_food.get("calories") or db_food.get("energy_kcal") or 0.0)
+            db_prot = float(db_food.get("protein") or db_food.get("protein_g") or 0.0)
+            db_fat  = float(db_food.get("fat") or db_food.get("fat_g") or 0.0)
+            db_carb = float(db_food.get("carbs") or db_food.get("carbohydrate_g") or 0.0)
+
+            food_name = db_food.get("name_bn") or db_food.get("name_en")
+            # Strip any legacy/raw (GraphRAG) suffix if present to keep it clean
+            for sfx in ["(GraphRAG)", "(Graph-RAG)", "GraphRAG", "Graph-RAG"]:
+                if food_name.endswith(sfx):
+                    food_name = food_name[:-len(sfx)].strip()
+            food_name = food_name.strip()
+
+            item_calories = db_cal  * scale
+            item_protein  = db_prot * scale
+            item_carbs    = db_carb * scale
+            item_fat      = db_fat  * scale
+
+            parsed_items.append({
+                "name":      food_name,
+                "amount_g":  portion_g,
+                "calories":  round(item_calories, 1),
+                "protein_g": round(item_protein, 1),
+                "carbs_g":   round(item_carbs, 1),
+                "fat_g":     round(item_fat, 1),
+            })
+            total_calories += item_calories
+            protein_total  += item_protein
+            carbs_total    += item_carbs
+            fat_total      += item_fat
+        else:
+            # ❌ Not in database — skip entirely, no LLM fallback
+            not_found_foods.append(item.get("fallback_name") or query_term)
+
+    total_calories = round(total_calories)
+    macros = {
+        "protein_g": round(protein_total, 1),
+        "carbs_g":   round(carbs_total, 1),
+        "fat_g":     round(fat_total, 1),
+    }
+
+    # 3. Build feedback
+    if not_found_foods:
+        foods_list = ", ".join(not_found_foods)
+        if not parsed_items:
+            prefix = "❌ [Item Not Found in Database] "
+            ai_feedback = (
+                f"❌ '{foods_list}' ডাটাবেজে পাওয়া যায়নি — Item not found in database."
+                if language == "bn"
+                else f"❌ '{foods_list}' — Item not found in database."
+            )
+        else:
+            prefix = "⚠️ [Item Not Found in Database] "
+            ai_feedback = (
+                f"✅ কিছু খাবার সফলভাবে লগ হয়েছে।\n❌ '{foods_list}' ডাটাবেজে পাওয়া যায়নি — Item not found in database."
+                if language == "bn"
+                else f"✅ Some items logged successfully.\n❌ '{foods_list}' — Item not found in database."
+            )
+    else:
+        prefix = "✅ "
+        ai_feedback = (
+            "✅ সফলভাবে আপনার খাবার ট্র্যাকিংয়ে যুক্ত করা হয়েছে (ডাটাবেজ দ্বারা সম্পূর্ণ ভেরিফাইড)।"
+            if language == "bn"
+            else "✅ Successfully logged to your meal tracker (fully verified via database)."
+        )
+
+    input_text_display = f"{prefix}{input_text}"
+
+    # Auto-resolve correct meal slot based on input text and planned items
+    resolved_slot = meal_slot
+    input_lower = input_text.lower()
+    
+    if any(k in input_lower for k in ["sakal", "nasta", "breakfast", "shokal", "সকাল", "নাস্তা"]):
+        resolved_slot = "breakfast"
+    elif any(k in input_lower for k in ["dupur", "lunch", "dupurer", "দুপুর"]):
+        resolved_slot = "lunch"
+    elif any(k in input_lower for k in ["rat", "dinner", "rater", "রাত", "রাতের"]):
+        resolved_slot = "dinner"
+    elif any(k in input_lower for k in ["snack", "bikal", "shondha", "বিকেল", "সন্ধ্যা"]):
+        resolved_slot = "snack"
+
+    # Fallback to checking which planned slot contains the logged foods
+    if resolved_slot not in ["breakfast", "lunch", "dinner", "snack"]:
+        slot_scores = {"breakfast": 0, "lunch": 0, "dinner": 0, "snack": 0}
+        try:
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_plan = await prisma.mealplan.find_first(
+                where={
+                    "userId":   user_id,
+                    "planType": "daily",
+                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
+                }
+            )
+            if today_plan and today_plan.planData:
+                p_data = from_json_string(today_plan.planData)
+                for m in p_data.get("meals", []):
+                    slot = m.get("slot")
+                    if slot in slot_scores:
+                        plan_names = [pi.get("name_bn", "").lower() for pi in m.get("items", [])]
+                        for item in parsed_items:
+                            item_name = item.get("name", "").lower()
+                            if any(pn in item_name or item_name in pn for pn in plan_names):
+                                slot_scores[slot] += 1
+                                
+            best_slot = max(slot_scores, key=slot_scores.get)
+            if slot_scores[best_slot] > 0:
+                resolved_slot = best_slot
+        except Exception:
+            logger.exception("Failed to auto-resolve meal slot by plan overlap")
+
+    if not resolved_slot:
+        resolved_slot = "snack"
+
+    # 4. Save to DB
     record = await prisma.mealtracking.create(
         data={
-            "userId": user_id,
-            "inputText": input_text,
+            "userId":      user_id,
+            "inputText":   input_text_display,
             "parsedItems": to_json_string(parsed_items),
-            "totalCals": int(total_calories),
-            "macros": to_json_string(macros),
-            "feedback": ai_feedback,
-            "mealSlot": meal_slot,
-            "language": language,
+            "totalCals":   int(total_calories),
+            "macros":      to_json_string(macros),
+            "feedback":    ai_feedback,
+            "mealSlot":    resolved_slot,
+            "language":    language,
         }
     )
 
+    # 5. Auto-complete slot in today's Meal Plan
+    if resolved_slot:
+        try:
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_plan = await prisma.mealplan.find_first(
+                where={
+                    "userId":   user_id,
+                    "planType": "daily",
+                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
+                }
+            )
+            if today_plan:
+                from app.utils import safe_list
+                completed = safe_list(from_json_string(today_plan.completedSlots)) if today_plan.completedSlots else []
+                if resolved_slot not in completed:
+                    completed.append(resolved_slot)
+                    await prisma.mealplan.update(
+                        where={"planId": today_plan.planId},
+                        data={"completedSlots": to_json_string(completed)},
+                    )
+        except Exception:
+            logger.exception("Failed to auto-complete meal plan slot in chat logging")
+
     return {
-        "id": record.id,
-        "parsed_items": parsed_items,
+        "id":             record.id,
+        "parsed_items":   parsed_items,
         "total_calories": int(total_calories),
-        "macros": macros,
-        "ai_feedback": ai_feedback,
-        "meal_slot": meal_slot,
-        "logged_at": record.loggedAt.isoformat(),
+        "macros":         macros,
+        "ai_feedback":    ai_feedback,
+        "meal_slot":      meal_slot,
+        "logged_at":      record.loggedAt.isoformat(),
     }
 
 
@@ -238,24 +464,48 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
         except Exception as e:
             logger.warning("Chat GraphRAG context unavailable: %s", e)
 
-        # 3. Build system prompt
+        # 3. Build system prompt — strictly scoped to diet & nutrition only
         system_msg = (
-            "You are পুষ্টি এআই (PushtiAI), a warm, knowledgeable, and proactive Bangladeshi nutrition companion. "
-            "You have complete access to the user's health profile, medical conditions, nutrition targets, "
-            "today's meal plan, and their recent 7-day meal history. Use all of this to give highly personalized, "
-            "practical, and compassionate advice.\n\n"
-            "IMPORTANT RULES:\n"
-            "1. Always reply in Bengali if the user writes in Bengali. Reply in English if they write in English.\n"
-            "2. If the user hasn't set up their profile, gently guide them to complete it.\n"
-            "3. If the user asks for a meal plan or food suggestions, cross-reference their medical conditions, "
-            "recent meal logs, and nutrition targets to give specific, personalized recommendations.\n"
-            "4. If no recent meal data exists, ask the user about their preferences interactively.\n"
-            "5. For calorie/macro questions, always use their calculated targets from the profile.\n"
-            "6. Be proactive — mention if something they ate recently was risky given their conditions.\n"
-            "7. Keep responses concise but warm. Use bullet points for lists.\n"
-            "8. When discussing ANY food (e.g., banana/কলা), you MUST state the calorie count per specific quantity/weight (e.g., '১০০ গ্রাম কলায় ৮৯ ক্যালোরি থাকে' / '100g of banana contains 89 calories'). Clearly state the quantity, weight, and calorie values.\n"
-            "9. Always analyze and explain the element-level pros and cons (e.g., carbohydrates, protein, fat, fiber, potassium, sodium, etc.) of the discussed food for the user's specific health goals and medical conditions.\n"
-            "10. MEAL LOGGING: If the user says they ate something (e.g., 'আমি ২টা রুটি খেয়েছি', 'I had a banana for breakfast'), explicitly asks you to log/track a meal (e.g., 'add this to my log', 'আমার লগে এটি যোগ করুন'), or uploads a photo/image of food to log/track, you MUST call the `log_meal` tool to record it in their diet log. In the `description` parameter, describe the food items clearly. If they uploaded an image, analyze it, list the food items, and pass that description to the tool.\n\n"
+            "You are পুষ্টি এআই (PushtiAI), a prestigious Bangladeshi diet and nutrition assistant backed by a "
+            "verified Graph-RAG food database. Your SOLE purpose is to help users with:\n"
+            "  - Personalized food and meal recommendations\n"
+            "  - Daily diet planning based on their health profile and goals\n"
+            "  - Calorie and macro-nutrient information (from the verified database only)\n"
+            "  - Meal logging and food tracking\n"
+            "  - Complete Health & Nutrition Reports, including calorie history, weights, and compliance\n"
+            "  - Nutritional analysis of foods (calories, protein, carbs, fat, fiber)\n"
+            "  - Which foods to prefer or avoid based on their logged medical conditions\n\n"
+            "=== HARD RESTRICTIONS — NEVER VIOLATE ===\n"
+            "You are STRICTLY FORBIDDEN from:\n"
+            "  1. Providing any medical consultation, diagnosis, or treatment advice.\n"
+            "  2. Recommending medicines, prescription drug clinical dosages, or medical therapies.\n"
+            "  3. Interpreting blood reports or lab results as a doctor's opinion.\n"
+            "  4. Answering ANY question unrelated to food, diet, nutrition, or weight health reports "
+            "(e.g. history, politics, coding, math, travel, entertainment, relationships).\n"
+            "  5. Generating creative content (stories, poems, essays, jokes).\n"
+            "  6. Pretending to be any other assistant or persona.\n\n"
+            "If the user asks ANYTHING outside of food/diet/nutrition/reports, respond ONLY with:\n"
+            "  Bengali: 'দুঃখিত, আমি শুধুমাত্র খাদ্য, পুষ্টি এবং ডায়েট পরিকল্পনা বিষয়ক প্রশ্নের উত্তর দিতে সক্ষম। "
+            "চিকিৎসা পরামর্শ বা অন্য যেকোনো বিষয়ের জন্য সংশ্লিষ্ট বিশেষজ্ঞের সাথে যোগাযোগ করুন।'\n"
+            "  English: 'Sorry, I can only assist with food, nutrition, and diet planning. "
+            "For medical advice or any other topic, please consult the relevant expert.'\n\n"
+            "=== NUTRITION RESPONSE RULES ===\n"
+            "1. Always reply in Bengali if the user writes in Bengali, English otherwise.\n"
+            "2. If the user has not set up their profile, gently guide them to complete it.\n"
+            "3. For food/meal questions, cross-reference the user's medical conditions, recent meal logs, "
+            "and nutrition targets from the context below.\n"
+            "4. For calorie/macro data, ONLY use values from the Graph-RAG context below. "
+            "NEVER invent or estimate nutrition values from your own training memory.\n"
+            "5. When discussing any food, always state: name + amount + calories from the database "
+            "(e.g. '১০০ গ্রাম ভাতে ১৩০ ক্যালোরি').\n"
+            "6. Keep responses concise and warm. Use bullet points for lists.\n"
+            "7. MEAL LOGGING: If the user says they ate something or uploads a food photo, "
+            "call the `log_meal` tool with a clear description of the food items.\n"
+            "8. HEALTH REPORT & PDF GENERATION: If the user asks for a health report, nutrition progress summary, "
+            "weight logs, or a 3-day/7-day/30-day health report, you MUST provide a friendly summary of their calories, "
+            "nutrients, and weights from their history inside USER'S COMPLETE CONTEXT. "
+            "Additionally, you MUST append the exact tag '[HEALTH_REPORT_LINK]' (including brackets) at the very end of your response text. "
+            "This tag automatically generates an interactive high-fidelity PDF report download card for the user!\n\n"
             f"=== USER'S COMPLETE CONTEXT ===\n{user_context}\n"
             f"{rag_food_context}"
         )
@@ -309,6 +559,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
         ]
 
         # 5. Stream LLM response
+        assistant_response = ""
         try:
             response = await llm_client.client.chat.completions.create(
                 model=llm_client.model,
@@ -325,6 +576,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                     continue
                 delta = chunk.choices[0].delta
                 if delta.content:
+                    assistant_response += delta.content
                     yield f"data: {json.dumps({'token': delta.content})}\n\n"
                 
                 if delta.tool_calls:
@@ -410,7 +662,33 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                     if len(chunk.choices) > 0:
                         content = chunk.choices[0].delta.content
                         if content:
+                            assistant_response += content
                             yield f"data: {json.dumps({'token': content})}\n\n"
+
+            # 6. Save messages to the database
+            if req.message:
+                try:
+                    await prisma.chatmessage.create(
+                        data={
+                            "userId": current_user.id,
+                            "role": "user",
+                            "content": req.message,
+                        }
+                    )
+                except Exception as e:
+                    logger.warning("Failed to store user chat message in DB: %s", e)
+
+            if assistant_response:
+                try:
+                    await prisma.chatmessage.create(
+                        data={
+                            "userId": current_user.id,
+                            "role": "assistant",
+                            "content": assistant_response,
+                        }
+                    )
+                except Exception as e:
+                    logger.warning("Failed to store assistant chat message in DB: %s", e)
 
         except Exception as e:
             logger.exception("LLM chat stream failed: %s", e)
@@ -422,6 +700,29 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             )
             for word in fallback.split():
                 yield f"data: {json.dumps({'token': word + ' '})}\n\n"
+
+            # Save partial/fallback response if any
+            if req.message:
+                try:
+                    await prisma.chatmessage.create(
+                        data={
+                            "userId": current_user.id,
+                            "role": "user",
+                            "content": req.message,
+                        }
+                    )
+                except Exception:
+                    pass
+            try:
+                await prisma.chatmessage.create(
+                    data={
+                        "userId": current_user.id,
+                        "role": "assistant",
+                        "content": fallback,
+                    }
+                )
+            except Exception:
+                pass
 
         yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -528,37 +829,58 @@ async def transcribe_audio(
     Returns: {"text": "..."}
     """
     audio_bytes = await file.read()
+    filename    = file.filename or "audio.m4a"
+
+    logger.info("Transcribe request: filename=%s size=%d bytes language=%s", filename, len(audio_bytes), language)
+
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Empty audio payload")
+    if len(audio_bytes) < 1000:
+        logger.warning("Audio too small (%d bytes) — likely silent/empty recording", len(audio_bytes))
+        return {"text": ""}
     if len(audio_bytes) > 25 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Audio file exceeds 25 MB limit")
 
+    # Map language code
     lang = None
     if language:
         lang = "bn" if language.lower().startswith("bn") else (
             "en" if language.lower().startswith("en") else language
         )
 
-    # Bilingual nutrition-domain prompt biases recognition toward food vocabulary.
-    nutrition_prompt = (
-        "এটি একটি বাংলাদেশি পুষ্টি অ্যাপ। ব্যবহারকারী খাবার লগ করছেন: "
-        "ভাত, ডাল, মাছ, মুরগি, সবজি, ফল, রুটি, ডিম, দুধ, চা ইত্যাদি। "
-        "Bangladeshi nutrition app. User is logging meals (rice, dal, fish, "
-        "chicken, vegetables, fruits, bread, eggs, milk, tea)."
-    )
+    # Short vocabulary hint improves accuracy for domain-specific terms.
+    # IMPORTANT: Must stay very short (≤10 words) to prevent gpt-4o-transcribe
+    # from echoing it back when audio is silent.
+    vocab_hint = "ভাত ডাল মাছ ডিম রুটি চা" if lang == "bn" else "rice dal egg bread tea"
+
+    # Set of known prompt words used for echo detection
+    prompt_words = set(vocab_hint.lower().split())
 
     try:
+        # gpt-4o-transcribe: best multilingual accuracy, especially for Bangla
         text = await llm_client.transcribe_audio(
             audio_bytes=audio_bytes,
-            filename=file.filename or "audio.webm",
+            filename=filename,
+            model="gpt-4o-transcribe",
             language=lang,
-            prompt=nutrition_prompt,
+            prompt=vocab_hint,
         )
+        logger.info("Transcription result: %r", text)
     except Exception as exc:
         logger.exception("Transcription failed")
         raise HTTPException(status_code=502, detail=f"Transcription failed: {exc}")
 
-    return {"text": text}
+    if not text or not text.strip():
+        return {"text": ""}
+
+    # Echo guard: if EVERY word in the response is a known prompt word,
+    # it means the model hallucinated — no real speech was captured.
+    response_words = set(text.strip().lower().split())
+    if response_words and response_words.issubset(prompt_words):
+        logger.warning("Whisper echo detected — returning empty. Response was: %r", text)
+        return {"text": ""}
+
+    return {"text": text.strip()}
 
 
 # ─── Voice: Realtime API session minting ──────────────────────────────────────
@@ -620,3 +942,19 @@ async def create_realtime_session(
         raise HTTPException(status_code=502, detail=f"Realtime session failed: {exc}")
 
     return session
+
+
+# ─── Chat History: Retrieve Saved Conversation Messages ───────────────────────
+@router.get("/history")
+async def get_chat_history(current_user=Depends(get_current_user)):
+    """Retrieve stored chat history (last 50 messages) for the current user."""
+    try:
+        messages = await prisma.chatmessage.find_many(
+            where={"userId": current_user.id},
+            order={"createdAt": "asc"},
+            take=50
+        )
+        return [{"role": msg.role, "content": msg.content, "id": msg.messageId} for msg in messages]
+    except Exception as e:
+        logger.exception("Failed to fetch chat history: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to fetch chat history")

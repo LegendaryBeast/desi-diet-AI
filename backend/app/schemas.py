@@ -249,7 +249,8 @@ class MealTrackingRequest(BaseModel):
     direct_fat: Optional[float] = Field(None, description="Direct fat in grams")
     direct_name: Optional[str] = Field(None, description="Direct food item name")
     direct_amount_g: Optional[float] = Field(None, description="Direct amount in grams")
-    strict_mode: Optional[bool] = Field(False, description="Strict mode: only allow verified Graph-RAG matched food items")
+    preview: Optional[bool] = Field(default=False, description="If true, returns parsed calories/macros without saving to database")
+    is_manual: Optional[bool] = Field(default=False, description="Whether this is manually added outside the plan")
 
 
 class ParsedFoodItem(BaseModel):

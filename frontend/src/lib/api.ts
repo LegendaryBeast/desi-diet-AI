@@ -263,6 +263,7 @@ export interface ChatHistoryItem {
 }
 
 export const chatApi = {
+  history: () => apiFetch<ChatHistoryItem[]>('/chat/history'),
   /**
    * Stream chat response via SSE.
    * onToken: called for each streaming token
@@ -685,6 +686,8 @@ export const mealTrackingApi = {
     direct_name?: string;
     direct_amount_g?: number;
     strict_mode?: boolean;
+    preview?: boolean;
+    is_manual?: boolean;
   }) =>
     apiFetch<MealTrackingResponse>('/meal-tracking', {
       method: 'POST',
@@ -694,7 +697,7 @@ export const mealTrackingApi = {
   /** Identify foods from a photo with vision LLM and create a meal log entry. */
   logFromImage: async (
     file: Blob | File,
-    opts: { meal_slot?: string; language?: string; note?: string } = {},
+    opts: { meal_slot?: string; language?: string; food_name?: string; quantity_g?: number; preview?: boolean } = {},
   ): Promise<MealTrackingResponse> => {
     const token = getToken();
     const form = new FormData();
@@ -702,7 +705,9 @@ export const mealTrackingApi = {
     form.append('file', file, filename);
     if (opts.meal_slot) form.append('meal_slot', opts.meal_slot);
     if (opts.language) form.append('language', opts.language);
-    if (opts.note) form.append('note', opts.note);
+    if (opts.food_name) form.append('food_name', opts.food_name);
+    if (opts.quantity_g != null) form.append('quantity_g', String(opts.quantity_g));
+    if (opts.preview != null) form.append('preview', String(opts.preview));
 
     const res = await fetch(`${BASE_URL}/meal-tracking/from-image`, {
       method: 'POST',

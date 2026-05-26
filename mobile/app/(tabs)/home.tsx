@@ -1,15 +1,17 @@
 import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Dimensions, ImageBackground, Image, Switch } from 'react-native';
 import { useCallback, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { reportsApi, mealPlanApi, mealTrackingApi, profileApi } from '../../lib/api';
+import { reportsApi, mealPlanApi, mealTrackingApi, profileApi, medicineApi } from '../../lib/api';
 import { fonts, colors } from '../../lib/theme';
-import { Search, Crown, Play, ChevronLeft, ChevronRight, Check, Flame, Apple, Activity, Pill, Shield, Bot, ArrowLeft } from 'lucide-react-native';
+import { Search, Crown, Play, ChevronLeft, ChevronRight, Check, Flame, Apple, Activity, Pill, Shield, Bot, ArrowLeft, Clock, Bell } from 'lucide-react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { HomeScreenSkeleton } from '../../components/SkeletonLoader';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useSettingsStore } from '../../store/settings-store';
 import ProModal from '../../components/ui/ProModal';
+import { useTranslation } from '../../lib/translations';
+import { useSubscription } from '../../context/SubscriptionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -79,6 +81,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const { strictMode, setStrictMode } = useSettingsStore();
+  const { t, language } = useTranslation();
+  const { isPro } = useSubscription();
 
   const { data: profileData, isPending: isProfilePending, refetch: refetchProfile } = useQuery({
     queryKey: ['profile'],
@@ -95,7 +99,7 @@ export default function HomeScreen() {
 
   const { data: planData, refetch: refetchPlan } = useQuery({
     queryKey: ['daily_plan', 0],
-    queryFn: async () => (await mealPlanApi.daily('bn', false, 0)).data,
+    queryFn: async () => (await mealPlanApi.daily(language, false, 0)).data,
   });
 
   const { data: trackingData, refetch: refetchTracking } = useQuery({
@@ -103,11 +107,30 @@ export default function HomeScreen() {
     queryFn: async () => (await mealTrackingApi.today()).data,
   });
 
+  const { data: medicineData, refetch: refetchMedicine } = useQuery({
+    queryKey: ['medicine_reminders'],
+    queryFn: async () => (await medicineApi.list()).data,
+    retry: false,
+  });
+
+  // Refetch home dashboard data on screen focus to ensure logged meals update in real-time
+  useFocusEffect(
+    useCallback(() => {
+      refetchReport();
+      refetchPlan();
+      refetchTracking();
+      refetchProfile();
+      refetchMedicine();
+    }, [refetchReport, refetchPlan, refetchTracking, refetchProfile, refetchMedicine])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchReport(), refetchPlan(), refetchTracking(), refetchProfile()]);
+    await Promise.all([refetchReport(), refetchPlan(), refetchTracking(), refetchProfile(), refetchMedicine()]);
     setRefreshing(false);
   }, []);
+
+  const medicines: any[] = Array.isArray(medicineData) ? medicineData : [];
 
   let consumedCals = 0;
   let consumedProtein = 0;
@@ -151,41 +174,20 @@ export default function HomeScreen() {
             onPress={() => { haptics.light(); router.push('/foods'); }}
           >
             <Search size={16} color={design.textGray} />
-            <Text style={styles.searchBarText}>খাবারের ডাটাবেজ খুঁজুন...</Text>
+            <Text style={[styles.searchBarText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('searchPlaceholder')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.upgradeBtn}
-            onPress={() => { haptics.light(); setShowProModal(true); }}
-          >
-            <Crown size={14} color={design.yellow} />
-            <Text style={styles.upgradeText}>Upgrade</Text>
-          </TouchableOpacity>
+          {!isPro && (
+            <TouchableOpacity 
+              style={styles.upgradeBtn}
+              onPress={() => { haptics.light(); setShowProModal(true); }}
+            >
+              <Crown size={14} color={design.yellow} />
+              <Text style={styles.upgradeText}>Upgrade</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* STRICT MODE UNIVERSAL TOGGLE */}
-        <View style={styles.strictModeCard}>
-          <View style={styles.strictModeLeft}>
-            <View style={[styles.strictModeIconBox, strictMode && styles.strictModeIconBoxActive]}>
-              <Shield size={16} color={strictMode ? colors.white : design.textGray} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.strictModeTitle}>স্ট্রিক্ট মোড (Strict Mode)</Text>
-              <Text style={styles.strictModeSubtitle}>
-                {strictMode ? 'শুধুমাত্র ভেরিফাইড Graph-RAG ডাটা ব্যবহৃত হবে' : 'এআই ড্রিভেন ডাটা ও সতর্কতা ব্যবহৃত হবে'}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={strictMode}
-            onValueChange={(val) => {
-              haptics.light();
-              setStrictMode(val);
-            }}
-            trackColor={{ false: 'rgba(0,0,0,0.1)', true: design.lime }}
-            thumbColor={colors.white}
-            ios_backgroundColor="rgba(0,0,0,0.08)"
-          />
-        </View>
+        {/* STRICT MODE UNIVERSAL TOGGLE REMOVED - ALWAYS ON GRAPH-RAG BY DEFAULT */}
       </View>
 
       {/* HERO CARD */}
@@ -226,10 +228,10 @@ export default function HomeScreen() {
       {/* QUICK ACTIONS ROW */}
       <View style={styles.quickActionsContainer}>
         {[
-          { label: 'Foods', icon: Apple, route: '/foods', bg: '#EBF0D8', color: colors.primary },
-          { label: 'Health Log', icon: Activity, route: '/health-log', bg: '#E2F2F5', color: colors.accent },
-          { label: 'Medicine', icon: Pill, route: '/medicine', bg: '#FFF7E6', color: '#B06000' },
-          { label: 'Micros', icon: Shield, route: '/target-details', bg: '#EAF7EE', color: colors.success }
+          { label: t('foods'), icon: Apple, route: '/foods', bg: '#EBF0D8', color: colors.primary },
+          { label: t('healthLog'), icon: Activity, route: '/health-log', bg: '#E2F2F5', color: colors.accent },
+          { label: t('medicine'), icon: Pill, route: '/medicine', bg: '#FFF7E6', color: '#B06000' },
+          { label: t('micros'), icon: Shield, route: '/target-details', bg: '#EAF7EE', color: colors.success }
         ].map((act, i) => {
           const Icon = act.icon;
           return (
@@ -262,13 +264,13 @@ export default function HomeScreen() {
               <Bot size={20} color={colors.primary} />
             </View>
             <View>
-              <Text style={styles.pustiTitle}>Pusti-Ai</Text>
-              <Text style={styles.pustiSub}>আপনার এআই পুষ্টি সহকারী</Text>
+              <Text style={styles.pustiTitle}>{t('pustiAi')}</Text>
+              <Text style={[styles.pustiSub, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('companionTitle')}</Text>
             </View>
           </View>
 
-          <Text style={styles.pustiDesc}>
-            আপনার আজকের খাবার, ক্যালোরি এবং পুষ্টি নিয়ে যেকোনো প্রশ্ন সরাসরি জিজ্ঞাসা করুন।
+          <Text style={[styles.pustiDesc, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>
+            {t('companionDesc')}
           </Text>
 
           {/* Transparent theme illustration */}
@@ -281,7 +283,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.pustiInputBox}>
-            <Text style={styles.pustiInputPlaceholder}>যেকোনো কিছু জিজ্ঞাসা করুন...</Text>
+            <Text style={[styles.pustiInputPlaceholder, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('companionPlaceholder')}</Text>
             <View style={styles.pustiSendBtn}>
               <ChevronRight size={16} color={colors.white} />
             </View>
@@ -299,14 +301,14 @@ export default function HomeScreen() {
               <View style={styles.iconWrapperBlack}>
                 <Flame size={12} color={design.cardWhite} fill={design.cardWhite} />
               </View>
-              <Text style={styles.cardTitle}>Calories</Text>
+              <Text style={[styles.cardTitle, { fontFamily: language === 'bn' ? fonts.bnBold : fonts.bodyBold }]}>{t('calories')}</Text>
             </View>
             <Text style={styles.cardValueLarge}>{targetCals.toLocaleString()} <Text style={styles.cardUnit}>Kcal</Text></Text>
           </View>
 
           <View style={styles.cardSubHeader}>
-            <Text style={styles.cardSubText}>Lack of physical activity</Text>
-            <Text style={styles.cardSubText}>Daily dose</Text>
+            <Text style={[styles.cardSubText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('lackActivity')}</Text>
+            <Text style={[styles.cardSubText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('dailyDose')}</Text>
           </View>
 
           <View style={styles.currentCalsContainer}>
@@ -322,16 +324,16 @@ export default function HomeScreen() {
 
           <View style={styles.macrosRow}>
             <View style={styles.macroItem}>
-              <Text style={styles.macroVal}>{Math.round(consumedCarbs)} <Text style={styles.macroUnit}>Gram</Text></Text>
-              <Text style={styles.macroName}>Carbohydrates</Text>
+              <Text style={styles.macroVal}>{Math.round(consumedCarbs)} <Text style={[styles.macroUnit, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('gram')}</Text></Text>
+              <Text style={[styles.macroName, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('carbs')}</Text>
             </View>
             <View style={styles.macroItem}>
-              <Text style={styles.macroVal}>{Math.round(consumedProtein)} <Text style={styles.macroUnit}>Gram</Text></Text>
-              <Text style={styles.macroName}>Proteins</Text>
+              <Text style={styles.macroVal}>{Math.round(consumedProtein)} <Text style={[styles.macroUnit, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('gram')}</Text></Text>
+              <Text style={[styles.macroName, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('proteins')}</Text>
             </View>
             <View style={styles.macroItem}>
-              <Text style={styles.macroVal}>{Math.round(consumedFat)} <Text style={styles.macroUnit}>Gram</Text></Text>
-              <Text style={styles.macroName}>Fats</Text>
+              <Text style={styles.macroVal}>{Math.round(consumedFat)} <Text style={[styles.macroUnit, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('gram')}</Text></Text>
+              <Text style={[styles.macroName, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('fats')}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -347,14 +349,14 @@ export default function HomeScreen() {
               <View style={styles.iconWrapperBlack}>
                 <Text style={{color: design.cardWhite, fontSize: 10, fontWeight: 'bold'}}>↔</Text>
               </View>
-              <Text style={styles.cardTitle}>Weight</Text>
+              <Text style={[styles.cardTitle, { fontFamily: language === 'bn' ? fonts.bnBold : fonts.bodyBold }]}>{t('weight')}</Text>
             </View>
             <Text style={styles.cardValueLarge}>{height} <Text style={styles.cardUnit}>Cm</Text></Text>
           </View>
 
           <View style={styles.cardSubHeader}>
-            <Text style={styles.cardSubText}>Healthy weight is 68 Kg - 84 Kg</Text>
-            <Text style={styles.cardSubText}>Tall body</Text>
+            <Text style={[styles.cardSubText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('weightTarget')}</Text>
+            <Text style={[styles.cardSubText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('tallBody')}</Text>
           </View>
 
           <WaveChart />
@@ -362,13 +364,89 @@ export default function HomeScreen() {
           <View style={styles.weightFooter}>
             <Text style={styles.currentWeight}>{weight}<Text style={styles.weightUnit}>kg</Text></Text>
             <View style={{alignItems: 'flex-end'}}>
-              <Text style={styles.weightNote}>Of the weekly</Text>
-              <Text style={styles.weightNote}>plan completed</Text>
-              <Text style={styles.keepItUp}>Keep it up!</Text>
+              <Text style={[styles.weightNote, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('ofWeekly')}</Text>
+              <Text style={[styles.weightNote, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('completed')}</Text>
+              <Text style={[styles.keepItUp, { fontFamily: language === 'bn' ? fonts.bnBold : fonts.bodyBold }]}>{t('keepItUp')}</Text>
             </View>
           </View>
         </TouchableOpacity>
 
+        {/* MEDICINE REMINDER CARD */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={[styles.card, styles.medicineCard]}
+          onPress={() => { haptics.light(); router.push('/medicine'); }}
+        >
+          {/* Card Header */}
+          <View style={styles.medicineCardHeader}>
+            <View style={styles.medicineHeaderLeft}>
+              <View style={styles.medicineIconBox}>
+                <Pill size={18} color='#B06000' />
+              </View>
+              <View>
+                <Text style={[styles.medicineCardTitle, { fontFamily: language === 'bn' ? fonts.bnBold : fonts.bodyBold }]}>{t('medReminderTitle')}</Text>
+                <Text style={styles.medicineCardSubtitle}>{t('medReminderSub')}</Text>
+              </View>
+            </View>
+            <View style={styles.medicineBadge}>
+              <Text style={styles.medicineBadgeText}>{medicines.length}</Text>
+            </View>
+          </View>
+
+          {/* Medicine List */}
+          {medicines.length === 0 ? (
+            <View style={styles.medicineEmpty}>
+              <Pill size={28} color={colors.textSecondary} />
+              <Text style={[styles.medicineEmptyText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('noMedAdded')}</Text>
+              <Text style={[styles.medicineEmptyAdd, { fontFamily: language === 'bn' ? fonts.bnBold : fonts.bodyBold }]}>{t('addMed')}</Text>
+            </View>
+          ) : (
+            <View style={styles.medicineList}>
+              {medicines.slice(0, 3).map((med: any, idx: number) => (
+                <View key={med.id || idx} style={styles.medicineItem}>
+                  <View style={styles.medicineItemLeft}>
+                    <View style={styles.medicineDot} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.medicineName} numberOfLines={1}>
+                        {med.name}{med.dose ? ` — ${med.dose}` : ''}
+                      </Text>
+                      {med.with_food !== undefined && (
+                        <Text style={[styles.medicineInstruction, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>
+                          {med.with_food ? t('withFood') : t('emptyStomach')}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.medicineTimesRow}>
+                    {(Array.isArray(med.times) ? med.times : []).slice(0, 2).map((t: string, ti: number) => (
+                      <View key={ti} style={styles.medicineTimeBadge}>
+                        <Clock size={9} color='#B06000' />
+                        <Text style={styles.medicineTimeBadgeText}>{t}</Text>
+                      </View>
+                    ))}
+                    {Array.isArray(med.times) && med.times.length > 2 && (
+                      <View style={styles.medicineTimeBadge}>
+                        <Text style={styles.medicineTimeBadgeText}>+{med.times.length - 2}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+              {medicines.length > 3 && (
+                <Text style={[styles.medicineMoreText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>
+                  +{medicines.length - 3} {t('moreMeds')}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Footer */}
+          <View style={styles.medicineFooter}>
+            <Bell size={12} color='#B06000' />
+            <Text style={[styles.medicineFooterText, { fontFamily: language === 'bn' ? fonts.bn : fonts.body }]}>{t('manageMed')}</Text>
+            <ChevronRight size={14} color='#B06000' />
+          </View>
+        </TouchableOpacity>
 
         <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
       </View>
@@ -604,6 +682,158 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+
+  // ── Medicine Card ───────────────────────────────────────────────────────────
+  medicineCard: {
+    backgroundColor: '#FFF7E6',
+    borderColor: 'rgba(176, 96, 0, 0.25)',
+  },
+  medicineCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  medicineHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  medicineIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(176, 96, 0, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(176, 96, 0, 0.2)',
+  },
+  medicineCardTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  medicineCardSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  medicineBadge: {
+    backgroundColor: '#B06000',
+    borderRadius: 14,
+    minWidth: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  medicineBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    color: '#fff',
+  },
+  medicineEmpty: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  medicineEmptyText: {
+    fontFamily: fonts.bn,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  medicineEmptyAdd: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: '#B06000',
+  },
+  medicineList: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  medicineItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(176, 96, 0, 0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 96, 0, 0.12)',
+  },
+  medicineItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 8,
+  },
+  medicineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#B06000',
+    flexShrink: 0,
+  },
+  medicineName: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  medicineInstruction: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  medicineTimesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  medicineTimeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(176, 96, 0, 0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 96, 0, 0.2)',
+  },
+  medicineTimeBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: '#B06000',
+  },
+  medicineMoreText: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: '#B06000',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  medicineFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(176, 96, 0, 0.08)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(176, 96, 0, 0.15)',
+  },
+  medicineFooterText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 12,
+    color: '#B06000',
   },
 
 });

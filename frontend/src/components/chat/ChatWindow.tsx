@@ -90,6 +90,30 @@ export const ChatWindow = () => {
   const [pendingImage, setPendingImage] = useState<{ dataUrl: string; name: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn || !isAuthenticated()) return;
+    setLoadingHistory(true);
+    chatApi.history()
+      .then((data) => {
+        if (data && data.length > 0) {
+          const formatted = data.map((msg, index) => ({
+            id: index + 1,
+            type: msg.role === 'user' ? 'user' as const : 'ai' as const,
+            text: msg.content,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }));
+          setMessages(formatted);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed fetching web chat history:", err);
+      })
+      .finally(() => {
+        setLoadingHistory(false);
+      });
+  }, [isLoggedIn, i18n.language]);
 
   // Realtime voice state
   const [voiceState, setVoiceState] = useState<'idle' | 'connecting' | 'live' | 'error'>('idle');
@@ -505,7 +529,18 @@ export const ChatWindow = () => {
         {/* Conversation Stream */}
         <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-6 md:p-6 md:pb-8 space-y-4 md:space-y-5 scroll-smooth relative z-10">
           <AnimatePresence initial={false}>
-            {messages.length === 0 ? (
+            {loadingHistory ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="h-full flex flex-col items-center justify-center text-center py-10"
+              >
+                <Loader2 className="w-8 h-8 animate-spin text-accent mb-4" />
+                <p className="font-bn text-sm text-ink-muted">
+                  {isBn ? 'বার্তা ইতিহাস লোড হচ্ছে...' : 'Loading message history...'}
+                </p>
+              </motion.div>
+            ) : messages.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}

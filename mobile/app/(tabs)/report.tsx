@@ -6,6 +6,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { reportsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth-store';
+import { useTranslation } from '../../lib/translations';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   TrendingUp, Flame, Mail, CheckCircle, BarChart3,
@@ -93,6 +94,7 @@ const cleanMarkdown = (text: string) => {
 };
 
 export default function ReportScreen() {
+  const { t, language } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const [emailInput, setEmailInput] = useState(user?.email || '');
   const [emailSent, setEmailSent] = useState(false);
@@ -111,8 +113,8 @@ export default function ReportScreen() {
   });
 
   const { data: healthSummary, isLoading: hLoad, refetch: refetchH } = useQuery({
-    queryKey: ['health_summary', selectedDuration],
-    queryFn: async () => (await reportsApi.healthSummary(selectedDuration)).data,
+    queryKey: ['health_summary', selectedDuration, language],
+    queryFn: async () => (await reportsApi.healthSummary(selectedDuration, language)).data,
   });
 
   const handleGeneratePDF = async () => {
@@ -184,9 +186,9 @@ export default function ReportScreen() {
 
       const isOptimal = (avgVal: number, targetVal: number) => {
         const pct = targetVal > 0 ? (avgVal / targetVal) * 100 : 100;
-        if (pct < 70) return { label: 'ঘাটতি', color: '#C62828', bg: '#FFEBEE' };
-        if (pct > 115) return { label: 'অতিরিক্ত', color: '#EF6C00', bg: '#FFF3E0' };
-        return { label: 'সঠিক', color: '#2E7D32', bg: '#E8F5E9' };
+        if (pct < 70) return { label: language === 'bn' ? 'ঘাটতি' : 'Deficient', color: '#C62828', bg: '#FFEBEE' };
+        if (pct > 115) return { label: language === 'bn' ? 'অতিরিক্ত' : 'Excessive', color: '#EF6C00', bg: '#FFF3E0' };
+        return { label: language === 'bn' ? 'সঠিক' : 'Optimal', color: '#2E7D32', bg: '#E8F5E9' };
       };
 
       const caloriesStatus = isOptimal(avgCalories, activeTargets.target_calories);
@@ -223,17 +225,17 @@ export default function ReportScreen() {
                 <div style="font-size: 11px; color: #7A8487; margin-top: 2px;">PushtiAI Clinical Nutrition System</div>
               </div>
               <div class="meta-info">
-                <strong>রিপোর্ট আইডি:</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
-                <strong>তারিখ:</strong> ${new Date().toLocaleDateString('bn-BD')}<br>
-                <strong>রিপোর্ট মেয়াদ:</strong> ${selectedDuration} দিন
+                <strong>${language === 'bn' ? 'রিপোর্ট আইডি:' : 'Report ID:'}</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
+                <strong>${language === 'bn' ? 'তারিখ:' : 'Date:'}</strong> ${new Date().toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}<br>
+                <strong>${language === 'bn' ? 'রিপোর্ট মেয়াদ:' : 'Report Period:'}</strong> ${selectedDuration} ${language === 'bn' ? 'দিন' : 'days'}
               </div>
             </div>
 
             <div class="user-box">
               <table style="border: none; margin: 0; width: 100%; box-shadow: none;">
                 <tr style="border: none;">
-                  <td style="border: none; padding: 0; width: 50%;"><strong>সদস্যের নাম:</strong> ${user?.name_bn || user?.name_en || 'সম্মানিত সদস্য'}</td>
-                  <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
+                  <td style="border: none; padding: 0; width: 50%;"><strong>${language === 'bn' ? 'সদস্যের নাম:' : 'Member Name:'}</strong> ${user?.name_bn || user?.name_en || (language === 'bn' ? 'সম্মানিত সদস্য' : 'Honored Member')}</td>
+                  <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>${language === 'bn' ? 'ডায়েট লক্ষ্য:' : 'Diet Goal:'}</strong> ${language === 'bn' ? 'পুষ্টি পরিমাপ ও সুস্বাস্থ্য' : 'Nutrition Tracking & Wellness'}</td>
                 </tr>
               </table>
             </div>
@@ -241,7 +243,7 @@ export default function ReportScreen() {
             ${healthSummary?.ai_verdict ? `
               <div style="background-color: #FFFDF9; border: 1px dashed #A7C924; padding: 18px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; line-height: 1.6;">
                 <div style="font-weight: bold; color: #8FB41E; font-size: 14px; margin-bottom: 6px;">
-                  📋 এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)
+                  📋 ${language === 'bn' ? 'এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)' : 'Clinical AI Assessment & Verdict'}
                 </div>
                 <p style="margin: 0; color: #1C2123; font-style: italic; font-weight: 500;">
                   "${healthSummary.ai_verdict}"
@@ -249,19 +251,19 @@ export default function ReportScreen() {
               </div>
             ` : ''}
 
-            <h2>📋 সামগ্রিক স্বাস্থ্যের সারসংক্ষেপ (Overall Health Summary)</h2>
+            <h2>📋 ${language === 'bn' ? 'সামগ্রিক স্বাস্থ্যের সারসংক্ষেপ (Overall Health Summary)' : 'Overall Health Summary'}</h2>
             <table>
               <thead>
                 <tr>
-                  <th>বিশ্লেষিত দিন</th>
-                  <th>গড় ক্যালোরি/দিন</th>
-                  <th>লক্ষ্য ক্যালোরি</th>
-                  <th>অনুসরণ হার (%)</th>
+                  <th>${language === 'bn' ? 'বিশ্লেষিত দিন' : 'Days Analyzed'}</th>
+                  <th>${language === 'bn' ? 'গড় ক্যালোরি/দিন' : 'Avg Calories/Day'}</th>
+                  <th>${language === 'bn' ? 'লক্ষ্য ক্যালোরি' : 'Target Calories'}</th>
+                  <th>${language === 'bn' ? 'অনুসরণ হার (%)' : 'Adherence Rate (%)'}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>${daysWithData}/${periodDays} দিন</strong></td>
+                  <td><strong>${daysWithData}/${periodDays} ${language === 'bn' ? 'দিন' : 'days'}</strong></td>
                   <td><strong>${Math.round(avgCalories)} kcal</strong></td>
                   <td><strong>${activeTargets.target_calories} kcal</strong></td>
                   <td><strong>${adherencePct}%</strong></td>
@@ -269,22 +271,22 @@ export default function ReportScreen() {
               </tbody>
             </table>
 
-            <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
+            <h2>📊 ${language === 'bn' ? 'ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)' : 'Macronutrient Summary'}</h2>
             <table>
               <thead>
                 <tr>
-                  <th>পুষ্টি উপাদান</th>
-                  <th>দৈনিক গড় গ্রহণ</th>
-                  <th>দৈনিক লক্ষ্য</th>
-                  <th>${selectedDuration} দিনের মোট গ্রহণ</th>
-                  <th>মোট লক্ষ্যমাত্রা</th>
-                  <th>পূরণ হার (%)</th>
-                  <th>অবস্থা</th>
+                  <th>${language === 'bn' ? 'পুষ্টি উপাদান' : 'Nutrient'}</th>
+                  <th>${language === 'bn' ? 'দৈনিক গড় গ্রহণ' : 'Daily Avg Intake'}</th>
+                  <th>${language === 'bn' ? 'দৈনিক লক্ষ্য' : 'Daily Target'}</th>
+                  <th>${language === 'bn' ? `${selectedDuration} দিনের মোট গ্রহণ` : `Total Intake (${selectedDuration} Days)`}</th>
+                  <th>${language === 'bn' ? 'মোট লক্ষ্যমাত্রা' : 'Total Target'}</th>
+                  <th>${language === 'bn' ? 'পূরণ হার (%)' : 'Met Ratio (%)'}</th>
+                  <th>${language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>ক্যালোরি (Calories)</strong></td>
+                  <td><strong>${language === 'bn' ? 'ক্যালোরি (Calories)' : 'Calories'}</strong></td>
                   <td>${Math.round(avgCalories)} kcal</td>
                   <td>${activeTargets.target_calories} kcal</td>
                   <td>${Math.round(avgCalories * selectedDuration)} kcal</td>
@@ -293,7 +295,7 @@ export default function ReportScreen() {
                   <td><span class="status-badge" style="background-color: ${caloriesStatus.bg}; color: ${caloriesStatus.color};">${caloriesStatus.label}</span></td>
                 </tr>
                 <tr>
-                  <td><strong>আমিষ (Protein)</strong></td>
+                  <td><strong>${language === 'bn' ? 'আমিষ (Protein)' : 'Protein'}</strong></td>
                   <td>${Math.round(avgProtein)}g</td>
                   <td>${activeTargets.protein_g}g</td>
                   <td>${Math.round(totalProtein)}g</td>
@@ -302,7 +304,7 @@ export default function ReportScreen() {
                   <td><span class="status-badge" style="background-color: ${proteinStatus.bg}; color: ${proteinStatus.color};">${proteinStatus.label}</span></td>
                 </tr>
                 <tr>
-                  <td><strong>শর্করা (Carbs)</strong></td>
+                  <td><strong>${language === 'bn' ? 'শর্করা (Carbs)' : 'Carbs'}</strong></td>
                   <td>${Math.round(avgCarbs)}g</td>
                   <td>${activeTargets.carbs_g}g</td>
                   <td>${Math.round(totalCarbs)}g</td>
@@ -311,7 +313,7 @@ export default function ReportScreen() {
                   <td><span class="status-badge" style="background-color: ${carbsStatus.bg}; color: ${carbsStatus.color};">${carbsStatus.label}</span></td>
                 </tr>
                 <tr>
-                  <td><strong>চর্বি (Fat)</strong></td>
+                  <td><strong>${language === 'bn' ? 'চর্বি (Fat)' : 'Fat'}</strong></td>
                   <td>${Math.round(avgFat)}g</td>
                   <td>${activeTargets.fat_g}g</td>
                   <td>${Math.round(totalFat)}g</td>
@@ -320,7 +322,7 @@ export default function ReportScreen() {
                   <td><span class="status-badge" style="background-color: ${fatStatus.bg}; color: ${fatStatus.color};">${fatStatus.label}</span></td>
                 </tr>
                 <tr>
-                  <td><strong>আঁশ (Fiber)</strong></td>
+                  <td><strong>${language === 'bn' ? 'আঁশ (Fiber)' : 'Fiber'}</strong></td>
                   <td>${Math.round(avgFiber)}g</td>
                   <td>${activeTargets.fiber_g}g</td>
                   <td>${Math.round(totalFiber)}g</td>
@@ -332,13 +334,13 @@ export default function ReportScreen() {
             </table>
 
             ${healthSummary?.clinical_insights && healthSummary.clinical_insights.length > 0 ? `
-              <h2>🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical Nutrition Insights)</h2>
+              <h2>🩺 ${language === 'bn' ? 'ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical Nutrition Insights)' : 'Clinical Nutrition Insights & Advice'}</h2>
               <table>
                 <thead>
                   <tr>
-                    <th style="width: 25%;">সতর্কবার্তা / উপাদান</th>
-                    <th style="width: 55%;">পুষ্টিবিদ মূল্যায়ন ও পরামর্শ</th>
-                    <th style="width: 20%;">রেফারেন্স গাইডলাইন</th>
+                    <th style="width: 25%;">${language === 'bn' ? 'সতর্কবার্তা / উপাদান' : 'Alert / Nutrient'}</th>
+                    <th style="width: 55%;">${language === 'bn' ? 'পুষ্টিবিদ মূল্যায়ন ও পরামর্শ' : 'Dietitian Assessment & Advice'}</th>
+                    <th style="width: 20%;">${language === 'bn' ? 'রেফারেন্স গাইডলাইন' : 'Reference Guideline'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,7 +351,7 @@ export default function ReportScreen() {
                       <tr>
                         <td>
                           <span class="status-badge" style="background-color: ${badgeBg}; color: ${badgeColor}; margin-bottom: 4px;">${ins.title}</span>
-                          ${ins.disease ? `<br><small style="color: #7A8487; font-size: 10px;">শারীরিক অবস্থা: ${ins.disease}</small>` : ''}
+                          ${ins.disease ? `<br><small style="color: #7A8487; font-size: 10px;">${language === 'bn' ? 'শারীরিক অবস্থা:' : 'Condition:'} ${ins.disease}</small>` : ''}
                         </td>
                         <td>${ins.message}</td>
                         <td><em style="color: #7A8487; font-size: 11px;">${ins.reference || 'Bangladesh Dietary Guidelines'}</em></td>
@@ -361,14 +363,14 @@ export default function ReportScreen() {
             ` : ''}
 
             ${healthSummary?.calorie_history && healthSummary.calorie_history.length > 0 ? `
-              <h2>📅 প্রতিদিনের ক্যালোরি বিবরণী (Daily Calorie Consumption Log)</h2>
+              <h2>📅 ${language === 'bn' ? 'প্রতিদিনের ক্যালোরি বিবরণী (Daily Calorie Consumption Log)' : 'Daily Calorie Consumption Log'}</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>তারিখ</th>
-                    <th>ক্যালোরি গ্রহণ</th>
-                    <th>পরিকল্পিত ক্যালোরি</th>
-                    <th>পূরণ হার (%)</th>
+                    <th>${language === 'bn' ? 'তারিখ' : 'Date'}</th>
+                    <th>${language === 'bn' ? 'ক্যালোরি গ্রহণ' : 'Calories Consumed'}</th>
+                    <th>${language === 'bn' ? 'পরিকল্পিত ক্যালোরি' : 'Planned Calories'}</th>
+                    <th>${language === 'bn' ? 'পূরণ হার (%)' : 'Met Ratio (%)'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -388,12 +390,12 @@ export default function ReportScreen() {
             ` : ''}
 
             ${healthSummary?.weight_history && healthSummary.weight_history.length > 0 ? `
-              <h2>⚖️ ওজন পরিবর্তনের ইতিহাস (Weight Tracking History)</h2>
+              <h2>⚖️ ${language === 'bn' ? 'ওজন পরিবর্তনের ইতিহাস (Weight Tracking History)' : 'Weight Tracking History'}</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>তারিখ</th>
-                    <th>ওজন (কেজি)</th>
+                    <th>${language === 'bn' ? 'তারিখ' : 'Date'}</th>
+                    <th>${language === 'bn' ? 'ওজন (কেজি)' : 'Weight (kg)'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,18 +409,18 @@ export default function ReportScreen() {
               </table>
             ` : ''}
 
-            <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Tracker)</h2>
+            <h2>🩺 ${language === 'bn' ? 'ভিটামিন ও খনিজ খতিয়ান (Micronutrient Tracker)' : 'Micronutrient Tracker'}</h2>
             
             ${vitamins.length > 0 ? `
-              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #8FB41E; font-size: 14px;">🍊 ভিটামিন (Vitamins)</h3>
+              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #8FB41E; font-size: 14px;">${language === 'bn' ? '🍊 ভিটামিন (Vitamins)' : '🍊 Vitamins'}</h3>
               <table>
                 <thead>
                   <tr>
-                    <th>ভিটামিন</th>
-                    <th>গড় দৈনিক গ্রহণ</th>
-                    <th>লক্ষ্যমাত্রা</th>
-                    <th>পূরণ হার (%)</th>
-                    <th>অবস্থা</th>
+                    <th>${language === 'bn' ? 'ভিটামিন' : 'Vitamin'}</th>
+                    <th>${language === 'bn' ? 'গড় দৈনিক গ্রহণ' : 'Daily Avg Intake'}</th>
+                    <th>${language === 'bn' ? 'লক্ষ্যমাত্রা' : 'Target'}</th>
+                    <th>${language === 'bn' ? 'পূরণ হার (%)' : 'Met Ratio (%)'}</th>
+                    <th>${language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -426,7 +428,7 @@ export default function ReportScreen() {
                     const status = isOptimal(nut.avg, nut.target);
                     return `
                       <tr>
-                        <td><strong>${nut.nameBn}</strong></td>
+                        <td><strong>${language === 'bn' ? nut.nameBn : nut.name}</strong></td>
                         <td>${Math.round(nut.avg)} ${nut.unit}</td>
                         <td>${Math.round(nut.target)} ${nut.unit}</td>
                         <td>${Math.round(nut.percentage)}%</td>
@@ -439,15 +441,15 @@ export default function ReportScreen() {
             ` : ''}
 
             ${minerals.length > 0 ? `
-              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #3b82f6; font-size: 14px;">💎 খনিজ (Minerals)</h3>
+              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #3b82f6; font-size: 14px;">${language === 'bn' ? '💎 খনিজ (Minerals)' : '💎 Minerals'}</h3>
               <table>
                 <thead>
                   <tr>
-                    <th>খনিজ</th>
-                    <th>গড় দৈনিক গ্রহণ</th>
-                    <th>লক্ষ্যমাত্রা</th>
-                    <th>পূরণ হার (%)</th>
-                    <th>অবস্থা</th>
+                    <th>${language === 'bn' ? 'খনিজ' : 'Mineral'}</th>
+                    <th>${language === 'bn' ? 'গড় দৈনিক গ্রহণ' : 'Daily Avg Intake'}</th>
+                    <th>${language === 'bn' ? 'লক্ষ্যমাত্রা' : 'Target'}</th>
+                    <th>${language === 'bn' ? 'পূরণ হার (%)' : 'Met Ratio (%)'}</th>
+                    <th>${language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -455,7 +457,7 @@ export default function ReportScreen() {
                     const status = isOptimal(nut.avg, nut.target);
                     return `
                       <tr>
-                        <td><strong>${nut.nameBn}</strong></td>
+                        <td><strong>${language === 'bn' ? nut.nameBn : nut.name}</strong></td>
                         <td>${Math.round(nut.avg)} ${nut.unit}</td>
                         <td>${Math.round(nut.target)} ${nut.unit}</td>
                         <td>${Math.round(nut.percentage)}%</td>
@@ -468,15 +470,15 @@ export default function ReportScreen() {
             ` : ''}
 
             ${fatty.length > 0 ? `
-              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #10b981; font-size: 14px;">🌱 ফ্যাটি অ্যাসিড (Fatty Acids)</h3>
+              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #10b981; font-size: 14px;">${language === 'bn' ? '🌱 ফ্যাটি অ্যাসিড (Fatty Acids)' : '🌱 Fatty Acids'}</h3>
               <table>
                 <thead>
                   <tr>
-                    <th>ফ্যাটি অ্যাসিড</th>
-                    <th>গড় দৈনিক গ্রহণ</th>
-                    <th>লক্ষ্যমাত্রা</th>
-                    <th>পূরণ হার (%)</th>
-                    <th>অবস্থা</th>
+                    <th>${language === 'bn' ? 'ফ্যাটি অ্যাসিড' : 'Fatty Acid'}</th>
+                    <th>${language === 'bn' ? 'গড় দৈনিক গ্রহণ' : 'Daily Avg Intake'}</th>
+                    <th>${language === 'bn' ? 'লক্ষ্যমাত্রা' : 'Target'}</th>
+                    <th>${language === 'bn' ? 'পূরণ হার (%)' : 'Met Ratio (%)'}</th>
+                    <th>${language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -484,7 +486,7 @@ export default function ReportScreen() {
                     const status = isOptimal(nut.avg, nut.target);
                     return `
                       <tr>
-                        <td><strong>${nut.nameBn}</strong></td>
+                        <td><strong>${language === 'bn' ? nut.nameBn : nut.name}</strong></td>
                         <td>${Math.round(nut.avg)} ${nut.unit}</td>
                         <td>${Math.round(nut.target)} ${nut.unit}</td>
                         <td>${Math.round(nut.percentage)}%</td>
@@ -496,17 +498,25 @@ export default function ReportScreen() {
               </table>
             ` : ''}
 
-            <h2>🍲 খাদ্য গ্রহণ তালিকা ও ফ্রিকোয়েন্সি (Food Frequency Log)</h2>
+            <h2>🍲 ${language === 'bn' ? 'খাদ্য গ্রহণ তালিকা ও ফ্রিকোয়েন্সি (Food Frequency Log)' : 'Food Frequency Log'}</h2>
             <div style="margin-top: 10px; margin-bottom: 20px;">
-              <span class="food-tag"><strong>লাল চালের ভাত</strong> (${Math.round(selectedDuration * 1.8)} বার)</span>
-              <span class="food-tag"><strong>ডিম সিদ্ধ</strong> (${Math.round(selectedDuration * 0.85)} বার)</span>
-              <span class="food-tag"><strong>সবুজ শাকসবজি</strong> (${Math.round(selectedDuration * 1.2)} বার)</span>
-              <span class="food-tag"><strong>ডাল রান্না</strong> (${Math.round(selectedDuration * 0.9)} বার)</span>
-              <span class="food-tag"><strong>রুই মাছ</strong> (${Math.round(selectedDuration * 0.6)} বার)</span>
+              ${language === 'bn' ? `
+                <span class="food-tag"><strong>লাল চালের ভাত</strong> (${Math.round(selectedDuration * 1.8)} বার)</span>
+                <span class="food-tag"><strong>ডিম সিদ্ধ</strong> (${Math.round(selectedDuration * 0.85)} বার)</span>
+                <span class="food-tag"><strong>সবুজ শাকসবজি</strong> (${Math.round(selectedDuration * 1.2)} বার)</span>
+                <span class="food-tag"><strong>ডাল রান্না</strong> (${Math.round(selectedDuration * 0.9)} বার)</span>
+                <span class="food-tag"><strong>রুই মাছ</strong> (${Math.round(selectedDuration * 0.6)} বার)</span>
+              ` : `
+                <span class="food-tag"><strong>Brown Rice</strong> (${Math.round(selectedDuration * 1.8)} times)</span>
+                <span class="food-tag"><strong>Boiled Egg</strong> (${Math.round(selectedDuration * 0.85)} times)</span>
+                <span class="food-tag"><strong>Green Leafy Vegetables</strong> (${Math.round(selectedDuration * 1.2)} times)</span>
+                <span class="food-tag"><strong>Cooked Lentils (Dal)</strong> (${Math.round(selectedDuration * 0.9)} times)</span>
+                <span class="food-tag"><strong>Rui Fish</strong> (${Math.round(selectedDuration * 0.6)} times)</span>
+              `}
             </div>
 
             <div class="footer">
-              এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
+              ${language === 'bn' ? 'এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।' : 'This is an AI-assisted nutrition report. Please consult a registered dietitian or doctor for specific medical advice.'}<br>
               © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
             </div>
           </body>
@@ -525,19 +535,19 @@ export default function ReportScreen() {
         }
       } else {
         const { uri } = await Print.printToFileAsync({ html: htmlContent });
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'আপনার ডেসিব্ল্যাক রিপোর্ট শেয়ার করুন' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: language === 'bn' ? 'আপনার ডেসিব্ল্যাক রিপোর্ট শেয়ার করুন' : 'Share your DesiDiet Report' });
       }
     } catch (err) {
-      Alert.alert('ত্রুটি', 'পিডিএফ রিপোর্ট তৈরি করতে ব্যর্থ হয়েছে।');
+      Alert.alert(language === 'bn' ? 'ত্রুটি' : 'Error', language === 'bn' ? 'পিডিএফ রিপোর্ট তৈরি করতে ব্যর্থ হয়েছে।' : 'Failed to generate PDF report.');
     } finally {
       setGeneratingPDF(false);
     }
   };
 
   const emailMutation = useMutation({
-    mutationFn: () => reportsApi.sendEmail(emailInput, 'bn'),
+    mutationFn: () => reportsApi.sendEmail(emailInput, language),
     onSuccess: () => setEmailSent(true),
-    onError: () => Alert.alert('ত্রুটি', 'ইমেইল পাঠাতে সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।'),
+    onError: () => Alert.alert(language === 'bn' ? 'ত্রুটি' : 'Error', language === 'bn' ? 'ইমেইল পাঠাতে সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।' : 'Failed to send email. Please try again later.'),
   });
 
   const onRefresh = useCallback(async () => {
@@ -604,18 +614,18 @@ export default function ReportScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       <View style={styles.header}>
-        <Text style={styles.screenTitle}>সাপ্তাহিক রিপোর্ট</Text>
-        <Text style={styles.screenSub}>গত ৭ দিনের স্বাস্থ্য সারসংক্ষেপ</Text>
+        <Text style={styles.screenTitle}>{language === 'bn' ? 'সাপ্তাহিক রিপোর্ট' : 'Weekly Report'}</Text>
+        <Text style={styles.screenSub}>{language === 'bn' ? 'গত ৭ দিনের স্বাস্থ্য সারসংক্ষেপ' : 'Health summary of the last 7 days'}</Text>
       </View>
 
       {/* ── PDF Report Choice Selector ──────────────────────────────────── */}
       <View style={styles.pdfCard}>
         <View style={styles.pdfHeader}>
           <FileText size={20} color={colors.primary} />
-          <Text style={styles.pdfTitle}>স্বাস্থ্য রিপোর্ট ডাউনলোড (পিডিএফ)</Text>
+          <Text style={styles.pdfTitle}>{language === 'bn' ? 'স্বাস্থ্য রিপোর্ট ডাউনলোড (পিডিএফ)' : 'Download Health Report (PDF)'}</Text>
         </View>
         <Text style={styles.pdfDesc}>
-          আপনার প্রয়োজনীয় সময়সীমা সিলেক্ট করুন এবং এআই-সহায়ক পিডিএফ স্বাস্থ্য রিপোর্ট শেয়ার বা ডাউনলোড করুন।
+          {language === 'bn' ? 'আপনার প্রয়োজনীয় সময়সীমা সিলেক্ট করুন এবং এআই-সহায়ক পিডিএফ স্বাস্থ্য রিপোর্ট শেয়ার বা ডাউনলোড করুন।' : 'Select your desired duration and download or share your AI-assisted PDF health report.'}
         </Text>
 
         <View style={styles.durationRow}>
@@ -628,7 +638,7 @@ export default function ReportScreen() {
                 onPress={() => setSelectedDuration(days)}
               >
                 <Text style={[styles.durationTabText, isActive && styles.durationTabTextActive]}>
-                  {days === 3 ? '৩ দিন' : days === 7 ? '৭ দিন' : days === 10 ? '১০ দিন' : '৩০ দিন'}
+                  {days} {language === 'bn' ? 'দিন' : 'Days'}
                 </Text>
               </TouchableOpacity>
             );
@@ -646,7 +656,7 @@ export default function ReportScreen() {
             <>
               <Download size={18} color={colors.white} style={{ marginRight: 8 }} />
               <Text style={styles.downloadBtnText}>
-                {selectedDuration} দিনের পিডিএফ রিপোর্ট
+                {language === 'bn' ? `${selectedDuration} দিনের পিডিএফ রিপোর্ট` : `${selectedDuration}-Day PDF Report`}
               </Text>
             </>
           )}
@@ -658,20 +668,20 @@ export default function ReportScreen() {
         <View style={styles.intakeHeader}>
           <TrendingUp size={20} color={colors.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.intakeTitle}>পুষ্টির বিস্তারিত বিবরণী ({selectedDuration} দিন)</Text>
-            <Text style={{ fontFamily: fonts.bn, fontSize: 12, color: colors.primaryDark, marginTop: 2 }}>দৈনিক গড় পুষ্টি গ্রহণ (Daily Average Intake)</Text>
+            <Text style={styles.intakeTitle}>{language === 'bn' ? `পুষ্টির বিস্তারিত বিবরণী (${selectedDuration} দিন)` : `Detailed Nutrition Report (${selectedDuration} Days)`}</Text>
+            <Text style={{ fontFamily: fonts.bn, fontSize: 12, color: colors.primaryDark, marginTop: 2 }}>{language === 'bn' ? 'দৈনিক গড় পুষ্টি গ্রহণ' : 'Daily Average Intake'}</Text>
           </View>
         </View>
 
         {/* Macros list */}
-        <Text style={styles.intakeSubSection}>ম্যাক্রো পুষ্টির খতিয়ান (দৈনিক গড়)</Text>
+        <Text style={styles.intakeSubSection}>{language === 'bn' ? 'ম্যাক্রো পুষ্টির খতিয়ান (দৈনিক গড়)' : 'Macronutrient Summary (Daily Avg)'}</Text>
         <View style={styles.macroIntakeGrid}>
           {[
-            { label: 'ক্যালোরি', val: avgCalories, target: activeTargets.target_calories, unit: 'kcal', color: colors.primary },
-            { label: 'প্রোটিন', val: avgProtein, target: activeTargets.protein_g, unit: 'g', color: colors.accent },
-            { label: 'শর্করা', val: avgCarbs, target: activeTargets.carbs_g, unit: 'g', color: colors.warning },
-            { label: 'চর্বি', val: avgFat, target: activeTargets.fat_g, unit: 'g', color: colors.error },
-            { label: 'আঁশ', val: avgFiber, target: activeTargets.fiber_g, unit: 'g', color: '#8B5CF6' },
+            { label: language === 'bn' ? 'ক্যালোরি' : 'Calories', val: avgCalories, target: activeTargets.target_calories, unit: 'kcal', color: colors.primary },
+            { label: language === 'bn' ? 'প্রোটিন' : 'Protein', val: avgProtein, target: activeTargets.protein_g, unit: 'g', color: colors.accent },
+            { label: language === 'bn' ? 'শর্করা' : 'Carbs', val: avgCarbs, target: activeTargets.carbs_g, unit: 'g', color: colors.warning },
+            { label: language === 'bn' ? 'চর্বি' : 'Fat', val: avgFat, target: activeTargets.fat_g, unit: 'g', color: colors.error },
+            { label: language === 'bn' ? 'আঁশ' : 'Fiber', val: avgFiber, target: activeTargets.fiber_g, unit: 'g', color: '#8B5CF6' },
           ].map(({ label, val, target, unit, color }) => {
             const pct = Math.round((val / target) * 100) || 0;
             return (
@@ -680,10 +690,10 @@ export default function ReportScreen() {
                   <Text style={styles.macroIntakeLabel}>{label}</Text>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.macroIntakeVal}>
-                      গড়: {Math.round(val)}{unit} / {target}{unit} ({pct}%)
+                      {language === 'bn' ? 'গড়:' : 'Avg:'} {Math.round(val)}{unit} / {target}{unit} ({pct}%)
                     </Text>
                     <Text style={{ fontFamily: fonts.bn, fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                      {selectedDuration} দিনের মোট: {Math.round(val * selectedDuration)}{unit} / {target * selectedDuration}{unit}
+                      {language === 'bn' ? `${selectedDuration} দিনের মোট:` : `Total in ${selectedDuration} days:`} {Math.round(val * selectedDuration)}{unit} / {target * selectedDuration}{unit}
                     </Text>
                   </View>
                 </View>
@@ -696,26 +706,26 @@ export default function ReportScreen() {
         </View>
 
         {/* Micros Grid */}
-        <Text style={styles.intakeSubSection}>ভিটামিন ও খনিজ খতিয়ান (দৈনিক গড়)</Text>
+        <Text style={styles.intakeSubSection}>{language === 'bn' ? 'ভিটামিন ও খনিজ খতিয়ান (দৈনিক গড়)' : 'Micronutrient Summary (Daily Avg)'}</Text>
         <View style={styles.microIntakeGrid}>
           {micronutrients.map((micro) => {
             const pct = Math.round((micro.avg / micro.target) * 100);
-            let statusLabel = 'সঠিক';
+            let statusLabel = language === 'bn' ? 'সঠিক' : 'Optimal';
             let statusColor = colors.success;
             let statusBg = '#E8F5E9';
             if (pct < 70) {
-              statusLabel = 'ঘাটতি';
+              statusLabel = language === 'bn' ? 'ঘাটতি' : 'Deficient';
               statusColor = colors.error;
               statusBg = '#FFEBEE';
             } else if (pct > 115) {
-              statusLabel = 'অতিরিক্ত';
+              statusLabel = language === 'bn' ? 'অতিরিক্ত' : 'Excessive';
               statusColor = '#EF6C00';
               statusBg = '#FFF3E0';
             }
             return (
               <View key={micro.nameEn} style={styles.microIntakeCard}>
                 <View style={styles.microIntakeTop}>
-                  <Text style={styles.microNameBn}>{micro.nameBn}</Text>
+                  <Text style={styles.microNameBn}>{language === 'bn' ? micro.nameBn : micro.nameEn}</Text>
                   <View style={[styles.microBadge, { backgroundColor: statusBg }]}>
                     <Text style={[styles.microBadgeText, { color: statusColor }]}>{statusLabel}</Text>
                   </View>
@@ -723,16 +733,16 @@ export default function ReportScreen() {
                 <Text style={styles.microNameEn}>{micro.nameEn}</Text>
                 
                 <Text style={styles.microValText}>
-                  গড়: {Math.round(micro.avg)} / {micro.target} {micro.unit}
+                  {language === 'bn' ? 'গড়:' : 'Avg:'} {Math.round(micro.avg)} / {micro.target} {micro.unit}
                 </Text>
                 <Text style={{ fontFamily: fonts.bn, fontSize: 10, color: colors.textSecondary, marginTop: 1 }}>
-                  মোট: {Math.round(micro.avg * selectedDuration)} / {micro.target * selectedDuration} {micro.unit}
+                  {language === 'bn' ? 'মোট:' : 'Total:'} {Math.round(micro.avg * selectedDuration)} / {micro.target * selectedDuration} {micro.unit}
                 </Text>
 
                 <View style={styles.microProgressBg}>
                   <View style={[styles.microProgressFill, { width: `${Math.min(100, pct)}%`, backgroundColor: statusColor }]} />
                 </View>
-                <Text style={styles.microPctText}>{pct}% পূরণ</Text>
+                <Text style={styles.microPctText}>{pct}% {language === 'bn' ? 'পূরণ' : 'Met'}</Text>
               </View>
             );
           })}
@@ -742,14 +752,14 @@ export default function ReportScreen() {
       {isLoading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>রিপোর্ট লোড হচ্ছে...</Text>
+          <Text style={styles.loadingText}>{language === 'bn' ? 'রিপোর্ট লোড হচ্ছে...' : 'Loading report...'}</Text>
         </View>
       ) : !targets ? (
         <View style={{ alignItems: 'center', paddingVertical: 40, gap: spacing.md }}>
           <AlertCircle size={48} color={colors.warning} />
-          <Text style={{ fontFamily: fonts.bnBold, fontSize: 20, color: colors.textPrimary }}>রিপোর্ট ডেটা অনুপলব্ধ</Text>
+          <Text style={{ fontFamily: fonts.bnBold, fontSize: 20, color: colors.textPrimary }}>{language === 'bn' ? 'রিপোর্ট ডেটা অনুপলব্ধ' : 'Report Data Unavailable'}</Text>
           <Text style={{ fontFamily: fonts.bn, fontSize: 15, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg }}>
-            সঠিক সাপ্তাহিক পুষ্টি রিপোর্ট পেতে অনুগ্রহ করে আপনার প্রোফাইল সম্পূর্ণ করুন।
+            {language === 'bn' ? 'সঠিক সাপ্তাহিক পুষ্টি রিপোর্ট পেতে অনুগ্রহ করে আপনার প্রোফাইল সম্পূর্ণ করুন।' : 'Please complete your profile to get an accurate weekly nutrition report.'}
           </Text>
         </View>
       ) : (
@@ -762,15 +772,15 @@ export default function ReportScreen() {
                   <Brain size={20} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.verdictTitle}>এআই ও সামগ্রিক পুষ্টি মূল্যায়ন</Text>
-                  <Text style={styles.verdictSub}>PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত</Text>
+                  <Text style={styles.verdictTitle}>{language === 'bn' ? 'এআই ও সামগ্রিক পুষ্টি মূল্যায়ন' : 'AI & Overall Nutrition Assessment'}</Text>
+                  <Text style={styles.verdictSub}>{language === 'bn' ? 'PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত' : 'Prepared by PushtiAI™ Senior Diet Consultant'}</Text>
                 </View>
               </View>
               <Text style={styles.verdictText}>"{healthSummary.ai_verdict}"</Text>
               <View style={styles.verdictFooter}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <ShieldCheck size={14} color={colors.primary} />
-                  <Text style={styles.verdictFooterText}>অনুমোদিত ক্লিনিক্যাল পুষ্টি নির্দেশিকা</Text>
+                  <Text style={styles.verdictFooterText}>{language === 'bn' ? 'অনুমোদিত ক্লিনিক্যাল পুষ্টি নির্দেশিকা' : 'Approved Clinical Nutrition Guidelines'}</Text>
                 </View>
                 <Text style={[styles.verdictFooterText, { fontStyle: 'italic', fontWeight: 'bold' }]}>DesiDiet AI Engine</Text>
               </View>
@@ -782,10 +792,10 @@ export default function ReportScreen() {
             <View style={styles.clinicalCard}>
               <View style={styles.clinicalHeader}>
                 <View style={{ width: 4, height: 16, backgroundColor: colors.accent, borderRadius: 2 }} />
-                <Text style={styles.clinicalTitle}>🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ</Text>
+                <Text style={styles.clinicalTitle}>{language === 'bn' ? '🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ' : '🩺 Clinical Nutrition Insights & Advice'}</Text>
               </View>
               <Text style={styles.clinicalDesc}>
-                আপনার প্রফেশনাল পুষ্টি বিশ্লেষণ ও নির্দেশনা:
+                {language === 'bn' ? 'আপনার প্রফেশনাল পুষ্টি বিশ্লেষণ ও নির্দেশনা:' : 'Your professional nutrition analysis & advice:'}
               </Text>
               <View style={styles.insightsList}>
                 {healthSummary.clinical_insights.map((ins: any, i: number) => {
@@ -801,7 +811,7 @@ export default function ReportScreen() {
                           <Text style={[styles.insightRowTitle, { color: titleCol }]}>{ins.title}</Text>
                           {ins.disease ? (
                             <View style={{ alignSelf: 'flex-start', backgroundColor: isError ? 'rgba(239, 83, 80, 0.1)' : 'rgba(255, 183, 77, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
-                              <Text style={{ fontFamily: fonts.bn, fontSize: 10, color: titleCol }}>শারীরিক অবস্থা: {ins.disease}</Text>
+                              <Text style={{ fontFamily: fonts.bn, fontSize: 10, color: titleCol }}>{language === 'bn' ? 'শারীরিক অবস্থা:' : 'Condition:'} {ins.disease}</Text>
                             </View>
                           ) : null}
                         </View>
@@ -809,7 +819,7 @@ export default function ReportScreen() {
                       <Text style={styles.insightRowMsg}>{ins.message}</Text>
                       {ins.reference ? (
                         <View style={styles.refBadge}>
-                          <Text style={styles.refBadgeText}>রেফারেন্স: {ins.reference}</Text>
+                          <Text style={styles.refBadgeText}>{language === 'bn' ? 'রেফারেন্স:' : 'Reference:'} {ins.reference}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -823,9 +833,9 @@ export default function ReportScreen() {
           {targets && (
             <View style={styles.summaryRow}>
               {[
-                { icon: Flame, label: 'ক্যালরি লক্ষ্য', value: `${targets.target_calories}`, unit: 'kcal', color: colors.primary },
+                { icon: Flame, label: language === 'bn' ? 'ক্যালরি লক্ষ্য' : 'Calorie Target', value: `${targets.target_calories}`, unit: 'kcal', color: colors.primary },
                 { icon: Scale, label: 'BMI', value: `${targets.bmi?.toFixed(1) || '--'}`, unit: '', color: colors.accent },
-                { icon: TrendingUp, label: 'প্রোটিন', value: `${targets.protein_g || '--'}`, unit: 'g', color: colors.success },
+                { icon: TrendingUp, label: language === 'bn' ? 'প্রোটিন' : 'Protein', value: `${targets.protein_g || '--'}`, unit: 'g', color: colors.success },
               ].map(({ icon: Icon, label, value, unit, color }) => (
                 <View key={label} style={styles.summaryCard}>
                   <View style={[styles.summaryIcon, { backgroundColor: color + '20' }]}>
@@ -843,7 +853,7 @@ export default function ReportScreen() {
             <View style={styles.narrativeCard}>
               <View style={styles.narrativeHeader}>
                 <Zap size={18} color={colors.accent} />
-                <Text style={styles.narrativeTitle}>এআই বিশ্লেষণ</Text>
+                <Text style={styles.narrativeTitle}>{language === 'bn' ? 'এআই বিশ্লেষণ' : 'AI Analysis'}</Text>
               </View>
               <Text style={styles.narrativeText}>{cleanMarkdown(conditions.ai_narrative)}</Text>
             </View>
@@ -854,10 +864,10 @@ export default function ReportScreen() {
             <View style={styles.chartCard}>
               <View style={styles.chartHeader}>
                 <BarChart3 size={18} color={colors.primary} />
-                <Text style={styles.chartTitle}>দৈনিক ক্যালরি</Text>
+                <Text style={styles.chartTitle}>{language === 'bn' ? 'দৈনিক ক্যালরি' : 'Daily Calories'}</Text>
               </View>
               <Text style={styles.chartLegend}>
-                <Text style={{ color: colors.accent }}>---</Text> লক্ষ্য ({targets.target_calories} kcal)
+                <Text style={{ color: colors.accent }}>---</Text> {language === 'bn' ? `लक्ष্য (${targets.target_calories} kcal)` : `Target (${targets.target_calories} kcal)`}
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <BarChart data={calHistory} target={targets.target_calories} />
@@ -870,7 +880,7 @@ export default function ReportScreen() {
             <View style={styles.chartCard}>
               <View style={styles.chartHeader}>
                 <Scale size={18} color={colors.accent} />
-                <Text style={styles.chartTitle}>ওজনের পরিবর্তন (কেজি)</Text>
+                <Text style={styles.chartTitle}>{language === 'bn' ? 'ওজনের পরিবর্তন (কেজি)' : 'Weight Trend (kg)'}</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <LineChart points={weightHistory} />
@@ -881,12 +891,12 @@ export default function ReportScreen() {
           {/* ── Macro Balance ──────────────────────────────────────────────── */}
           {targets && (
             <View style={styles.macroCard}>
-              <Text style={styles.chartTitle}>ম্যাক্রো বিভাজন লক্ষ্য</Text>
+              <Text style={styles.chartTitle}>{language === 'bn' ? 'ম্যাক্রো বিভাজন লক্ষ্য' : 'Macro Distribution Target'}</Text>
               <View style={styles.macroRows}>
                 {[
-                  { label: 'প্রোটিন', val: targets.protein_g, total: targets.target_calories / 4, color: colors.accent },
-                  { label: 'শর্করা', val: targets.carbs_g, total: targets.target_calories / 4, color: colors.warning },
-                  { label: 'ফ্যাট', val: targets.fat_g, total: targets.target_calories / 9, color: colors.error },
+                  { label: language === 'bn' ? 'প্রোটিন' : 'Protein', val: targets.protein_g, total: targets.target_calories / 4, color: colors.accent },
+                  { label: language === 'bn' ? 'শর্করা' : 'Carbs', val: targets.carbs_g, total: targets.target_calories / 4, color: colors.warning },
+                  { label: language === 'bn' ? 'ফ্যাট' : 'Fat', val: targets.fat_g, total: targets.target_calories / 9, color: colors.error },
                 ].map(({ label, val, total, color }) => (
                   <View key={label} style={styles.macroRow}>
                     <Text style={styles.macroLabel}>{label}</Text>
@@ -905,11 +915,11 @@ export default function ReportScreen() {
             <View style={styles.tableCard}>
               <View style={styles.chartHeader}>
                 <Calendar size={18} color={colors.textSecondary} />
-                <Text style={styles.chartTitle}>দৈনিক বিবরণ ({selectedDuration} দিন)</Text>
+                <Text style={styles.chartTitle}>{language === 'bn' ? `দৈনিক বিবরণ (${selectedDuration} দিন)` : `Daily Summary (${selectedDuration} Days)`}</Text>
               </View>
               {weeklyLogs.map((log: any, i: number) => (
                 <View key={i} style={styles.tableRow}>
-                  <Text style={styles.tableDate}>{log.date || `দিন ${i + 1}`}</Text>
+                  <Text style={styles.tableDate}>{log.date || (language === 'bn' ? `দিন ${i + 1}` : `Day ${i + 1}`)}</Text>
                   <Text style={styles.tableCal}>{log.consumed_calories ?? log.calories_consumed ?? 0} kcal</Text>
                   {log.weight_kg ? (
                     <Text style={styles.tableWeight}>{log.weight_kg} kg</Text>
@@ -925,12 +935,12 @@ export default function ReportScreen() {
           <View style={styles.emailCard}>
             <View style={styles.chartHeader}>
               <Mail size={18} color={colors.primary} />
-              <Text style={styles.chartTitle}>ইমেইলে রিপোর্ট পাঠান</Text>
+              <Text style={styles.chartTitle}>{language === 'bn' ? 'ইমেইলে রিপোর্ট পাঠান' : 'Send Report via Email'}</Text>
             </View>
             {emailSent ? (
               <View style={styles.emailSuccessRow}>
                 <CheckCircle size={20} color={colors.success} />
-                <Text style={styles.emailSuccessText}>রিপোর্ট পাঠানো হয়েছে!</Text>
+                <Text style={styles.emailSuccessText}>{language === 'bn' ? 'রিপোর্ট পাঠানো হয়েছে!' : 'Report Sent Successfully!'}</Text>
               </View>
             ) : (
               <>
@@ -938,7 +948,7 @@ export default function ReportScreen() {
                   style={styles.emailInput}
                   value={emailInput}
                   onChangeText={setEmailInput}
-                  placeholder="আপনার ইমেইল ঠিকানা"
+                  placeholder={language === 'bn' ? 'আপনার ইমেইল ঠিকানা' : 'Your email address'}
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -950,7 +960,7 @@ export default function ReportScreen() {
                 >
                   {emailMutation.isPending
                     ? <ActivityIndicator color={colors.white} />
-                    : <Text style={styles.emailBtnText}>পাঠান</Text>
+                    : <Text style={styles.emailBtnText}>{language === 'bn' ? 'পাঠান' : 'Send'}</Text>
                   }
                 </TouchableOpacity>
               </>

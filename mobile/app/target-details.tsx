@@ -10,6 +10,7 @@ import { colors, fonts, spacing, radius } from '../lib/theme';
 import { ArrowLeft, Flame, Zap, Utensils, Droplet, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react-native';
 import { useHaptics } from '../hooks/useHaptics';
 import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { useTranslation } from '../lib/translations';
 
 const { width } = Dimensions.get('window');
 
@@ -156,6 +157,149 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
   }
 };
 
+const NUTRIENT_METADATA_EN: Record<string, { desc: string; foods: string[]; category: string }> = {
+  "Vitamin A": {
+    desc: "Maintains good vision, boosts immunity, and keeps skin healthy.",
+    foods: ["Carrot", "Sweet Potato", "Spinach", "Ripe Mango", "Egg Yolk", "Mola/Dhela Fish"],
+    category: "Vitamin"
+  },
+  "Ascorbic acids (C)": {
+    desc: "Helps skin and bone formation, heals wounds, and boosts immunity.",
+    foods: ["Amla", "Guava", "Lemon", "Orange", "Green Chili", "Tomato"],
+    category: "Vitamin"
+  },
+  "Vitamin D": {
+    desc: "Helps calcium absorption, strengthens bones and teeth.",
+    foods: ["Egg Yolk", "Marine Fish", "Milk", "Mushroom", "Sunlight"],
+    category: "Vitamin"
+  },
+  "Vitamin E": {
+    desc: "A powerful antioxidant that protects cells from damage and keeps skin healthy.",
+    foods: ["Almond", "Sunflower Seeds", "Spinach", "Broccoli", "Vegetable Oil"],
+    category: "Vitamin"
+  },
+  "Vitamin K": {
+    desc: "Helps blood clotting and maintains good bone health.",
+    foods: ["Cabbage", "Broccoli", "Spinach", "Mustard Greens", "Green Leafy Vegetables"],
+    category: "Vitamin"
+  },
+  "Thiamine (B1)": {
+    desc: "Helps produce energy from carbohydrates and keeps the nervous system active.",
+    foods: ["Brown Rice", "Hand-crushed Rice", "Whole Wheat", "Lentil", "Nut"],
+    category: "Vitamin"
+  },
+  "Riboflavin (B2)": {
+    desc: "Helps energy production, cell growth, and red blood cell formation.",
+    foods: ["Milk", "Yogurt", "Egg", "Liver", "Green Leafy Vegetables"],
+    category: "Vitamin"
+  },
+  "Niacin (B3)": {
+    desc: "Improves digestion, keeps skin healthy, and maintains nervous system function.",
+    foods: ["Chicken", "Fish", "Nut", "Whole Grain", "Lentil"],
+    category: "Vitamin"
+  },
+  "Total B6": {
+    desc: "Helps brain development, hormone regulation, and hemoglobin synthesis.",
+    foods: ["Banana", "Potato", "Chicken", "Fish", "Brown Rice"],
+    category: "Vitamin"
+  },
+  "Folate (total)": {
+    desc: "Crucial for DNA synthesis and new cell formation, especially for pregnant women.",
+    foods: ["Spinach", "Lentil", "Orange", "Broccoli", "Egg", "Green Leafy Vegetables"],
+    category: "Vitamin"
+  },
+  "Pantothenic acid (B5)": {
+    desc: "Helps hormone and cholesterol synthesis, and converts food to energy.",
+    foods: ["Egg", "Chicken", "Mushroom", "Sweet Potato", "Nut"],
+    category: "Vitamin"
+  },
+  "Biotin (B7)": {
+    desc: "Plays a role in hair, nail, and skin health, and energy metabolism.",
+    foods: ["Egg Yolk", "Nut", "Sweet Potato", "Cauliflower", "Banana"],
+    category: "Vitamin"
+  },
+  "Calcium (Ca)": {
+    desc: "Strengthens bones and teeth, and regulates proper muscle and nerve function.",
+    foods: ["Milk", "Yogurt", "Cheese", "Small Fish (with bones)", "Spinach", "Nut"],
+    category: "Mineral"
+  },
+  "Iron (Fe)": {
+    desc: "Helps produce hemoglobin, which carries oxygen throughout the body.",
+    foods: ["Liver", "Red Meat", "Colocasia Leaves", "Spinach", "Lentil", "Pomegranate"],
+    category: "Mineral"
+  },
+  "Magnesium (Mg)": {
+    desc: "Regulates more than 300 enzyme reactions and provides energy to nerves and muscles.",
+    foods: ["Almond", "Spinach", "Cashew", "Brown Rice", "Banana"],
+    category: "Mineral"
+  },
+  "Phosphorus (P)": {
+    desc: "Strengthens bone structure and helps repair body cells and tissues.",
+    foods: ["Fish", "Chicken", "Milk", "Egg", "Nut", "Wheat"],
+    category: "Mineral"
+  },
+  "Potassium (K)": {
+    desc: "Regulates blood pressure, keeps the heart healthy, and maintains fluid balance.",
+    foods: ["Coconut Water", "Banana", "Sweet Potato", "Spinach", "Tomato", "Lentil"],
+    category: "Mineral"
+  },
+  "Sodium (Na)": {
+    desc: "Maintains fluid balance and regulates muscle and nerve contraction/relaxation.",
+    foods: ["Table Salt", "Milk", "Beet Greens", "Marine Fish"],
+    category: "Mineral"
+  },
+  "Zinc (Zn)": {
+    desc: "Strengthens immunity, accelerates wound healing, and helps in cell division.",
+    foods: ["Red Meat", "Chicken", "Lentil", "Nut", "Whole Grain"],
+    category: "Mineral"
+  },
+  "Copper (Cu)": {
+    desc: "Plays a role in iron absorption, maintaining blood vessel and nervous system health.",
+    foods: ["Liver", "Nut", "Whole Grain", "Green Leafy Vegetables", "Dark Chocolate"],
+    category: "Mineral"
+  },
+  "Manganese (Mn)": {
+    desc: "Helps in bone formation, amino acid, and carbohydrate metabolism.",
+    foods: ["Nut", "Lentil", "Whole Grain", "Green Tea", "Green Leafy Vegetables"],
+    category: "Mineral"
+  },
+  "Selenium (Se)": {
+    desc: "Protects cells from oxidative damage and keeps thyroid function healthy.",
+    foods: ["Marine Fish", "Egg", "Chicken", "Brown Rice", "Nut"],
+    category: "Mineral"
+  },
+  "Cis ω-6 Fatty acids": {
+    desc: "Helps maintain proper brain function and cell growth.",
+    foods: ["Sunflower Oil", "Soybean Oil", "Nut", "Sesame Oil"],
+    category: "Fatty Acid"
+  },
+  "Cis ω-3 Fatty acids": {
+    desc: "Protects the heart, reduces cholesterol, and helps eliminate inflammation.",
+    foods: ["Hilsa Fish", "Rohu Fish", "Flaxseed Oil", "Walnut", "Chia Seeds"],
+    category: "Fatty Acid"
+  },
+  "Choline": {
+    desc: "Helps maintain cell structure, metabolize fat, and keep memory and nervous system active.",
+    foods: ["Egg", "Beef Liver", "Chicken", "Cauliflower", "Broccoli", "Soybean"],
+    category: "Vitamin"
+  },
+  "Vitamin B12": {
+    desc: "Plays an extremely important role in red blood cell formation, DNA synthesis, and maintaining nervous system health.",
+    foods: ["Beef Liver", "Marine Fish", "Milk", "Yogurt", "Cheese", "Egg", "Chicken"],
+    category: "Vitamin"
+  },
+  "Chloride (Cl)": {
+    desc: "Helps maintain fluid and electrolyte balance, and produce digestive acid (HCl) in the stomach.",
+    foods: ["Table Salt", "Tomato", "Lettuce", "Green Leafy Vegetables", "Marine Fish"],
+    category: "Mineral"
+  },
+  "Iodine (I)": {
+    desc: "Helps produce thyroid hormones which regulate metabolism, physical and mental development, and energy.",
+    foods: ["Iodized Salt", "Marine Fish", "Shrimp", "Milk", "Yogurt", "Egg"],
+    category: "Mineral"
+  }
+};
+
 const SOURCES = [
   { name: 'Shwapno', nameBn: 'স্বপ্ন', color: '#EA580C', bgColor: '#FFF7ED', borderColor: '#FED7AA', abbr: 'SW' },
   { name: 'Chaldal', nameBn: 'চালডাল', color: '#16A34A', bgColor: '#F0FDF4', borderColor: '#BBF7D0', abbr: 'CD' },
@@ -189,11 +333,12 @@ export default function TargetDetailsScreen() {
   const router = useRouter();
   const haptics = useHaptics();
   const [selectedNutrient, setSelectedNutrient] = React.useState<any>(null);
+  const { language } = useTranslation();
 
   // Queries (loads from react-query cache instantly)
   const dailyQ = useQuery({
-    queryKey: ['daily_plan', 0],
-    queryFn: async () => (await mealPlanApi.daily('bn', false, 0)).data,
+    queryKey: ['daily_plan', 0, language],
+    queryFn: async () => (await mealPlanApi.daily(language, false, 0)).data,
   });
 
   const profileQ = useQuery({
@@ -213,7 +358,7 @@ export default function TargetDetailsScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>পুষ্টির তথ্য লোড হচ্ছে...</Text>
+        <Text style={styles.loadingText}>{language === 'bn' ? 'পুষ্টির তথ্য লোড হচ্ছে...' : 'Loading nutritional information...'}</Text>
       </View>
     );
   }
@@ -306,7 +451,7 @@ export default function TargetDetailsScreen() {
         >
           <ArrowLeft size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>পুষ্টি বিশ্লেষণ</Text>
+        <Text style={styles.headerTitle}>{language === 'bn' ? 'পুষ্টি বিশ্লেষণ' : 'Nutritional Analysis'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -316,7 +461,7 @@ export default function TargetDetailsScreen() {
         <View style={styles.calCard}>
           <View style={styles.calCardHeader}>
             <Sparkles size={16} color={colors.primary} />
-            <Text style={styles.calCardTitle}>আজকের ক্যালোরি বাজেট</Text>
+            <Text style={styles.calCardTitle}>{language === 'bn' ? 'আজকের ক্যালোরি বাজেট' : 'Today\'s Calorie Budget'}</Text>
           </View>
 
           <View style={styles.calRow}>
@@ -359,17 +504,17 @@ export default function TargetDetailsScreen() {
             {/* Quick stats on the right side of Ring */}
             <View style={styles.calStatsRight}>
               <View style={styles.statBox}>
-                <Text style={styles.statLabel}>সর্বমোট লক্ষ্য</Text>
+                <Text style={styles.statLabel}>{language === 'bn' ? 'সর্বমোট লক্ষ্য' : 'Daily Target'}</Text>
                 <Text style={styles.statVal}>{targetCal} kcal</Text>
               </View>
               <View style={styles.statBox}>
-                <Text style={styles.statLabel}>বাকি আছে</Text>
+                <Text style={styles.statLabel}>{language === 'bn' ? 'বাকি আছে' : 'Remaining'}</Text>
                 <Text style={[styles.statVal, { color: colors.warning }]}>
                   {Math.max(0, targetCal - consumed.calories)} kcal
                 </Text>
               </View>
               <View style={styles.statBox}>
-                <Text style={styles.statLabel}>অগ্রগতি</Text>
+                <Text style={styles.statLabel}>{language === 'bn' ? 'অগ্রগতি' : 'Progress'}</Text>
                 <Text style={[styles.statVal, { color: colors.success }]}>
                   {Math.round(progressCal * 100)}%
                 </Text>
@@ -379,17 +524,17 @@ export default function TargetDetailsScreen() {
         </View>
 
         {/* Macros Bento Grid Section */}
-        <Text style={styles.sectionTitle}>ম্যাক্রো পুষ্টির অনুপাত</Text>
+        <Text style={styles.sectionTitle}>{language === 'bn' ? 'ম্যাক্রো পুষ্টির অনুপাত' : 'Macronutrient Ratios'}</Text>
         <View style={styles.bentoGrid}>
           {/* Card 1: Carbs */}
           <View style={styles.bentoCard}>
             <View style={[styles.macroIconCircle, { backgroundColor: colors.accent + '15' }]}>
               <Zap size={16} color={colors.accent} />
             </View>
-            <Text style={styles.bentoCardLabel}>শর্করা (Carbs)</Text>
+            <Text style={styles.bentoCardLabel}>{language === 'bn' ? 'শর্করা (Carbs)' : 'Carbs'}</Text>
             <Text style={styles.bentoCardVal}>{consumed.carbs}g</Text>
             <Text style={styles.bentoCardTarget}>
-              লক্ষ্য: <Text style={styles.bentoCardTargetNum}>{targets.carbs_g}g</Text>
+              {language === 'bn' ? 'লক্ষ্য: ' : 'Target: '}<Text style={styles.bentoCardTargetNum}>{targets.carbs_g}g</Text>
             </Text>
             <View style={styles.bentoProgressBarBg}>
               <Svg width="100%" height="4">
@@ -410,10 +555,10 @@ export default function TargetDetailsScreen() {
             <View style={[styles.macroIconCircle, { backgroundColor: '#43A04715' }]}>
               <Utensils size={16} color="#43A047" />
             </View>
-            <Text style={styles.bentoCardLabel}>প্রোটিন (Protein)</Text>
+            <Text style={styles.bentoCardLabel}>{language === 'bn' ? 'প্রোটিন (Protein)' : 'Protein'}</Text>
             <Text style={styles.bentoCardVal}>{consumed.protein}g</Text>
             <Text style={styles.bentoCardTarget}>
-              লক্ষ্য: <Text style={styles.bentoCardTargetNum}>{targets.protein_g}g</Text>
+              {language === 'bn' ? 'লক্ষ্য: ' : 'Target: '}<Text style={styles.bentoCardTargetNum}>{targets.protein_g}g</Text>
             </Text>
             <View style={styles.bentoProgressBarBg}>
               <Svg width="100%" height="4">
@@ -434,10 +579,10 @@ export default function TargetDetailsScreen() {
             <View style={[styles.macroIconCircle, { backgroundColor: '#FF8F0015' }]}>
               <Droplet size={16} color="#FF8F00" />
             </View>
-            <Text style={styles.bentoCardLabel}>চর্বি (Fat)</Text>
+            <Text style={styles.bentoCardLabel}>{language === 'bn' ? 'চর্বি (Fat)' : 'Fat'}</Text>
             <Text style={styles.bentoCardVal}>{consumed.fat}g</Text>
             <Text style={styles.bentoCardTarget}>
-              লক্ষ্য: <Text style={styles.bentoCardTargetNum}>{targets.fat_g}g</Text>
+              {language === 'bn' ? 'লক্ষ্য: ' : 'Target: '}<Text style={styles.bentoCardTargetNum}>{targets.fat_g}g</Text>
             </Text>
             <View style={styles.bentoProgressBarBg}>
               <Svg width="100%" height="4">
@@ -456,11 +601,11 @@ export default function TargetDetailsScreen() {
 
         {/* Micronutrients Section Header */}
         <View style={styles.microHeaderRow}>
-          <Text style={styles.sectionTitle}>ভিটামিন ও খনিজ লক্ষ্যমাত্রা</Text>
+          <Text style={styles.sectionTitle}>{language === 'bn' ? 'ভিটামিন ও খনিজ লক্ষ্যমাত্রা' : 'Vitamin & Mineral Targets'}</Text>
           {microTargets.length > 0 && (
             <View style={styles.badgeContainer}>
               <Text style={styles.microCompletedBadge}>
-                {microCompletedCount}/{microTargets.length} সম্পন্ন
+                {language === 'bn' ? `${microCompletedCount}/${microTargets.length} সম্পন্ন` : `${microCompletedCount}/${microTargets.length} Completed`}
               </Text>
             </View>
           )}
@@ -469,7 +614,9 @@ export default function TargetDetailsScreen() {
         {microTargets.length === 0 ? (
           <View style={styles.emptyMicroBox}>
             <Text style={styles.emptyMicroText}>
-              আজকের ডায়েট পরিকল্পনা অনুযায়ী কোন ভিটামিন বা মিনারেল লক্ষ্যমাত্রা সংজ্ঞায়িত নেই। বিস্তারিত ট্র্যাকিং পেতে এআই দিয়ে মিল প্ল্যান তৈরি করুন।
+              {language === 'bn'
+                ? 'আজকের ডায়েট পরিকল্পনা অনুযায়ী কোন ভিটামিন বা মিনারেল লক্ষ্যমাত্রা সংজ্ঞায়িত নেই। বিস্তারিত ট্র্যাকিং পেতে এআই দিয়ে মিল প্ল্যান তৈরি করুন।'
+                : 'No vitamin or mineral targets are defined for today\'s meal plan. Generate an AI meal plan for detailed tracking.'}
             </Text>
           </View>
         ) : (
@@ -490,7 +637,7 @@ export default function TargetDetailsScreen() {
                   {/* Top: Name and check status */}
                   <View style={styles.microCardHeader}>
                     <View style={styles.microCardNameGroup}>
-                      <Text style={styles.microCardNameBn} numberOfLines={1}>{item.name_bn || item.name}</Text>
+                      <Text style={styles.microCardNameBn} numberOfLines={1}>{language === 'bn' ? (item.name_bn || item.name) : item.name}</Text>
                       <Text style={styles.microCardNameEn} numberOfLines={1}>{item.name}</Text>
                     </View>
                     {isCompleted && (
@@ -545,7 +692,7 @@ export default function TargetDetailsScreen() {
           />
           <View style={styles.modalContent}>
             {selectedNutrient && (() => {
-              const meta = NUTRIENT_METADATA[selectedNutrient.name];
+              const meta = language === 'bn' ? NUTRIENT_METADATA[selectedNutrient.name] : NUTRIENT_METADATA_EN[selectedNutrient.name];
               const displayPct = Math.min(100, Math.round(selectedNutrient.percentage || 0));
               const isCompleted = selectedNutrient.percentage >= 100;
               
@@ -557,7 +704,7 @@ export default function TargetDetailsScreen() {
                   {/* Title & Category Badge */}
                   <View style={styles.modalHeaderRow}>
                     <View style={styles.modalTitleGroup}>
-                      <Text style={styles.modalTitleBn}>{selectedNutrient.name_bn || selectedNutrient.name}</Text>
+                      <Text style={styles.modalTitleBn}>{language === 'bn' ? (selectedNutrient.name_bn || selectedNutrient.name) : selectedNutrient.name}</Text>
                       <Text style={styles.modalTitleEn}>{selectedNutrient.name}</Text>
                     </View>
                     {meta?.category && (
@@ -570,7 +717,7 @@ export default function TargetDetailsScreen() {
                   {/* Consumed / Target Metrics Box */}
                   <View style={styles.metricsBox}>
                     <View>
-                      <Text style={styles.metricLabel}>গৃহীত / লক্ষ্যমাত্রা</Text>
+                      <Text style={styles.metricLabel}>{language === 'bn' ? 'গৃহীত / লক্ষ্যমাত্রা' : 'Consumed / Target'}</Text>
                       <Text style={styles.metricValue}>
                         {Math.round(selectedNutrient.consumed)} {selectedNutrient.unit}
                         <Text style={styles.metricSlash}> / </Text>
@@ -579,23 +726,23 @@ export default function TargetDetailsScreen() {
                     </View>
                     <View style={[styles.modalPctBadge, isCompleted ? styles.microBadgeCompleted : styles.microBadgePending]}>
                       <Text style={[styles.microBadgeText, isCompleted ? styles.microBadgeTextCompleted : styles.microBadgeTextPending]}>
-                        {displayPct}% সম্পন্ন
+                        {language === 'bn' ? `${displayPct}% সম্পন্ন` : `${displayPct}% Completed`}
                       </Text>
                     </View>
                   </View>
 
                   {/* কেন এটি প্রয়োজন? (Why is it needed?) */}
                   <View style={styles.infoSection}>
-                    <Text style={styles.sectionSubTitle}>কেন এটি প্রয়োজন?</Text>
+                    <Text style={styles.sectionSubTitle}>{language === 'bn' ? 'কেন এটি প্রয়োজন?' : 'Why is it needed?'}</Text>
                     <Text style={styles.sectionDesc}>
-                      {meta?.desc || "শরীরের বিভিন্ন শারীরিক প্রক্রিয়া সুষ্ঠুভাবে পরিচালনা করতে এবং সুস্বাস্থ্যের জন্য এটি অত্যন্ত প্রয়োজনীয়।"}
+                      {meta?.desc || (language === 'bn' ? "শরীরের বিভিন্ন শারীরিক প্রক্রিয়া সুষ্ঠুভাবে পরিচালনা করতে এবং সুস্বাস্থ্যের জন্য এটি অত্যন্ত প্রয়োজনীয়।" : "This is essential for various physical processes and overall good health.")}
                     </Text>
                   </View>
 
                   {/* সেরা খাদ্য উৎস (দেশী খাবার) (Recommended sources) */}
                   {meta?.foods && (
                     <View style={styles.infoSection}>
-                      <Text style={styles.sectionSubTitle}>সেরা খাদ্য উৎস (দেশী খাবার)</Text>
+                      <Text style={styles.sectionSubTitle}>{language === 'bn' ? 'সেরা খাদ্য উৎস (দেশী খাবার)' : 'Recommended Sources (Desi Foods)'}</Text>
                       <View style={styles.sourcesGrid}>
                         {meta.foods.map((food: string, i: number) => (
                           <View key={i} style={styles.sourcePill}>
@@ -611,7 +758,7 @@ export default function TargetDetailsScreen() {
                     const shoppingSources = getSourcesForFood(selectedNutrient.name, 3);
                     return (
                       <View style={styles.infoSection}>
-                        <Text style={styles.sectionSubTitle}>কোথায় পাবেন (শপিং সোর্স)</Text>
+                        <Text style={styles.sectionSubTitle}>{language === 'bn' ? 'কোথায় পাবেন (শপিং সোর্স)' : 'Where to Buy (Shopping Sources)'}</Text>
                         <View style={styles.shoppingSourcesRow}>
                           {shoppingSources.map((src: any, i: number) => (
                             <View
@@ -628,7 +775,7 @@ export default function TargetDetailsScreen() {
                                 <Text style={styles.miniAbbrText}>{src.abbr}</Text>
                               </View>
                               <Text style={[styles.shoppingSourceName, { color: src.color }]}>
-                                {src.nameBn}
+                                {language === 'bn' ? src.nameBn : src.name}
                               </Text>
                             </View>
                           ))}
@@ -645,7 +792,7 @@ export default function TargetDetailsScreen() {
                       setSelectedNutrient(null);
                     }}
                   >
-                    <Text style={styles.closeBtnText}>ঠিক আছে</Text>
+                    <Text style={styles.closeBtnText}>{language === 'bn' ? 'ঠিক আছে' : 'OK'}</Text>
                   </TouchableOpacity>
                 </View>
               );
