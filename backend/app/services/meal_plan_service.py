@@ -521,12 +521,20 @@ def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str
 # Module-level fallback pools for minimum-item enforcement
 _MINIMUM_FALLBACKS = {
     "breakfast": [
+        # Staples (roti/paratha/suji/semai) — multiple options for daily rotation
         {"food_code": "A019", "name_bn": "আটা রুটি", "name_en": "Atta Roti", "calories": 150.0, "protein": 5.0, "food_group": "Cereals & Grains"},
+        {"food_code": "A018", "name_bn": "গোটা গমের রুটি", "name_en": "Whole Wheat Roti", "calories": 160.0, "protein": 5.5, "food_group": "Cereals & Grains"},
+        {"food_code": "A022", "name_bn": "সুজির হালুয়া", "name_en": "Semolina Halwa", "calories": 140.0, "protein": 11.0, "food_group": "Cereals & Grains"},
+        {"food_code": "A016", "name_bn": "রান্না করা মিষ্টি সেমাই", "name_en": "Cooked Vermicelli", "calories": 130.0, "protein": 4.0, "food_group": "Cereals & Grains"},
+        # Proteins
         {"food_code": "M004", "name_bn": "সিদ্ধ মুরগির ডিম", "name_en": "Boiled Egg", "calories": 155.0, "protein": 13.0, "food_group": "Eggs"},
         {"food_code": "B013", "name_bn": "মসুর ডাল (রান্না করা)", "name_en": "Cooked Masur Dal", "calories": 135.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+        # Supplementary
         {"food_code": "L002", "name_bn": "গরুর দুধ", "name_en": "Cow Milk", "calories": 60.0, "protein": 3.3, "food_group": "Dairy & Milk"},
         {"food_code": "E009", "name_bn": "কলা", "name_en": "Banana", "calories": 90.0, "protein": 1.2, "food_group": "Fruits"},
+        {"food_code": "E028", "name_bn": "পেয়ারা", "name_en": "Guava", "calories": 50.0, "protein": 1.4, "food_group": "Fruits"},
         {"food_code": "H005", "name_bn": "কাজু বাদাম", "name_en": "Cashew nut", "calories": 150.0, "protein": 5.0, "food_group": "Nuts & Seeds"},
+        {"food_code": "H012", "name_bn": "চীনাবাদাম", "name_en": "Groundnut", "calories": 160.0, "protein": 24.0, "food_group": "Nuts & Seeds"},
     ],
     "lunch": [
         {"food_code": "A015", "name_bn": "আতপ চালের ভাত", "name_en": "Cooked Atap Rice", "calories": 300.0, "protein": 8.0, "food_group": "Cereals & Grains"},
@@ -598,27 +606,69 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
         existing_codes.discard("")
         min_items = SLOT_MINIMUMS.get(slot_name, 3)
 
-        if len(items) >= min_items:
-            continue
-
         fallbacks = _MINIMUM_FALLBACKS.get(slot_name) or _MINIMUM_FALLBACKS.get("breakfast", [])
         added = 0
 
-        # Smart selection: prioritize missing food group categories
+        # ── Phase 1: Enforce REQUIRED categories even if count is already met ──
+        required_added = 0
+        for fb in fallbacks:
+            fb_code = fb.get("food_code") or fb.get("code") or ""
+            if not fb_code or fb_code in existing_codes:
+                continue
+            fb_group = fb.get("food_group", "")
+
+            # BREAKFAST: MUST have a staple grain (roti/paratha/suji/semai)
+            if slot_name == "breakfast":
+                has_staple = _has_group(items, STAPLE_GROUPS)
+                if not has_staple:
+                    # Collect all available breakfast staples and pick one randomly
+                    breakfast_staples = [fb for fb in fallbacks if fb.get("food_group", "") in STAPLE_GROUPS and fb.get("food_code") not in existing_codes]
+                    if breakfast_staples:
+                        import random as _staple_rand
+                        chosen_staple = _staple_rand.choice(breakfast_staples)
+                        items.append(_make_item(chosen_staple))
+                        existing_codes.add(chosen_staple.get("food_code"))
+                        required_added += 1
+                        print(f"📦 Staple fix: Added '{chosen_staple.get('name_bn')}' ({chosen_staple.get('food_code')}) to breakfast (no staple found)")
+                    break  # Only add one staple
+
+            # LUNCH/DINNER: MUST have staple + pulse + protein + vegetable
+            if slot_name in ("lunch", "dinner"):
+                has_staple = _has_group(items, STAPLE_GROUPS)
+                has_pulse = _has_group(items, PULSE_GROUPS)
+                has_protein = _has_group(items, PROTEIN_GROUPS)
+                has_veg = _has_group(items, VEG_GROUPS)
+
+                if not has_staple and fb_group in STAPLE_GROUPS:
+                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
+                    print(f"📦 Staple fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
+                    break
+                if not has_pulse and fb_group in PULSE_GROUPS:
+                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
+                    print(f"📦 Pulse fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
+                    break
+                if not has_protein and fb_group in PROTEIN_GROUPS:
+                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
+                    print(f"📦 Protein fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
+                    break
+                if not has_veg and fb_group in VEG_GROUPS:
+                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
+                    print(f"📦 Veg fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
+                    break
+
+        # ── Phase 2: Reach minimum item count ──
         for fb in fallbacks:
             if len(items) >= min_items:
                 break
             fb_code = fb.get("food_code") or fb.get("code") or ""
             if not fb_code or fb_code in existing_codes:
                 continue
-
             fb_group = fb.get("food_group", "")
 
-            # For breakfast: if already has a staple, prefer supplementary (fruit/dairy/nuts)
+            # For breakfast: if already has a staple, prefer supplementary
             if slot_name == "breakfast":
                 has_staple = _has_group(items, STAPLE_GROUPS)
                 if has_staple and fb_group not in SUPP_GROUPS and len(items) >= 2:
-                    # Skip non-supplementary if we already have 2+ items including staple
                     continue
 
             # For lunch/dinner: ensure we have staple, pulse, protein, vegetable
@@ -627,8 +677,6 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
                 has_pulse = _has_group(items, PULSE_GROUPS)
                 has_protein = _has_group(items, PROTEIN_GROUPS)
                 has_veg = _has_group(items, VEG_GROUPS)
-
-                # Prioritize missing category
                 if not has_pulse and fb_group not in PULSE_GROUPS:
                     continue
                 if not has_protein and fb_group not in PROTEIN_GROUPS:
@@ -643,7 +691,7 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
             added += 1
             print(f"📦 Minimum items: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
 
-        # Second pass: if still below minimum, add any non-duplicate fallback
+        # Third pass: if still below minimum, add any non-duplicate fallback
         for fb in fallbacks:
             if len(items) >= min_items:
                 break
@@ -652,7 +700,7 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
                 items.append(_make_item(fb))
                 existing_codes.add(fb_code)
                 added += 1
-                print(f"📦 Minimum items (2nd pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
+                print(f"📦 Minimum items (3rd pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
 
         if len(items) < min_items:
             print(f"⚠️ Could not reach {min_items} items for {slot_name} (has {len(items)}). All fallbacks exhausted or duplicated.")
@@ -697,6 +745,11 @@ def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
     Returns: {breakfast: set, lunch: set, dinner: set, supplementary: set}
     """
     result = {"breakfast": set(), "lunch": set(), "dinner": set(), "supplementary": set()}
+    
+    # Foods that are culturally INAPPROPRIATE for breakfast (will be removed from breakfast pool)
+    # A015 = আতপ চাল (raw/parboiled rice) — Bangladeshi breakfast is roti/paratha/suji/semai, NEVER rice
+    BREAKFAST_EXCLUDED_CODES = {"A015"}
+    
     try:
         with driver.session() as session:
             # Foods for each slot
@@ -716,6 +769,13 @@ def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
                     result["breakfast"].add(code)
                     result["lunch"].add(code)
                     result["dinner"].add(code)
+            
+            # 🍚 CULTURAL FIX: Remove rice from breakfast pool
+            # Bangladeshi breakfast NEVER includes rice (ভাত). Breakfast = roti/paratha/suji/semai only.
+            for code in BREAKFAST_EXCLUDED_CODES:
+                if code in result["breakfast"]:
+                    result["breakfast"].discard(code)
+                    print(f"🍚 Cultural fix: Removed {code} from breakfast slot pool (rice is not a breakfast food)")
 
             # Supplementary = foods marked is_supplementary=true (milk, fruits, etc.)
             supp = session.run("""
@@ -902,6 +962,10 @@ def _build_meal_plan_prompt(
         else:
             allowed = safe_foods[:]
         
+        # 🍚 CULTURAL FIX: Rice (A015) must NEVER appear in breakfast food list
+        if slot == "breakfast":
+            allowed = [f for f in allowed if f.get("code") != "A015"]
+        
         # Categorize allowed foods
         staples = []
         proteins = []
@@ -924,6 +988,22 @@ def _build_meal_plan_prompt(
         proteins.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         veggies.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         others.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        
+        # 🔄 VARIETY: Slightly shuffle within each category so LLM sees different top options daily
+        # This prevents the LLM from always picking the #1 ranked food
+        import random as _vrand
+        def _light_shuffle(lst, swap_prob=0.3):
+            """Shuffle adjacent items with given probability to preserve ranking but add variety."""
+            result = list(lst)
+            for i in range(len(result) - 1):
+                if _vrand.random() < swap_prob:
+                    result[i], result[i+1] = result[i+1], result[i]
+            return result
+        
+        staples = _light_shuffle(staples)
+        proteins = _light_shuffle(proteins)
+        veggies = _light_shuffle(veggies)
+        others = _light_shuffle(others)
         
         # Build structured text block — show more foods so LLM has full range
         lines = []
@@ -996,6 +1076,12 @@ CRITICAL RULES:
 11. Lunch and dinner MUST include a staple grain (Rice/ভাত or Roti/রুটি) from the food list.
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations!
+13b. DAILY ROTATION (CRITICAL): Do NOT generate the same meal plan every day. Rotate staple grains and proteins across days:
+    - If yesterday's breakfast was Atta Roti, today's breakfast should be Suji Halwa or Semai.
+    - If yesterday's lunch had Rohu Fish, today's lunch should have Chicken or Beef or a different fish.
+    - If yesterday's dinner had Rice + Chicken, today's dinner should have Rice + a different protein (Fish/Beef/Egg) or Roti + Protein.
+    - NEVER repeat the exact same combination of foods on consecutive days.
+    - Each day's plan should feel DIFFERENT and appetizing.
 14. MEAL SLOT RULES — STRICTLY ENFORCED:
     - BREAKFAST (সকালের নাস্তা): Light morning food. Typical Bangladeshi breakfast = Roti/Paratha + Egg/Dal + Tea/Milk. May also include: Semai, Suji, Bread, Banana, seasonal fruits, nuts, milk. NEVER serve rice + fish curry or heavy dal + bhorta for breakfast. Breakfast should NOT look like lunch.
     - LUNCH (দুপুরের খাবার): Heavy main meal. MUST include: Rice (ভাত) as staple + Dal (মসুর/মুগ ডাল) + Protein curry (Fish/Chicken/Beef/Egg) + Vegetable bhaji/torkari. This is the biggest meal of the day.
@@ -1006,7 +1092,7 @@ CRITICAL RULES:
     - LUNCH must have: 1 grain (Rice) + 1 pulse (Dal) + 1 protein (Fish/Chicken/Beef/Egg) + 1 vegetable. That's 4 items.
     - DINNER must have: 1 grain (Rice/Roti) + 1 pulse (Dal) + 1 protein (Fish/Chicken/Beef/Egg) + 1 vegetable. That's 4 items.
     If you generate fewer than 3 items for any meal, the plan will be rejected.
-16. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), Rice (ভাত), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. This is authentic Bangladeshi morning food culture.
+16. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. NOTE: Rice (ভাত/চাল) is NEVER a breakfast food in Bangladesh. Breakfast staple must be Roti, Paratha, Suji, or Semai only. This is authentic Bangladeshi morning food culture.
 17. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
   - If you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
   - If you choose `আটা` (wheat flour), list it as `আটা রুটি` (atta roti).
@@ -1325,11 +1411,19 @@ def _generate_fallback_meal_plan(
     conditions: List[str],
     language: str = "bn",
     used_codes_global: set = None,
+    day_seed: int = None,
 ) -> Dict[str, Any]:
-    """Generate a template-based meal plan when LLM is unavailable."""
+    """Generate a template-based meal plan when LLM is unavailable.
+    
+    day_seed: used to seed random for daily variety (e.g. day_of_month).
+    """
 
     if used_codes_global is None:
         used_codes_global = set()
+    
+    # Create a local random instance for daily variety so each day gets a different meal
+    # without affecting global random state
+    _rng = random.Random(day_seed) if day_seed is not None else random
 
     categories = {}
     for f in safe_foods:
@@ -1356,7 +1450,7 @@ def _generate_fallback_meal_plan(
     def pick(cat, used):
         pool = [f for f in categories.get(cat, []) if f["code"] not in used and f["code"] not in used_codes_global]
         if pool:
-            chosen = random.choice(pool)
+            chosen = _rng.choice(pool)
             used.add(chosen["code"])
             used_codes_global.add(chosen["code"])
             return chosen
@@ -1364,37 +1458,49 @@ def _generate_fallback_meal_plan(
         # Fallback to any safe food in the category, ignoring used constraints
         pool_any = categories.get(cat, [])
         if pool_any:
-            chosen = random.choice(pool_any)
+            chosen = _rng.choice(pool_any)
             return chosen
             
         # Fallback to any safe food not used
         pool_all = [f for f in safe_foods if f["code"] not in used and f["code"] not in used_codes_global]
         if pool_all:
-            chosen = random.choice(pool_all)
+            chosen = _rng.choice(pool_all)
             used.add(chosen["code"])
             used_codes_global.add(chosen["code"])
             return chosen
             
-        return random.choice(safe_foods) if safe_foods else None
+        return _rng.choice(safe_foods) if safe_foods else None
 
     used_codes = set()
 
     # Breakfast-only cereals (Semolina/Suji, Vermicelli/Semai)
     BREAKFAST_ONLY_CEREALS = {"A016", "A022", "A023", "A024"}
+    # Rice codes that must NEVER appear at breakfast (cultural rule)
+    BREAKFAST_EXCLUDED_CODES = {"A015"}
 
     def pick_slot_specific(cat, slot, used):
         pool = categories.get(cat, [])
+        
+        # 0. Hard exclude inappropriate foods for ANY slot
+        pool = [f for f in pool if f["code"] not in BREAKFAST_EXCLUDED_CODES]
         
         # 1. Slot-based filtering
         if slot in ["lunch", "dinner"]:
             # Exclude sweet breakfast items
             pool = [f for f in pool if f["code"] not in BREAKFAST_ONLY_CEREALS]
         elif slot == "breakfast":
-            # For breakfast cereals, prefer suji, semai, atta/roti, exclude raw rice
+            # For breakfast cereals, ONLY allow suji, semai, atta/roti — NEVER rice
             preferred_bfast_codes = BREAKFAST_ONLY_CEREALS.union({"A019", "A018"})
             bfast_pool = [f for f in pool if f["code"] in preferred_bfast_codes]
             if bfast_pool:
                 pool = bfast_pool
+            else:
+                # If preferred items are exhausted, still don't fall back to rice
+                # Force-pick from preferred list even if used globally
+                forced_pool = categories.get(cat, [])
+                forced_pool = [f for f in forced_pool if f["code"] in preferred_bfast_codes]
+                if forced_pool:
+                    pool = forced_pool
 
         # 2. Protein slot preference
         if cat in ["Fish & Seafood", "Meat & Poultry"] and slot == "breakfast":
@@ -1404,18 +1510,18 @@ def _generate_fallback_meal_plan(
         # Filter used codes
         eligible = [f for f in pool if f["code"] not in used and f["code"] not in used_codes_global]
         if eligible:
-            chosen = random.choice(eligible)
+            chosen = _rng.choice(eligible)
             used.add(chosen["code"])
             used_codes_global.add(chosen["code"])
             return chosen
 
         # Fallback to any in category matching slot constraints
         if pool:
-            chosen = random.choice(pool)
+            chosen = _rng.choice(pool)
             return chosen
 
         # absolute fallback
-        return random.choice(safe_foods) if safe_foods else None
+        return _rng.choice(safe_foods) if safe_foods else None
 
     def make_meal(slot, slot_bn, pct):
         target = int(targets["target_calories"] * pct)
@@ -1433,7 +1539,7 @@ def _generate_fallback_meal_plan(
         else:
             # Lunch / Dinner: Shuffle order to give equal chance to Beef/Chicken/Fish/Lentils
             categories_to_try = ["Meat & Poultry", "Fish & Seafood", "Pulses & Legumes", "Eggs"]
-            random.shuffle(categories_to_try)
+            _rng.shuffle(categories_to_try)
             for cat_name in categories_to_try:
                 protein = pick_slot_specific(cat_name, slot, used_codes)
                 if protein:
@@ -1659,7 +1765,9 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
         plan_data = _ensure_meal_minimum_items(plan_data)
     except Exception as e:
         print(f"LLM daily meal plan error: {e}")
-        plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language)
+        import datetime as _dt
+        day_seed = _dt.datetime.now().day
+        plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language, day_seed=day_seed)
 
     # Always use the server-calculated calorie target — never trust the LLM's value
     plan_data["target_calories"] = targets["target_calories"]
@@ -1769,7 +1877,7 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
         used_codes_global = set()
         weekly_plans = []
         for day in range(7):
-            plan = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language, used_codes_global)
+            plan = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language, used_codes_global, day_seed=day)
             plan["day"] = day + 1
             plan["day_name_bn"] = ["সোমবার", "মঙ্গলবার", "বুধবার", "বৃহস্পতিবার", "শুক্রবার", "শনিবার", "রবিবার"][day]
             plan["day_name_en"] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][day]

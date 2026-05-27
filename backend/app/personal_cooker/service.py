@@ -96,6 +96,8 @@ C. IF GENERAL GUIDANCE:
 PATIENT PROFILE:
 - Condition: {condition}
 
+{meal_plan_context}
+
 RETRIEVED MEDICAL KNOWLEDGE (Use ONLY this):
 {context}
 """
@@ -186,6 +188,7 @@ class PersonalCookerService:
         condition: str,
         history: List[Dict[str, str]],
         contexts: List[Dict[str, Any]],
+        meal_plan_context: str = "",
     ) -> str:
         """Synthesize final reply using retrieved context + chat history."""
         context_str = "\n\n".join(
@@ -196,6 +199,7 @@ class PersonalCookerService:
         system_prompt = _NUTRISAATHI_SYSTEM_PROMPT.format(
             condition=condition or "None",
             context=context_str,
+            meal_plan_context=meal_plan_context,
         )
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -258,12 +262,41 @@ class PersonalCookerService:
         )
         history_dicts = [{"role": h.role, "content": h.content} for h in history]
 
+        # 5b. Fetch user's today's meal plan for context
+        meal_plan_context = ""
+        try:
+            from datetime import timezone
+            today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            today_plan = await prisma.mealplan.find_first(
+                where={"userId": user_id, "planDate": {"gte": today}},
+                order={"createdAt": "desc"},
+            )
+            if today_plan and today_plan.planData:
+                import json
+                plan_data = json.loads(today_plan.planData) if isinstance(today_plan.planData, str) else today_plan.planData
+                completed = []
+                if today_plan.completedSlots:
+                    completed = json.loads(today_plan.completedSlots) if isinstance(today_plan.completedSlots, str) else today_plan.completedSlots
+                lines = ["TODAY'S MEAL PLAN:"]
+                for meal in plan_data.get("meals", []):
+                    status = "✅ Eaten" if meal.get("slot") in completed else "⬜ Pending"
+                    items_text = ", ".join(
+                        f"{i.get('name_bn') or i.get('name_en')}"
+                        for i in meal.get("items", [])
+                    )
+                    slot_bn = meal.get('slot_bn') or meal.get('slot', '')
+                    lines.append(f"  [{slot_bn}] {status}: {items_text}")
+                meal_plan_context = "\n".join(lines)
+        except Exception as e:
+            logger.warning("Failed to load meal plan for personal cooker: %s", e)
+
         # 6. Generate reply
         reply = await PersonalCookerService.generate_reply(
             user_message=message,
             condition=condition,
             history=history_dicts,
             contexts=contexts,
+            meal_plan_context=meal_plan_context,
         )
 
         # 7. Save assistant message
