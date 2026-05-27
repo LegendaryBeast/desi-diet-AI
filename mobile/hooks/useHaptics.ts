@@ -3,6 +3,7 @@
  * Call the returned functions at key interaction points.
  */
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 import { useSettingsStore } from '../store/settings-store';
 
 export function useHaptics() {
@@ -11,23 +12,48 @@ export function useHaptics() {
   // (we reuse the same flag as a "system feedback" preference)
 
   const light = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === 'web') return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {
+      console.warn('Haptics not supported:', e);
+    }
   };
 
   const medium = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS === 'web') return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (e) {
+      console.warn('Haptics not supported:', e);
+    }
   };
 
   const success = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS === 'web') return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      console.warn('Haptics not supported:', e);
+    }
   };
 
   const error = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (Platform.OS === 'web') return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } catch (e) {
+      console.warn('Haptics not supported:', e);
+    }
   };
 
   const warning = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    if (Platform.OS === 'web') return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch (e) {
+      console.warn('Haptics not supported:', e);
+    }
   };
 
   return { light, medium, success, error, warning };

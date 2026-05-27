@@ -14,16 +14,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useSubscription } from '../../context/SubscriptionContext';
 import ProModal from '../../components/ui/ProModal';
-import EventSource from 'react-native-sse';
+import EventSource from '../../lib/EventSource';
 import { useTranslation } from '../../lib/translations';
 
-// Platform-guarded imports — expo-image-picker and expo-av don't work on web
-let ImagePicker: typeof import('expo-image-picker') | null = null;
-let Audio: typeof import('expo-av')['Audio'] | null = null;
-if (Platform.OS !== 'web') {
-  ImagePicker = require('expo-image-picker');
-  Audio = require('expo-av').Audio;
-}
+let Audio: any = null;
+const getImagePicker = () => {
+  if (Platform.OS === 'web') return null;
+  return require('expo-image-picker');
+};
 
 
 interface Message {
@@ -75,7 +73,7 @@ export default function ChatScreen() {
   const prefillSent = useRef(false);
 
   // Subscription state
-  const { isPro, canSendMessage, incrementMessageCount } = useSubscription();
+  const { isPro, canSendMessage, messageCount, incrementMessageCount, FREE_MESSAGE_LIMIT } = useSubscription();
   const [showProModal, setShowProModal] = useState(false);
   const [proTrigger, setProTrigger] = useState<'chat_limit' | 'regenerate' | 'tomorrow' | 'general'>('general');
 
@@ -164,14 +162,15 @@ export default function ChatScreen() {
   // Image Attach Handlers — only available on native
   const pickImage = async () => {
     haptics.light();
-    if (!ImagePicker) {
+    const picker = getImagePicker();
+    if (!picker) {
       Alert.alert(
         language === 'bn' ? 'শুধুমাত্র মোবাইলে' : 'Mobile Only',
         language === 'bn' ? 'ছবি পাঠানো শুধুমাত্র মোবাইল অ্যাপে কাজ করে।' : 'Sending images only works in the mobile app.'
       );
       return;
     }
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await picker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
         language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission Required',
@@ -180,8 +179,8 @@ export default function ChatScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    const result = await picker.launchImageLibraryAsync({
+      mediaTypes: picker.MediaTypeOptions.Images,
       quality: 0.6,
       base64: true,
     });
@@ -194,14 +193,15 @@ export default function ChatScreen() {
 
   const takePhoto = async () => {
     haptics.light();
-    if (!ImagePicker) {
+    const picker = getImagePicker();
+    if (!picker) {
       Alert.alert(
         language === 'bn' ? 'শুধুমাত্র মোবাইলে' : 'Mobile Only',
         language === 'bn' ? 'ক্যামেরা শুধুমাত্র মোবাইল অ্যাপে কাজ করে।' : 'Camera only works in the mobile app.'
       );
       return;
     }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status } = await picker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
         language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission Required',
@@ -210,7 +210,7 @@ export default function ChatScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
+    const result = await picker.launchCameraAsync({
       quality: 0.6,
       base64: true,
     });
@@ -730,6 +730,37 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {/* Free Message Counter Banner */}
+      {!isPro && (
+        <View style={[
+          styles.freeBanner,
+          !canSendMessage && styles.freeBannerExhausted,
+        ]}>
+          <View style={styles.freeBannerLeft}>
+            <Crown size={13} color={canSendMessage ? '#B45309' : '#DC2626'} />
+            <Text style={[
+              styles.freeBannerText,
+              !canSendMessage && styles.freeBannerTextExhausted,
+            ]}>
+              {canSendMessage
+                ? (language === 'bn'
+                    ? `ফ্রি মেসেজ: ${messageCount}/${FREE_MESSAGE_LIMIT} ব্যবহৃত`
+                    : `Free messages: ${messageCount}/${FREE_MESSAGE_LIMIT} used`)
+                : (language === 'bn' ? 'ফ্রি মেসেজ শেষ!' : 'Free messages exhausted!')}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.freeBannerUpgradeBtn}
+            onPress={() => { setProTrigger('chat_limit'); setShowProModal(true); }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.freeBannerUpgradeText}>
+              {language === 'bn' ? 'Pro তে আপগ্রেড' : 'Upgrade to Pro'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Input Bar */}
       <View style={styles.inputBar}>
         {/* Media Buttons */}
@@ -906,6 +937,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: colors.white,
+  },
+
+
+  // ── Free Message Banner ──────────────────────────────────────────────────
+  freeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    backgroundColor: '#FFFBEB',
+    borderTopWidth: 1,
+    borderTopColor: '#FCD34D',
+  },
+  freeBannerExhausted: {
+    backgroundColor: '#FEF2F2',
+    borderTopColor: '#FECACA',
+  },
+  freeBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  freeBannerText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 11,
+    color: '#B45309',
+  },
+  freeBannerTextExhausted: {
+    color: '#DC2626',
+  },
+  freeBannerUpgradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F97316',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  freeBannerUpgradeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 
   inputBar: {

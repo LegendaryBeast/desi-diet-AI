@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl,
-  Alert, Switch, Platform,
+  Alert, Switch, Platform, Modal,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ export default function ProfileScreen() {
   const { setLanguage, notificationsEnabled, setNotificationsEnabled } = useSettingsStore();
   const { t, language } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
+  const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
   const { isPro } = useSubscription();
 
   const { data: profileData, refetch: refetchProfile } = useQuery({
@@ -36,13 +37,7 @@ export default function ProfileScreen() {
   }, [refetchProfile]);
 
   const handleLogout = () => {
-    Alert.alert(t('logout'), t('logoutConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('logoutBtnText'), style: 'destructive',
-        onPress: async () => { await logout(); router.replace('/(auth)/welcome'); },
-      },
-    ]);
+    setLogoutConfirmVisible(true);
   };
 
   const profile = profileData?.profile;
@@ -224,6 +219,39 @@ export default function ProfileScreen() {
         <LogOut size={20} color={colors.error} />
         <Text style={styles.logoutText}>{t('logoutBtnText')}</Text>
       </TouchableOpacity>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={logoutConfirmVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLogoutConfirmVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('logout')}</Text>
+            <Text style={styles.modalMessage}>{t('logoutConfirm')}</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setLogoutConfirmVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.deleteButton]} 
+                onPress={async () => {
+                  setLogoutConfirmVisible(false);
+                  await logout();
+                  router.replace('/(auth)/welcome');
+                }}
+              >
+                <Text style={styles.deleteButtonText}>{t('logoutBtnText')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -364,4 +392,70 @@ const styles = StyleSheet.create({
     backgroundColor: colors.error + '12', borderWidth: 1, borderColor: colors.error + '30',
   },
   logoutText: { fontFamily: fonts.bnBold, fontSize: 16, color: colors.error },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontFamily: fonts.bn,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  cancelButton: {
+    backgroundColor: '#FAFBF7',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  cancelButtonText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  deleteButton: {
+    backgroundColor: colors.error,
+    borderColor: colors.error,
+  },
+  deleteButtonText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.white,
+  },
 });

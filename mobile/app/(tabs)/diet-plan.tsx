@@ -9,7 +9,7 @@ import { Send, Bot, Sparkles, ArrowLeft, CheckCircle2, RotateCcw, CalendarDays, 
 import { dietPlanChatApi, profileApi, mealPlanApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useHaptics } from '../../hooks/useHaptics';
-import EventSource from 'react-native-sse';
+import EventSource from '../../lib/EventSource';
 import { useTranslation } from '../../lib/translations';
 import ManualFoodLogModal from '../../components/meals/ManualFoodLogModal';
 

@@ -44,6 +44,7 @@ export interface TrackingTotals {
 interface MealLogSectionProps {
   /** Called whenever tracking data changes (new log, initial fetch). */
   onTrackingUpdate?: (totals: TrackingTotals) => void;
+  onLogDeleted?: (slotName: string) => void;
 }
 
 /**
@@ -53,10 +54,49 @@ interface MealLogSectionProps {
  *   1. Text   — natural language ("two rotis with dal").
  *   2. Voice  — push-to-talk → Whisper transcribe → fills text field; user reviews then submits.
  *   3. Photo  — pick/snap a food photo → vision LLM identifies items and logs directly.
- */
-export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate }) => {
+ *   */
+export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate, onLogDeleted }) => {
   const { i18n } = useTranslation();
   const lang = i18n.language;
+
+  const getCleanFoodName = (logInputText: string, planDataList: any[], isBn: boolean) => {
+    let clean = logInputText
+      .replace(/^📋\s*\[Plan\]\s*/, '')
+      .replace(/^📋\s*/, '')
+      .replace(/^\[Plan\]\s*/, '')
+      .replace(/^\[Manual\]\s*/, '')
+      .replace(/^✍️\s*\[Manual\]\s*/, '')
+      .replace(/^✍️\s*/, '')
+      .replace(/^✅\s*/, '')
+      .replace(/^⚠️\s*/, '')
+      .replace(/^📷\s*/, '')
+      .trim();
+
+    clean = clean.replace(/^\d+g\s+of\s+/i, '');
+    clean = clean.replace(/^\d+\s+portion\s+of\s+/i, '');
+    clean = clean.replace(/^of\s+/i, '');
+    clean = clean.replace(/\s*\[.*?\]/g, '').trim();
+
+    const cleanLower = clean.toLowerCase();
+
+    for (const item of planDataList) {
+      const itemEn = (item.name_en || '').toLowerCase();
+      const itemBn = (item.name_bn || '').toLowerCase();
+      const itemCode = (item.food_code || item.code || '').toLowerCase();
+      
+      if (
+        cleanLower === itemEn ||
+        cleanLower === itemBn ||
+        (itemCode && cleanLower === itemCode) ||
+        cleanLower.includes(itemEn) ||
+        cleanLower.includes(itemBn)
+      ) {
+        return isBn ? (item.name_bn || item.name_en) : (item.name_en || item.name_bn);
+      }
+    }
+
+    return clean;
+  };
 
   const [mode, setMode] = useState<Mode>('text');
   const [mealSlot, setMealSlot] = useState<string>('snack');
@@ -79,6 +119,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
   const [todayLogs, setTodayLogs] = useState<MealTrackingListItem[]>([]);
   const [planItems, setPlanItems] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [showAllLogs, setShowAllLogs] = useState(false);
 
   // Voice recording
   const [isRecording, setIsRecording] = useState(false);
@@ -297,10 +338,23 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
     }
   };
 
-  const deleteLog = async (logId: string) => {
+  const deleteLog = async (logId: string | string[], slotName?: string) => {
     setError(null);
     try {
-      await mealTrackingApi.delete(logId);
+      if (Array.isArray(logId)) {
+        for (const id of logId) {
+          try {
+            await mealTrackingApi.delete(id);
+          } catch (e) {
+            console.warn(`Failed to delete log item ${id}:`, e);
+          }
+        }
+      } else {
+        await mealTrackingApi.delete(logId);
+      }
+      if (slotName && onLogDeleted) {
+        onLogDeleted(slotName);
+      }
       fetchTodayLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete log');
@@ -318,43 +372,8 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
     { protein_g: 0, carbs_g: 0, fat_g: 0 },
   );
 
-  const manualLogs = todayLogs.filter((log) => {
-    const inputText = log.input_text || '';
-    if (inputText.includes('[Manual]')) return true;
-    if (inputText.includes('[Plan]')) return false;
-
-    const slotKeywords = [
-      'সকালের নাস্তা',
-      'সকালের স্ন্যাক্স',
-      'দুপুরের খাবার',
-      'বিকেলের নাস্তা',
-      'রাতের খাবার',
-      'breakfast',
-      'morning snack',
-      'lunch',
-      'evening snack',
-      'dinner',
-      'snack'
-    ];
-    const lowerText = inputText.toLowerCase();
-
-    if (slotKeywords.some(kw => lowerText.includes(kw) && (lowerText.includes(':') || lowerText.includes('plan')))) {
-      return false;
-    }
-
-    for (const item of planItems) {
-      const nameEn = (item.name_en || '').toLowerCase();
-      const nameBn = (item.name_bn || '').toLowerCase();
-      if (
-        (nameEn && lowerText.includes(nameEn)) ||
-        (nameBn && lowerText.includes(nameBn))
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+  // Show ALL today's logs (plan-marked + manually added)
+  const allLogs = todayLogs;
 
   return (
     <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-ink/5 space-y-6">
@@ -408,21 +427,27 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
       {/* Mode tabs */}
       <div className="flex gap-2 p-1 bg-cream/50 rounded-2xl">
         {([
-          { id: 'text', label: 'Text', icon: Plus },
-          { id: 'voice', label: 'Voice', icon: Mic },
-          { id: 'photo', label: 'Photo', icon: Camera },
-        ] as Array<{ id: Mode; label: string; icon: any }>).map((opt) => {
+          { id: 'text', label: 'Text', icon: Plus, comingSoon: false },
+          { id: 'voice', label: 'Voice 🚧', icon: Mic, comingSoon: true },
+          { id: 'photo', label: 'Photo 🚧', icon: Camera, comingSoon: true },
+        ] as Array<{ id: Mode; label: string; icon: any; comingSoon: boolean }>).map((opt) => {
           const active = mode === opt.id;
           const Icon = opt.icon;
           return (
             <button
               key={opt.id}
-              onClick={() => setMode(opt.id)}
+              onClick={() => {
+                if (opt.comingSoon) {
+                  alert(lang === 'bn' ? '🚧 শীঘ্রই আসছে! এই ফিচারটি近くtআসছে।' : '🚧 Coming Soon! This feature is under development.');
+                  return;
+                }
+                setMode(opt.id);
+              }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bn font-bold text-sm transition-all ${
-                active ? 'bg-white text-ink shadow-sm' : 'text-ink-muted hover:bg-white/50'
+                active && !opt.comingSoon ? 'bg-white text-ink shadow-sm' : opt.comingSoon ? 'text-ink-faint cursor-not-allowed' : 'text-ink-muted hover:bg-white/50'
               }`}
             >
-              <Icon size={16} className={active ? 'text-accent' : ''} />
+              <Icon size={16} className={active && !opt.comingSoon ? 'text-accent' : 'text-ink-faint'} />
               {opt.label}
             </button>
           );
@@ -696,57 +721,142 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         )}
       </AnimatePresence>
 
-      {/* Today's logs list */}
-      {manualLogs.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
-              Today's logs · {manualLogs.length}
+      {/* Today's logs list — Grouped, Compact & Language-Aware */}
+      {allLogs.length > 0 && (() => {
+        const isBn = lang === 'bn';
+        
+        // Group today's logs by meal_slot
+        const groupsMap: Record<string, {
+          meal_slot: string;
+          total_calories: number;
+          macros: { protein_g: number; carbs_g: number; fat_g: number };
+          ids: string[];
+          food_names: string[];
+          logged_at: string;
+        }> = {};
+
+        for (const log of allLogs) {
+          const slot = log.meal_slot || 'other';
+          const cleanName = getCleanFoodName(log.input_text, planItems, isBn);
+          
+          if (!groupsMap[slot]) {
+            groupsMap[slot] = {
+              meal_slot: slot,
+              total_calories: 0,
+              macros: { protein_g: 0, carbs_g: 0, fat_g: 0 },
+              ids: [],
+              food_names: [],
+              logged_at: log.logged_at,
+            };
+          }
+          
+          groupsMap[slot].total_calories += log.total_calories || 0;
+          if (log.macros) {
+            groupsMap[slot].macros.protein_g += log.macros.protein_g || 0;
+            groupsMap[slot].macros.carbs_g += log.macros.carbs_g || 0;
+            groupsMap[slot].macros.fat_g += log.macros.fat_g || 0;
+          }
+          groupsMap[slot].ids.push(log.id);
+          if (!groupsMap[slot].food_names.includes(cleanName)) {
+            groupsMap[slot].food_names.push(cleanName);
+          }
+          if (new Date(log.logged_at) > new Date(groupsMap[slot].logged_at)) {
+            groupsMap[slot].logged_at = log.logged_at;
+          }
+        }
+
+        const groups = Object.values(groupsMap);
+        const visibleGroups = showAllLogs ? groups : groups.slice(0, 2);
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
+                {isBn ? `আজকের খাবার লগ · ${groups.length}` : `Today's logs · ${groups.length}`}
+              </div>
+              {loadingLogs && <Loader2 className="w-3 h-3 animate-spin text-ink-faint" />}
             </div>
-            {loadingLogs && <Loader2 className="w-3 h-3 animate-spin text-ink-faint" />}
-          </div>
-          <div className="space-y-1.5">
-            {manualLogs.map((log) => {
-              const slotMeta = SLOT_OPTIONS.find((s) => s.value === log.meal_slot);
-              const Icon = slotMeta?.icon || Utensils;
-              const time = new Date(log.logged_at).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              });
-              return (
-                <div
-                  key={log.id}
-                  className="flex items-center gap-3 bg-cream/40 hover:bg-cream/70 transition-colors p-3 rounded-2xl border border-ink/5"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-white border border-ink/5 flex items-center justify-center text-ink-muted shrink-0">
-                    <Icon size={14} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bn text-sm font-bold text-ink truncate">{log.input_text}</div>
-                    <div className="text-[0.6rem] uppercase tracking-widest font-body font-bold text-ink-faint">
-                      {(log.meal_slot || 'snack')} · {time}
+
+            <div className="space-y-2">
+              {visibleGroups.map((group) => {
+                const slotMeta = SLOT_OPTIONS.find((s) => s.value === group.meal_slot);
+                const Icon = slotMeta?.icon || Utensils;
+                const time = new Date(group.logged_at).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                const combinedFoodNames = group.food_names.join(', ');
+                const SLOT_LABELS_BN: Record<string, string> = {
+                  breakfast: 'সকালের নাস্তা',
+                  lunch: 'দুপুরের খাবার',
+                  snack: 'স্ন্যাক্স',
+                  dinner: 'রাতের খাবার',
+                  morning_snack: 'সকালের নাস্তা',
+                  evening_snack: 'বিকেলের নাস্তা',
+                  other: 'অন্যান্য',
+                };
+                const SLOT_LABELS_EN: Record<string, string> = {
+                  breakfast: 'Breakfast',
+                  lunch: 'Lunch',
+                  snack: 'Snack',
+                  dinner: 'Dinner',
+                  morning_snack: 'Morning Snack',
+                  evening_snack: 'Evening Snack',
+                  other: 'Other Food',
+                };
+                const slotLabel = isBn 
+                  ? (SLOT_LABELS_BN[group.meal_slot] || SLOT_LABELS_BN.other)
+                  : (SLOT_LABELS_EN[group.meal_slot] || SLOT_LABELS_EN.other);
+
+                return (
+                  <div
+                    key={group.meal_slot}
+                    className="flex flex-col gap-2 bg-cream/40 p-4 rounded-2xl border border-ink/5"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-white border border-ink/5 flex items-center justify-center text-ink-muted shrink-0">
+                        <Icon size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bn text-sm font-bold text-ink truncate leading-tight">
+                          {combinedFoodNames}
+                        </div>
+                        <div className="text-[0.6rem] uppercase tracking-widest font-body font-bold text-ink-faint mt-0.5">
+                          {slotLabel} · {time}
+                        </div>
+                      </div>
+                      <div className="font-body font-bold text-ink shrink-0 flex items-center gap-2">
+                        <span>
+                          {group.total_calories}
+                          <span className="text-[0.6rem] text-ink-faint font-body ml-1">kcal</span>
+                        </span>
+                        <button
+                          onClick={() => deleteLog(group.ids, group.meal_slot)}
+                          className="p-1.5 text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title={isBn ? 'মুছে ফেলুন' : 'Delete'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="font-body font-bold text-ink shrink-0 flex items-center gap-2">
-                    <span>
-                      {log.total_calories}
-                      <span className="text-[0.6rem] text-ink-faint font-body ml-1">kcal</span>
-                    </span>
-                    <button
-                      onClick={() => deleteLog(log.id)}
-                      className="p-1.5 text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                      title="মুছে ফেলুন"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
+                );
+              })}
+            </div>
 
-              );
-            })}
+            {groups.length > 2 && (
+              <button
+                onClick={() => setShowAllLogs(!showAllLogs)}
+                className="w-full mt-2 py-2.5 bg-cream/40 hover:bg-cream/60 text-ink-muted border border-ink/5 rounded-xl font-bn font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+              >
+                {showAllLogs 
+                  ? (isBn ? 'কম দেখান ▲' : 'Show Less ▲') 
+                  : (isBn ? `আরও দেখুন (${groups.length - 2}টি) ▼` : `See More (${groups.length - 2} more) ▼`)}
+              </button>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

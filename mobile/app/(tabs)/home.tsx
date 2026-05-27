@@ -191,7 +191,7 @@ export default function HomeScreen() {
       </View>
 
       {/* HERO CARD */}
-      <TouchableOpacity activeOpacity={0.9} style={styles.heroCard} onPress={() => { haptics.light(); router.push('/(tabs)/diet-plan'); }}>
+      <TouchableOpacity activeOpacity={0.9} style={styles.heroCard} onPress={() => { haptics.light(); router.push('/(tabs)/meals'); }}>
         <View style={styles.heroGradient}>
           <Text style={styles.heroTitle}>Your Diet Plan{'\n'}Starts Here!</Text>
           
@@ -215,8 +215,8 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
-            <TouchableOpacity style={styles.startBtn} onPress={() => { haptics.light(); router.push('/(tabs)/diet-plan'); }}>
-              <Text style={styles.startBtnText}>Start Free Trial</Text>
+            <TouchableOpacity style={styles.startBtn} onPress={() => { haptics.light(); router.push('/(tabs)/meals'); }}>
+              <Text style={styles.startBtnText}>{t('freeTrial')}</Text>
               <View style={styles.startBtnArrow}>
                 <ChevronRight size={16} color={design.blackBtn} />
               </View>

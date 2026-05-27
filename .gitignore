@@ -22,3 +22,6 @@ backend/prisma/prisma/
 # OS
 .DS_Store
 Thumbs.db
+
+# Native binaries
+*.apk

@@ -305,10 +305,10 @@ async def get_health_summary(
     TRACKED_NUTRIENTS = [
         "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-        "Vitamin B12", "Pantothenic acid (B5)", "Biotin (B7)", "Choline",
+        "Pantothenic acid (B5)", "Biotin (B7)",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Sodium (Na)", "Copper (Cu)", "Selenium (Se)", "Iodine (I)", "Manganese (Mn)", "Chromium (Cr)",
-        "Molybdenum (Mo)", "Chloride (Cl)", "Potassium (K)",
+        "Sodium (Na)", "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
+        "Molybdenum (Mo)", "Potassium (K)",
         "Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids",
     ]
 
@@ -317,16 +317,16 @@ async def get_health_summary(
         "Magnesium (Mg)": "ম্যাগনেসিয়াম (Magnesium)", "Phosphorus (P)": "ফসফরাস (Phosphorus)",
         "Sodium (Na)": "সোডিয়াম (Sodium)", "Copper (Cu)": "কপার (Copper)",
         "Selenium (Se)": "সিলেনিয়াম (Selenium)",
-        "Iodine (I)": "আয়োডিন (Iodine)", "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
+        "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
         "Chromium (Cr)": "ক্রোমিয়াম (Chromium)", "Molybdenum (Mo)": "মলিবডেনাম (Molybdenum)",
-        "Chloride (Cl)": "ক্লোরাইড (Chloride)", "Potassium (K)": "পটাশিয়াম (Potassium)",
+        "Potassium (K)": "পটাশিয়াম (Potassium)",
         "Vitamin A": "ভিটামিন এ (Vitamin A)", "Ascorbic acids (C)": "ভিটামিন সি (Vitamin C)",
         "Vitamin D": "ভিটামিন ডি (Vitamin D)", "Vitamin E": "ভিটামিন ই (Vitamin E)",
         "Vitamin K": "ভিটামিন কে (Vitamin K)", "Thiamine (B1)": "থায়ামিন (Vitamin B1)",
         "Riboflavin (B2)": "রিবোফ্লাভিন (Vitamin B2)", "Niacin (B3)": "নিয়াসিন (Vitamin B3)",
         "Total B6": "ভিটামিন বি৬ (Vitamin B6)", "Folate (total)": "ফোলেট (Folate)",
-        "Vitamin B12": "ভিটামিন বি১২ (Vitamin B12)", "Pantothenic acid (B5)": "প্যান্টোথেনিক অ্যাসিড (B5)",
-        "Biotin (B7)": "বায়োটিন (Vitamin B7)", "Choline": "কোলিন (Choline)",
+        "Pantothenic acid (B5)": "প্যান্টোথেনিক অ্যাসিড (B5)",
+        "Biotin (B7)": "বায়োটিন (Vitamin B7)",
         "Zinc (Zn)": "জিঙ্ক (Zinc)", "Cis ω-6 Fatty acids": "ওমেগা-৬ ফ্যাটি অ্যাসিড",
         "Cis ω-3 Fatty acids": "ওমেগা-৩ ফ্যাটি অ্যাসিড",
     }
@@ -471,8 +471,6 @@ async def get_health_summary(
         "vitamin c": ("micro", "Ascorbic acids (C)", "ভিটামিন সি", "mg"),
         "vitamin a": ("micro", "Vitamin A", "ভিটামিন এ", "mcg"),
         "vitamin d": ("micro", "Vitamin D", "ভিটামিন ডি", "mcg"),
-        "vitamin b12": ("micro", "Vitamin B12", "ভিটামিন বি১২", "mcg"),
-        "iodine": ("micro", "Iodine (I)", "আয়োডিন", "mcg"),
     }
 
     # 1. Direct Aggregation Comparison Engine

@@ -19,7 +19,7 @@ export const translations = {
     exploreNow: 'এখনই শুরু করুন',
     joinWith: 'যুক্ত হয়েছেন:',
     members: 'সদস্য',
-    freeTrial: 'ফ্রি ট্রায়াল শুরু করুন',
+    freeTrial: 'আপনার খাবার শুরু করুন',
     
     // Quick Actions
     foods: 'খাবার',
@@ -190,7 +190,7 @@ export const translations = {
     exploreNow: 'Explore Now',
     joinWith: 'Joined with:',
     members: 'Members',
-    freeTrial: 'Start Free Trial',
+    freeTrial: 'Start your Meal',
     
     // Quick Actions
     foods: 'Foods',

@@ -154,6 +154,15 @@ export const MealPlan = () => {
           delete next[key];
           return next;
         });
+        // Auto-unmark slot complete in plan DB
+        if (completedSlots.includes(slotName) && plan) {
+          try {
+            await mealPlanApi.markComplete(plan.plan_id, slotName, false);
+            setCompletedSlots((prev) => prev.filter((s) => s !== slotName));
+          } catch (err) {
+            console.warn('Failed to auto-unmark slot completed:', err);
+          }
+        }
         setTrackingVersion((v) => v + 1);
       } catch (err: unknown) {
         alert(err instanceof Error ? err.message : 'লগ মুছে ফেলতে সমস্যা হয়েছে');
@@ -273,6 +282,30 @@ export const MealPlan = () => {
       console.warn('Failed to sync logged foods:', e);
     }
   }, []);
+
+  const handleLogDeleted = useCallback(async (slotName: string) => {
+    // Sync checkboxes status
+    setLoggedFoods((prev) => {
+      const next = { ...prev };
+      // Remove all matching keys for this slot
+      Object.keys(next).forEach((key) => {
+        if (key.startsWith(`${slotName}-`)) {
+          next[key] = false;
+        }
+      });
+      return next;
+    });
+
+    // Unmark slot completed in DB if it was complete
+    if (completedSlots.includes(slotName) && plan) {
+      try {
+        await mealPlanApi.markComplete(plan.plan_id, slotName, false);
+        setCompletedSlots((prev) => prev.filter((s) => s !== slotName));
+      } catch (err) {
+        console.warn('Failed to unmark slot completed on log deletion:', err);
+      }
+    }
+  }, [completedSlots, plan]);
 
   const targets = profileData?.targets;
 
@@ -421,17 +454,34 @@ export const MealPlan = () => {
         });
         await Promise.all(logPromises);
       } else {
-        // Marking slot as Not Eaten: Delete all individual items in this slot
+        // Unchecking: Delete all individual items of this slot from today's logs
         const deletePromises = items.map(async (food, j) => {
           const key = `${slot}-${j}`;
           const logId = newLoggedFoodIds[key];
           if (logId) {
-            await mealTrackingApi.delete(logId);
-            delete newLoggedFoods[key];
-            delete newLoggedFoodIds[key];
+            try {
+              await mealTrackingApi.delete(logId);
+              delete newLoggedFoods[key];
+              delete newLoggedFoodIds[key];
+            } catch (err) {
+              console.error(`Failed to delete item ${key} on slot uncheck:`, err);
+            }
           }
         });
         await Promise.all(deletePromises);
+        
+        // Also look through today's logs from the tracking service to ensure any backend matches are deleted
+        try {
+          const todayLogsRes = await mealTrackingApi.today();
+          const logs = todayLogsRes.data || [];
+          const logsToDelete = logs.filter((log: any) => log.meal_slot === backendSlot);
+          const backendDeletePromises = logsToDelete.map(async (log: any) => {
+            await mealTrackingApi.delete(log.id);
+          });
+          await Promise.all(backendDeletePromises);
+        } catch (err) {
+          console.warn('Failed to clean up duplicate slot logs from today:', err);
+        }
       }
 
       // Update state for individual checked logs
@@ -663,7 +713,8 @@ export const MealPlan = () => {
 
         {/* Compact Micronutrients Summary Call-to-action */}
         {p.plan_data && (p.plan_data as any).micronutrient_targets && (p.plan_data as any).micronutrient_targets.length > 0 && (() => {
-          const targets = (p.plan_data as any).micronutrient_targets;
+          const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)"];
+          const targets = ((p.plan_data as any).micronutrient_targets as any[]).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
           const total = targets.length;
           const completed = targets.filter((n: any) => n.percentage >= 100).length;
           const pct = Math.round((completed / total) * 100) || 0;
@@ -932,7 +983,7 @@ export const MealPlan = () => {
         </div>
 
         {/* Meal log (text / voice / photo) */}
-        {p.plan_id !== tomorrowPlan?.plan_id && <MealLogSection key={trackingVersion} onTrackingUpdate={handleTrackingUpdate} />}
+        {p.plan_id !== tomorrowPlan?.plan_id && <MealLogSection key={trackingVersion} onTrackingUpdate={handleTrackingUpdate} onLogDeleted={handleLogDeleted} />}
 
         {/* Feedback */}
         {showToggle && (

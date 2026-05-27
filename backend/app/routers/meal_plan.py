@@ -36,10 +36,10 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
     default_nutrients = [
         "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-        "Vitamin B12", "Pantothenic acid (B5)", "Biotin (B7)", "Choline",
+        "Pantothenic acid (B5)", "Biotin (B7)",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Copper (Cu)", "Selenium (Se)", "Iodine (I)", "Manganese (Mn)", "Chromium (Cr)",
-        "Molybdenum (Mo)", "Chloride (Cl)", "Potassium (K)", "Cis ω-6 Fatty acids",
+        "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
+        "Molybdenum (Mo)", "Potassium (K)", "Cis ω-6 Fatty acids",
         "Cis ω-3 Fatty acids"
     ]
     
@@ -123,10 +123,10 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         TRACKED_NUTRIENTS = [
             "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
             "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-            "Vitamin B12", "Pantothenic acid (B5)", "Biotin (B7)", "Choline",
+            "Pantothenic acid (B5)", "Biotin (B7)",
             "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-            "Copper (Cu)", "Selenium (Se)", "Iodine (I)", "Manganese (Mn)", "Chromium (Cr)",
-            "Molybdenum (Mo)", "Chloride (Cl)", "Potassium (K)", "Cis ω-6 Fatty acids",
+            "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
+            "Molybdenum (Mo)", "Potassium (K)", "Cis ω-6 Fatty acids",
             "Cis ω-3 Fatty acids",
             # Graph-specific nutrient name aliases
             "Folates (B9)", "α-Tocopherol equivalent (E)"
@@ -191,11 +191,9 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         "Phosphorus (P)": "ফসফরাস (Phosphorus)",
         "Copper (Cu)": "কপার (Copper)",
         "Selenium (Se)": "সিলেনিয়াম (Selenium)",
-        "Iodine (I)": "আয়োডিন (Iodine)",
         "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
         "Chromium (Cr)": "ক্রোমিয়াম (Chromium)",
         "Molybdenum (Mo)": "মলিবডেনাম (Molybdenum)",
-        "Chloride (Cl)": "ক্লোরাইড (Chloride)",
         "Potassium (K)": "পটাশিয়াম (Potassium)",
         "Vitamin A": "ভিটামিন এ (Vitamin A)",
         "Ascorbic acids (C)": "ভিটামিন সি (Vitamin C)",
@@ -207,10 +205,8 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         "Niacin (B3)": "নিয়াসিন (Vitamin B3)",
         "Total B6": "ভিটামিন বি৬ (Vitamin B6)",
         "Folate (total)": "ফোলেট (Folate)",
-        "Vitamin B12": "ভিটামিন বি১২ (Vitamin B12)",
         "Pantothenic acid (B5)": "প্যান্টোথেনিক অ্যাসিড (B5)",
         "Biotin (B7)": "বায়োটিন (Vitamin B7)",
-        "Choline": "কোলিন (Choline)",
         "Zinc (Zn)": "জিঙ্ক (Zinc)",
         "Cis ω-6 Fatty acids": "ওমেগা-৬ ফ্যাটি অ্যাসিড",
         "Cis ω-3 Fatty acids": "ওমেগা-৩ ফ্যাটি অ্যাসিড",
@@ -224,6 +220,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             "carbohydrate", "protein", "total fat", "dietary fiber", "moisture",
             "fat", "water",
             "available cho",  # CHO = carbohydrate
+            "chloride (cl)", "choline", "vitamin b12", "energy", "vitamin b", "chloride", "vitamin b12 (cobalamin)", "iodine (i)", "iodine"
         ]:
             continue
             

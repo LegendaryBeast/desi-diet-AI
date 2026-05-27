@@ -157,18 +157,20 @@ export default function ReportScreen() {
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
         "Pantothenic acid (B5)", "Biotin (B7)"
       ];
-      const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)"];
+      const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
       const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
       const mappedMicros = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
-        ? healthSummary.micronutrient_targets.map((micro: any) => ({
-            name: micro.name,
-            nameBn: micro.name_bn || micro.name,
-            unit: micro.unit,
-            target: Math.round(micro.target / selectedDuration),
-            avg: Math.round(micro.consumed / selectedDuration),
-            percentage: micro.percentage,
-          }))
+        ? healthSummary.micronutrient_targets
+            .filter((micro: any) => !EXCLUDE_NAMES.includes(micro.name))
+            .map((micro: any) => ({
+                name: micro.name,
+                nameBn: micro.name_bn || micro.name,
+                unit: micro.unit,
+                target: Math.round(micro.target / selectedDuration),
+                avg: Math.round(micro.consumed / selectedDuration),
+                percentage: micro.percentage,
+              }))
         : [
             { name: "Vitamin A", nameBn: "ভিটামিন এ (Vitamin A)", unit: "mcg", target: 900, avg: Math.round(900 * complianceRate * 0.78), percentage: Math.round(78 * complianceRate) },
             { name: "Ascorbic acids (C)", nameBn: "ভিটামিন সি (Vitamin C)", unit: "mg", target: 80, avg: Math.round(80 * complianceRate * 1.05), percentage: Math.round(105 * complianceRate) },
@@ -582,14 +584,17 @@ export default function ReportScreen() {
   const avgFat = healthSummary?.macro_summary?.fat_g ? (healthSummary.macro_summary.fat_g / selectedDuration) : (activeTargets.fat_g * complianceRate);
   const avgFiber = healthSummary?.macro_summary?.fiber_g ? (healthSummary.macro_summary.fiber_g / selectedDuration) : (activeTargets.fiber_g * complianceRate);
 
+  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
   const micronutrients = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
-    ? healthSummary.micronutrient_targets.map((micro: any) => ({
-        nameBn: micro.name_bn || micro.name,
-        nameEn: micro.name,
-        unit: micro.unit,
-        target: Math.round(micro.target / selectedDuration),
-        avg: Math.round(micro.consumed / selectedDuration),
-      }))
+    ? healthSummary.micronutrient_targets
+        .filter((micro: any) => !EXCLUDE_NAMES.includes(micro.name))
+        .map((micro: any) => ({
+            nameBn: micro.name_bn || micro.name,
+            nameEn: micro.name,
+            unit: micro.unit,
+            target: Math.round(micro.target / selectedDuration),
+            avg: Math.round(micro.consumed / selectedDuration),
+        }))
     : [
         { nameBn: "ক্যালসিয়াম", nameEn: "Calcium", unit: "mg", target: 1000, avg: 1000 * complianceRate * 0.95 },
         { nameBn: "আয়রন", nameEn: "Iron", unit: "mg", target: 17, avg: 17 * complianceRate * 0.72 },
@@ -599,8 +604,6 @@ export default function ReportScreen() {
         { nameBn: "ভিটামিন এ", nameEn: "Vitamin A", unit: "mcg", target: 900, avg: 900 * complianceRate * 0.78 },
         { nameBn: "ভিটামিন সি", nameEn: "Vitamin C", unit: "mg", target: 80, avg: 80 * complianceRate * 1.05 },
         { nameBn: "ভিটামিন ডি", nameEn: "Vitamin D", unit: "mcg", target: 15, avg: 15 * complianceRate * 0.65 },
-        { nameBn: "ভিটামিন বি১২", nameEn: "Vitamin B12", unit: "mcg", target: 2.4, avg: 2.4 * complianceRate * 0.85 },
-        { nameBn: "আয়োডিন", nameEn: "Iodine (I)", unit: "mcg", target: 150, avg: 150 * complianceRate * 0.92 },
       ];
 
   // Build calorie history from weekly logs

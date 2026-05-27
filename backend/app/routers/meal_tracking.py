@@ -266,20 +266,20 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
         # Build prefix and feedback
         if not_found:
             foods_list         = ", ".join(not_found)
-            prefix             = "⚠️ [Item Not Found in Database] "
+            prefix             = "[Item Not Found in Database] "
             if not parsed_items:
-                ai_feedback = f"❌ '{foods_list}' ডাটাবেজে পাওয়া যায়নি — Item not found in database."
+                ai_feedback = f"'{foods_list}' ডাটাবেজে পাওয়া যায়নি — Item not found in database."
             else:
                 ai_feedback = (
-                    f"✅ কিছু খাবার সফলভাবে লগ হয়েছে।\n"
-                    f"❌ '{foods_list}' — Item not found in database. এই আইটেমগুলো লগ করা হয়নি।"
+                    f"কিছু খাবার সফলভাবে লগ হয়েছে।\n"
+                    f"'{foods_list}' — Item not found in database. এই আইটেমগুলো লগ করা হয়নি।"
                 )
         else:
             prefix      = "✅ "
-            ai_feedback = "✅ সফলভাবে আপনার খাবার ট্র্যাকিংয়ে যুক্ত করা হয়েছে (ডাটাবেজ দ্বারা সম্পূর্ণ ভেরিফাইড)।"
+            ai_feedback = "সফলভাবে আপনার খাবার ট্র্যাকিংয়ে যুক্ত করা হয়েছে (ডাটাবেজ দ্বারা সম্পূর্ণ ভেরিফাইড)।"
 
         if getattr(req, "is_manual", False):
-            input_text_display = f"✍️ [Manual] {prefix}{req.input}"
+            input_text_display = f"[Manual] {prefix}{req.input}"
         else:
             input_text_display = f"{prefix}{req.input}"
 
@@ -307,27 +307,7 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
             "language":    req.language,
         }
     )
-    # ── Auto-complete slot in today's Meal Plan ──────────────────────────────────────────
-    if req.meal_slot:
-        try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            today_plan = await prisma.mealplan.find_first(
-                where={
-                    "userId":   current_user.id,
-                    "planType": "daily",
-                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-                }
-            )
-            if today_plan:
-                completed = safe_list(from_json_string(today_plan.completedSlots)) if today_plan.completedSlots else []
-                if req.meal_slot not in completed:
-                    completed.append(req.meal_slot)
-                    await prisma.mealplan.update(
-                        where={"planId": today_plan.planId},
-                        data={"completedSlots": to_json_string(completed)},
-                    )
-        except Exception:
-            logger.exception("Failed to auto-complete meal plan slot")
+    # Auto-completion of slots removed to allow partial logs without force-completing the whole meal slot
     return MealTrackingResponse(
         id=record.id,
         parsed_items=[ParsedFoodItem(**item) for item in parsed_items],
@@ -552,27 +532,7 @@ async def log_meal_from_image(
         }
     )
 
-    # ── Auto-complete meal plan slot ──────────────────────────────────────────────
-    if meal_slot and parsed_items:
-        try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            today_plan = await prisma.mealplan.find_first(
-                where={
-                    "userId": current_user.id,
-                    "planType": "daily",
-                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-                }
-            )
-            if today_plan:
-                completed = safe_list(from_json_string(today_plan.completedSlots)) if today_plan.completedSlots else []
-                if meal_slot not in completed:
-                    completed.append(meal_slot)
-                    await prisma.mealplan.update(
-                        where={"planId": today_plan.planId},
-                        data={"completedSlots": to_json_string(completed)},
-                    )
-        except Exception:
-            logger.exception("Failed to auto-complete meal plan slot after image log")
+    # Auto-completion of slots removed to allow partial logs without force-completing the whole meal slot
 
     return MealTrackingResponse(
         id=record.id,

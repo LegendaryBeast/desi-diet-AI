@@ -22,7 +22,7 @@ import { mealPlanApi, type MealPlanResponse } from '../lib/api';
 const VITAMIN_NAMES = [
   "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
   "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-  "Pantothenic acid (B5)", "Biotin (B7)", "Choline", "Vitamin B12"
+  "Pantothenic acid (B5)", "Biotin (B7)"
 ];
 const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
@@ -146,26 +146,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
     desc: "হৃদযন্ত্রের সুরক্ষা দেয়, কোলেস্টেরল কমায় এবং প্রদাহ দূর করতে সাহায্য করে।",
     foods: ["ইলিশ মাছ", "রুই মাছ", "তিসির তেল", "আখরোট", "চিয়া সিড"],
     category: "ফ্যাটি অ্যাসিড"
-  },
-  "Choline": {
-    desc: "কোষের গঠন বজায় রাখতে, চর্বি বিপাক করতে এবং স্মৃতিশক্তি ও স্নায়ুতন্ত্রের কার্যকারিতা সচল রাখতে সাহায্য করে।",
-    foods: ["ডিম", "গরুর কলিজা", "মুরগির মাংস", "ফুলকপি", "ব্রকলি", "সয়াবিন"],
-    category: "ভিটামিন"
-  },
-  "Vitamin B12": {
-    desc: "লাল রক্তকণিকা গঠনে, ডিএনএ সংশ্লেষণে এবং স্নায়ুতন্ত্রের কার্যকারিতা বজায় রাখতে অত্যন্ত গুরুত্বপূর্ণ ভূমিকা পালন করে।",
-    foods: ["গরুর কলিজা", "সামুদ্রিক মাছ", "দুধ", "দই", "পনির", "ডিম", "মুরগির মাংস"],
-    category: "ভিটামিন"
-  },
-  "Chloride (Cl)": {
-    desc: "শরীরে তরল ও electrolytes এর ভারসাম্য বজায় রাখতে এবং পাকস্থলীতে হজমকারী অ্যাসিড (HCl) তৈরিতে সাহায্য করে।",
-    foods: ["খাবার লবণ", "টমেটো", "লেটুস পাতা", "সবুজ শাকসবজি", "সামুদ্রিক মাছ"],
-    category: "খনিজ"
-  },
-  "Iodine (I)": {
-    desc: "থাইরয়েড হরমোন তৈরি করতে সাহায্য করে যা মেটাবলিজম, শারীরিক ও মানসিক বিকাশ এবং শক্তি নিয়ন্ত্রণ করে।",
-    foods: ["আয়োডিনযুক্ত লবণ", "সামুদ্রিক মাছ", "চিংড়ি", "দুধ", "দই", "ডিম"],
-    category: "খনিজ"
   }
 };
 
@@ -205,12 +185,13 @@ export const Micronutrients: React.FC = () => {
     fetchPlanData();
   }, [isBn]);
 
-  const vitamins = micronutrients.filter(n => VITAMIN_NAMES.includes(n.name));
-  const minerals = micronutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name));
-  const fatty = micronutrients.filter(n => FATTY_NAMES.includes(n.name));
+  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
+  const vitamins = micronutrients.filter(n => VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+  const minerals = micronutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+  const fatty = micronutrients.filter(n => FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
 
   const getFilteredItems = () => {
-    let items = micronutrients;
+    let items = micronutrients.filter(n => !EXCLUDE_NAMES.includes(n.name));
     if (activeTab === 'vitamins') items = vitamins;
     else if (activeTab === 'minerals') items = minerals;
     else if (activeTab === 'fats') items = fatty;
@@ -228,13 +209,14 @@ export const Micronutrients: React.FC = () => {
   const filteredItems = getFilteredItems();
 
   // Find the top deficiencies (percentage < 100, sorted ascending)
-  const deficiencies = [...micronutrients]
+  const activeMicronutrients = micronutrients.filter(n => !EXCLUDE_NAMES.includes(n.name));
+  const deficiencies = [...activeMicronutrients]
     .filter(n => n.percentage < 100)
     .sort((a, b) => a.percentage - b.percentage)
     .slice(0, 3);
 
-  const metCount = micronutrients.filter(n => n.percentage >= 100).length;
-  const totalCount = micronutrients.length;
+  const metCount = activeMicronutrients.filter(n => n.percentage >= 100).length;
+  const totalCount = activeMicronutrients.length;
   const metPercentage = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : 0;
 
   return (

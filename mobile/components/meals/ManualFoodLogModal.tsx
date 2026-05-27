@@ -12,11 +12,10 @@ import { colors, fonts, spacing, radius } from '../../lib/theme';
 import { mealTrackingApi } from '../../lib/api';
 import { useHaptics } from '../../hooks/useHaptics';
 
-// Platform-guarded expo-image-picker import
-let ImagePicker: typeof import('expo-image-picker') | null = null;
-if (Platform.OS !== 'web') {
-  ImagePicker = require('expo-image-picker');
-}
+const getImagePicker = () => {
+  if (Platform.OS === 'web') return null;
+  return require('expo-image-picker');
+};
 
 const SLOTS = [
   { id: 'breakfast', label: 'সকাল', icon: Coffee },
@@ -71,31 +70,33 @@ export default function ManualFoodLogModal({ visible, onClose, onLogged, languag
   };
 
   const pickImage = async () => {
-    if (!ImagePicker) {
+    const picker = getImagePicker();
+    if (!picker) {
       Alert.alert(isBn ? 'শুধু মোবাইলে' : 'Mobile Only', isBn ? 'ছবি শুধু মোবাইলে কাজ করে।' : 'Image picking only works on mobile.');
       return;
     }
     haptics.light();
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await picker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(isBn ? 'অনুমতি প্রয়োজন' : 'Permission Required', isBn ? 'গ্যালারি অ্যাক্সেসের অনুমতি দিন।' : 'Grant gallery access permission.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    const result = await picker.launchImageLibraryAsync({ mediaTypes: picker.MediaTypeOptions.Images, quality: 0.7 });
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
     }
   };
 
   const takePhoto = async () => {
-    if (!ImagePicker) return;
+    const picker = getImagePicker();
+    if (!picker) return;
     haptics.light();
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status } = await picker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(isBn ? 'অনুমতি প্রয়োজন' : 'Permission Required', isBn ? 'ক্যামেরা অ্যাক্সেসের অনুমতি দিন।' : 'Grant camera access permission.');
       return;
     }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    const res = await picker.launchCameraAsync({ quality: 0.7 });
     if (!res.canceled && res.assets[0]) {
       setImageUri(res.assets[0].uri);
     }

@@ -62,12 +62,16 @@ export default function MedicineRemindersScreen() {
         const confirmBtn = buttons.find(b => b.text === 'মুছে ফেলুন' || b.text === 'Delete' || b.text === 'হ্যাঁ' || b.text === 'Yes' || b.text === 'OK');
         const actionBtn = destructiveBtn || confirmBtn || buttons[buttons.length - 1];
         
-        const confirmed = window.confirm(`${title}\n\n${message}`);
-        if (confirmed && actionBtn && actionBtn.onPress) {
-          actionBtn.onPress();
-        }
+        setTimeout(() => {
+          const confirmed = window.confirm(`${title}\n\n${message}`);
+          if (confirmed && actionBtn && actionBtn.onPress) {
+            actionBtn.onPress();
+          }
+        }, 100);
       } else {
-        window.alert(`${title}\n\n${message}`);
+        setTimeout(() => {
+          window.alert(`${title}\n\n${message}`);
+        }, 100);
       }
     } else {
       Alert.alert(title, message, buttons);
@@ -75,6 +79,9 @@ export default function MedicineRemindersScreen() {
   };
 
   const [tab, setTab] = useState<'list' | 'add'>('list');
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [medIdToDelete, setMedIdToDelete] = useState<string | null>(null);
+  const [medNameToDelete, setMedNameToDelete] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -301,18 +308,9 @@ export default function MedicineRemindersScreen() {
 
   const handleDelete = (id: string, name: string) => {
     haptics.light();
-    triggerAlert(t('deleteReminder'), language === 'bn' ? `${name} রিমাইন্ডারটি কি মুছে ফেলতে চান?` : `Are you sure you want to delete ${name} reminder?`, [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('delete'),
-        style: 'destructive',
-        onPress: () => {
-          cancelNotifications(id);
-          cancelNotifications(name);
-          deleteMutation.mutate(id);
-        },
-      },
-    ]);
+    setMedIdToDelete(id);
+    setMedNameToDelete(name);
+    setDeleteConfirmVisible(true);
   };
 
   const handleAddManualTime = () => {
@@ -649,6 +647,47 @@ export default function MedicineRemindersScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteConfirmVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteConfirmVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('deleteReminder')}</Text>
+            <Text style={styles.modalMessage}>
+              {language === 'bn' 
+                ? `${medNameToDelete || ''} রিমাইন্ডারটি কি মুছে ফেলতে চান?` 
+                : `Are you sure you want to delete ${medNameToDelete || 'this'} reminder?`}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => { haptics.light(); setDeleteConfirmVisible(false); }}
+              >
+                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.deleteButton]} 
+                onPress={() => {
+                  haptics.medium();
+                  if (medIdToDelete && medNameToDelete) {
+                    cancelNotifications(medIdToDelete);
+                    cancelNotifications(medNameToDelete);
+                    deleteMutation.mutate(medIdToDelete);
+                  }
+                  setDeleteConfirmVisible(false);
+                }}
+              >
+                <Text style={styles.deleteButtonText}>{t('delete')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1187,5 +1226,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 2,
     marginBottom: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontFamily: fonts.bn,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  cancelButton: {
+    backgroundColor: '#FAFBF7',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  cancelButtonText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  deleteButton: {
+    backgroundColor: colors.error,
+    borderColor: colors.error,
+  },
+  deleteButtonText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.white,
   },
 });

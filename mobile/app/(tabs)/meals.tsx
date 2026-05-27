@@ -80,6 +80,7 @@ export default function MealsScreen() {
 
   const { t, language } = useTranslation();
   const slotTimes = language === 'bn' ? SLOT_TIMES_BN : SLOT_TIMES_EN;
+  const isBn = language === 'bn';
 
   // Pro features integration
   const { isPro } = useSubscription();
@@ -98,6 +99,10 @@ export default function MealsScreen() {
   const [skippedCodes, setSkippedCodes] = useState<Record<string, string[]>>({});
   const [loadingSwapKey, setLoadingSwapKey] = useState<string | null>(null);
   const [togglingSlot, setTogglingSlot] = useState<string | null>(null);
+  const [showAllLogs, setShowAllLogs] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [idsToDelete, setIdsToDelete] = useState<string[] | null>(null);
+  const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
 
   const handleAutoSwap = async (meal: any, item: any, itemIndex: number) => {
     const key = `${meal.slot}-${itemIndex}`;
@@ -266,7 +271,8 @@ export default function MealsScreen() {
       if (isPro) {
         tomorrowQ.refetch();
       }
-    }, [todayQ, todayLogsQ, tomorrowQ, isPro])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isPro])
   );
 
   // ── Mutation: Mark Complete ────────────────────────────────────────────────
@@ -315,24 +321,15 @@ export default function MealsScreen() {
           });
           await Promise.all(logPromises);
         } else {
-          // Delete all logged items in this slot
-          const deletePromises = items.map(async (food: any) => {
-            const foodNameEn = (food.name_en || '').toLowerCase();
-            const foodNameBn = (food.name_bn || '').toLowerCase();
-
-            const matchedLogs = logs.filter((log: any) => {
-              if (log.meal_slot !== slot) return false;
-              const logText = (log.input_text || '').toLowerCase();
-              return (
-                (foodNameEn && logText.includes(foodNameEn)) ||
-                (foodNameBn && logText.includes(foodNameBn))
-              );
-            });
-
-            const delPromises = matchedLogs.map(async (log: any) => {
+          // Unchecking the slot!
+          // We should delete all today's logs for this specific slot!
+          const logsToDelete = logs.filter((log: any) => log.meal_slot === slot);
+          const deletePromises = logsToDelete.map(async (log: any) => {
+            try {
               await mealTrackingApi.delete(log.id);
-            });
-            await Promise.all(delPromises);
+            } catch (e) {
+              console.warn(`Failed to auto-delete log item ${log.id} on slot uncheck:`, e);
+            }
           });
           await Promise.all(deletePromises);
         }
@@ -353,19 +350,93 @@ export default function MealsScreen() {
 
   // ── Mutation: Delete Logged Meal ───────────────────────────────────────────
   const deleteLogMutation = useMutation({
-    mutationFn: async (logId: string) => {
-      return mealTrackingApi.delete(logId);
+    mutationFn: async (logIds: string | string[]) => {
+      if (Array.isArray(logIds)) {
+        for (const id of logIds) {
+          try {
+            await mealTrackingApi.delete(id);
+          } catch (e) {
+            console.warn(`Failed to delete log item ${id}:`, e);
+          }
+        }
+      } else {
+        await mealTrackingApi.delete(logIds);
+      }
     },
     onSuccess: () => {
       haptics.success();
       queryClient.invalidateQueries({ queryKey: ['daily_plan', 0] });
+      queryClient.invalidateQueries({ queryKey: ['daily_tracking'] });
+      todayLogsQ.refetch();
+      todayQ.refetch();
+    },
+    onError: (err) => {
+      console.error('Deletion mutation failed:', err);
+      haptics.error();
+    },
+  });
+
+  // ── Mutation: Log Individual Food Item ──────────────────────────────────────
+  const logFoodItemMutation = useMutation({
+    mutationFn: async ({ slot, food }: { slot: string; food: any }) => {
+      const backendSlot = slot.startsWith('snack') ? 'snack' : slot;
+      const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+      const foodName = food.name_en || food.name_bn || '';
+      const inputStr = `${amountStr} of ${foodName}`;
+
+      return mealTrackingApi.log({
+        input: inputStr,
+        meal_slot: backendSlot,
+        language: 'bn',
+        direct_calories: food.calories ? Number(food.calories) : undefined,
+        direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
+        direct_carbs: undefined,
+        direct_fat: undefined,
+        direct_name: food.name_en || food.name_bn || undefined,
+        direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
+      });
+    },
+    onSuccess: () => {
+      haptics.success();
+      queryClient.invalidateQueries({ queryKey: ['daily_plan', 0] });
+      queryClient.invalidateQueries({ queryKey: ['daily_tracking'] });
       todayLogsQ.refetch();
       todayQ.refetch();
     },
     onError: () => haptics.error(),
   });
 
-  // ── Refresh Handler ────────────────────────────────────────────────────────
+  const isFoodItemLogged = (slot: string, item: any) => {
+    const backendSlot = slot.startsWith('snack') ? 'snack' : slot;
+    const foodNameEn = (item.name_en || '').toLowerCase();
+    const foodNameBn = (item.name_bn || '').toLowerCase();
+    const logs = todayLogsQ.data || [];
+    return logs.some((log: any) => {
+      if (log.meal_slot !== backendSlot) return false;
+      const logText = (log.input_text || '').toLowerCase();
+      return (
+        (foodNameEn && logText.includes(foodNameEn)) ||
+        (foodNameBn && logText.includes(foodNameBn))
+      );
+    });
+  };
+
+  const getFoodItemLogId = (slot: string, item: any) => {
+    const backendSlot = slot.startsWith('snack') ? 'snack' : slot;
+    const foodNameEn = (item.name_en || '').toLowerCase();
+    const foodNameBn = (item.name_bn || '').toLowerCase();
+    const logs = todayLogsQ.data || [];
+    const matched = logs.find((log: any) => {
+      if (log.meal_slot !== backendSlot) return false;
+      const logText = (log.input_text || '').toLowerCase();
+      return (
+        (foodNameEn && logText.includes(foodNameEn)) ||
+        (foodNameBn && logText.includes(foodNameBn))
+      );
+    });
+    return matched?.id;
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (activeTab === 'today') {
@@ -538,14 +609,26 @@ export default function MealsScreen() {
 
                     {/* Checkbox Button */}
                     <TouchableOpacity
-                      style={[styles.webFoodCheckBtn, isCompleted && styles.webFoodCheckBtnActive]}
+                      style={[styles.webFoodCheckBtn, isFoodItemLogged(meal.slot, item) && styles.webFoodCheckBtnActive]}
                       onPress={() => {
                         haptics.light();
-                        markMutation.mutate({ planId, slot: meal.slot, completed: !isCompleted });
+                        const isLogged = isFoodItemLogged(meal.slot, item);
+                        if (isLogged) {
+                          const logId = getFoodItemLogId(meal.slot, item);
+                          if (logId) {
+                            deleteLogMutation.mutate(logId);
+                            // Auto-unmark slot complete in plan DB
+                            if (isCompleted && planId) {
+                              markMutation.mutate({ planId, slot: meal.slot, completed: false, items: [] });
+                            }
+                          }
+                        } else {
+                          logFoodItemMutation.mutate({ slot: meal.slot, food: item });
+                        }
                       }}
-                      disabled={markMutation.isPending}
+                      disabled={deleteLogMutation.isPending || logFoodItemMutation.isPending}
                     >
-                      <Check size={10} color={isCompleted ? colors.white : 'rgba(0,0,0,0.15)'} strokeWidth={4.5} />
+                      <Check size={10} color={isFoodItemLogged(meal.slot, item) ? colors.white : 'rgba(0,0,0,0.15)'} strokeWidth={4.5} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -666,6 +749,11 @@ export default function MealsScreen() {
     const completedCount = completedSlots.length;
     const totalMeals = (planData?.meals || []).length;
 
+    // Calculate actual consumed calories from today's tracker logs
+    const consumedCal = (todayLogsQ.data || []).reduce((sum: number, log: any) => sum + (log.total_calories || 0), 0);
+    const targetCal = planData?.target_calories || 2000;
+    const progressPct = targetCal > 0 ? Math.min(100, Math.round((consumedCal / targetCal) * 100)) : 0;
+
     return (
       <View style={styles.tabContent}>
         <View style={styles.daySummary}>
@@ -675,14 +763,16 @@ export default function MealsScreen() {
           </View>
           <View style={styles.daySummaryRight}>
             <Text style={styles.dayProgress}>
-              {language === 'bn' ? `${completedCount}/${totalMeals} সম্পন্ন` : `${completedCount}/${totalMeals} Completed`}
+              {language === 'bn' ? `${consumedCal} / ${targetCal} কি.ক্যালরি` : `${consumedCal} / ${targetCal} kcal`}
             </Text>
-            <Text style={styles.dayCalTarget}>{planData?.target_calories} kcal</Text>
+            <Text style={styles.dayCalTarget}>
+              {language === 'bn' ? `${progressPct}% সম্পন্ন` : `${progressPct}% completed`}
+            </Text>
           </View>
         </View>
 
         <View style={styles.progressBg}>
-          <View style={[styles.progressFill, { width: `${totalMeals > 0 ? (completedCount / totalMeals) * 100 : 0}%` }]} />
+          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
         </View>
 
         <View style={styles.actionsRow}>
@@ -762,58 +852,104 @@ export default function MealsScreen() {
     other: 'Other Food',
   };
 
-  const renderLoggedMeals = (todayPlanData: any) => {
-    const allLogs = todayLogsQ.data || [];
-    const logs = allLogs.filter((log: any) => {
-      const inputText = log.input_text || '';
-      if (inputText.includes('[Manual]')) return true;
-      if (inputText.includes('[Plan]')) return false;
+  const getCleanFoodName = (logInputText: string, planData: any, isBn: boolean) => {
+    let clean = logInputText
+      .replace(/^📋\s*\[Plan\]\s*/, '')
+      .replace(/^📋\s*/, '')
+      .replace(/^\[Plan\]\s*/, '')
+      .replace(/^\[Manual\]\s*/, '')
+      .replace(/^✍️\s*\[Manual\]\s*/, '')
+      .replace(/^✍️\s*/, '')
+      .replace(/^✅\s*/, '')
+      .replace(/^⚠️\s*/, '')
+      .replace(/^📷\s*/, '')
+      .trim();
 
-      const slotKeywords = [
-        'সকালের নাস্তা',
-        'সকালের স্ন্যাক্স',
-        'দুপুরের খাবার',
-        'বিকেলের নাস্তা',
-        'রাতের খাবার',
-        'breakfast',
-        'morning snack',
-        'lunch',
-        'evening snack',
-        'dinner',
-        'snack'
-      ];
-      const lowerText = inputText.toLowerCase();
+    clean = clean.replace(/^\d+g\s+of\s+/i, '');
+    clean = clean.replace(/^\d+\s+portion\s+of\s+/i, '');
+    clean = clean.replace(/^of\s+/i, '');
+    clean = clean.replace(/\s*\[.*?\]/g, '').trim();
 
-      if (slotKeywords.some(kw => lowerText.includes(kw) && (lowerText.includes(':') || lowerText.includes('plan')))) {
-        return false;
-      }
+    const cleanLower = clean.toLowerCase();
 
-      const plannedMeals = todayPlanData?.meals || [];
-      for (const meal of plannedMeals) {
-        const items = meal.items || [];
-        for (const item of items) {
-          const nameEn = (item.name_en || '').toLowerCase();
-          const nameBn = (item.name_bn || '').toLowerCase();
+    if (planData && planData.meals) {
+      for (const m of planData.meals) {
+        for (const item of (m.items || [])) {
+          const itemEn = (item.name_en || '').toLowerCase();
+          const itemBn = (item.name_bn || '').toLowerCase();
+          const itemCode = (item.food_code || item.code || '').toLowerCase();
+          
           if (
-            (nameEn && lowerText.includes(nameEn)) ||
-            (nameBn && lowerText.includes(nameBn))
+            cleanLower === itemEn ||
+            cleanLower === itemBn ||
+            (itemCode && cleanLower === itemCode) ||
+            cleanLower.includes(itemEn) ||
+            cleanLower.includes(itemBn)
           ) {
-            return false;
+            return isBn ? (item.name_bn || item.name_en) : (item.name_en || item.name_bn);
           }
         }
       }
+    }
 
-      return true;
-    });
+    return clean;
+  };
+
+  const renderLoggedMeals = (todayPlanData: any) => {
+    const logs = todayLogsQ.data || [];
     if (logs.length === 0) return null;
 
     const totalCals = logs.reduce((sum: number, log: any) => sum + (log.total_calories || 0), 0);
+    const isBn = language === 'bn';
+
+    // Group logs by meal_slot
+    const groupsMap: Record<string, {
+      meal_slot: string;
+      total_calories: number;
+      macros: { protein_g: number; carbs_g: number; fat_g: number };
+      ids: string[];
+      food_names: string[];
+      logged_at: string;
+    }> = {};
+
+    for (const log of logs) {
+      const slot = log.meal_slot || 'other';
+      const cleanName = getCleanFoodName(log.input_text, todayPlanData, isBn);
+      
+      if (!groupsMap[slot]) {
+        groupsMap[slot] = {
+          meal_slot: slot,
+          total_calories: 0,
+          macros: { protein_g: 0, carbs_g: 0, fat_g: 0 },
+          ids: [],
+          food_names: [],
+          logged_at: log.logged_at,
+        };
+      }
+      
+      groupsMap[slot].total_calories += log.total_calories || 0;
+      if (log.macros) {
+        groupsMap[slot].macros.protein_g += log.macros.protein_g || 0;
+        groupsMap[slot].macros.carbs_g += log.macros.carbs_g || 0;
+        groupsMap[slot].macros.fat_g += log.macros.fat_g || 0;
+      }
+      groupsMap[slot].ids.push(log.id);
+      if (!groupsMap[slot].food_names.includes(cleanName)) {
+        groupsMap[slot].food_names.push(cleanName);
+      }
+      if (new Date(log.logged_at) > new Date(groupsMap[slot].logged_at)) {
+        groupsMap[slot].logged_at = log.logged_at;
+      }
+    }
+
+    const groups = Object.values(groupsMap);
+    const visibleGroups = showAllLogs ? groups : groups.slice(0, 2);
 
     return (
       <View style={styles.loggedSection}>
         <View style={styles.loggedHeaderRow}>
           <Text style={styles.loggedSectionTitle}>
-            {language === 'bn' ? 'আজকের লগ করা খাবার' : 'Today\'s Logged Foods'}
+            {isBn ? 'আজকের লগ করা খাবার' : 'Today\'s Logged Foods'}
           </Text>
           <View style={styles.loggedTotalBadge}>
             <Flame size={12} color={colors.primary} />
@@ -824,18 +960,20 @@ export default function MealsScreen() {
         </View>
 
         <View style={styles.loggedList}>
-          {logs.map((log: any) => {
-            const dateObj = new Date(log.logged_at);
-            const time = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
+          {visibleGroups.map((group) => {
+            const dateObj = new Date(group.logged_at);
+            const time = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString(isBn ? 'bn-BD' : 'en-US', {
               hour: '2-digit',
               minute: '2-digit',
             });
-            const slotLabel = language === 'bn' 
-              ? (SLOT_LABELS_BN[log.meal_slot] || SLOT_LABELS_BN.other)
-              : (SLOT_LABELS_EN[log.meal_slot] || SLOT_LABELS_EN.other);
+            const slotLabel = isBn 
+              ? (SLOT_LABELS_BN[group.meal_slot] || SLOT_LABELS_BN.other)
+              : (SLOT_LABELS_EN[group.meal_slot] || SLOT_LABELS_EN.other);
+
+            const combinedFoodNames = group.food_names.join(', ');
 
             return (
-              <View key={log.id} style={styles.loggedCard}>
+              <View key={group.meal_slot} style={styles.loggedCard}>
                 <View style={styles.loggedCardTop}>
                   <View style={styles.loggedCardLeft}>
                     <View style={styles.loggedIconBox}>
@@ -843,7 +981,7 @@ export default function MealsScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.loggedFoodName} numberOfLines={2}>
-                        {log.input_text}
+                        {combinedFoodNames}
                       </Text>
                       <View style={styles.loggedMetaRow}>
                         <Text style={styles.loggedSlotLabel}>{slotLabel}</Text>
@@ -854,34 +992,16 @@ export default function MealsScreen() {
                   </View>
 
                   <View style={styles.loggedCardRight}>
-                    <Text style={styles.loggedCalText}>{log.total_calories} kcal</Text>
+                    <Text style={styles.loggedCalText}>{group.total_calories} kcal</Text>
                     
                     <TouchableOpacity
                       style={styles.loggedDeleteBtn}
                       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       onPress={() => {
-                        const title = language === 'bn' ? 'খাবারটি ডিলিট করতে চান?' : 'Delete logged food?';
-                        const message = language === 'bn' ? 'এই রেকর্ডটি আপনার আজকের ডায়েরি থেকে মুছে ফেলা হবে।' : 'This record will be permanently deleted from today\'s journal.';
-                        
-                        if (Platform.OS === 'web') {
-                          const confirmDelete = window.confirm(`${title}\n\n${message}`);
-                          if (confirmDelete) {
-                            deleteLogMutation.mutate(log.id);
-                          }
-                        } else {
-                          Alert.alert(
-                            title,
-                            message,
-                            [
-                              { text: language === 'bn' ? 'বাতিল' : 'Cancel', style: 'cancel' },
-                              { 
-                                text: language === 'bn' ? 'ডিলিট করুন' : 'Delete', 
-                                style: 'destructive',
-                                onPress: () => deleteLogMutation.mutate(log.id)
-                              }
-                            ]
-                          );
-                        }
+                        haptics.light();
+                        setIdsToDelete(group.ids);
+                        setSlotToDelete(group.meal_slot);
+                        setDeleteConfirmVisible(true);
                       }}
                       disabled={deleteLogMutation.isPending}
                     >
@@ -891,26 +1011,26 @@ export default function MealsScreen() {
                 </View>
 
                 {/* Macro Badges */}
-                {log.macros && (log.macros.protein_g > 0 || log.macros.carbs_g > 0 || log.macros.fat_g > 0) && (
+                {group.macros && (group.macros.protein_g > 0 || group.macros.carbs_g > 0 || group.macros.fat_g > 0) && (
                   <View style={styles.loggedMacrosRow}>
-                    {log.macros.protein_g > 0 && (
+                    {group.macros.protein_g > 0 && (
                       <View style={styles.loggedMacroBadge}>
                         <Text style={styles.loggedMacroText}>
-                          💪 {language === 'bn' ? 'প্রোটিন' : 'Protein'}: {Math.round(log.macros.protein_g)}g
+                          💪 {isBn ? 'প্রোটিন' : 'Protein'}: {Math.round(group.macros.protein_g)}g
                         </Text>
                       </View>
                     )}
-                    {log.macros.carbs_g > 0 && (
+                    {group.macros.carbs_g > 0 && (
                       <View style={styles.loggedMacroBadge}>
                         <Text style={styles.loggedMacroText}>
-                          🍞 {language === 'bn' ? 'কার্বস' : 'Carbs'}: {Math.round(log.macros.carbs_g)}g
+                          🍞 {isBn ? 'কার্বস' : 'Carbs'}: {Math.round(group.macros.carbs_g)}g
                         </Text>
                       </View>
                     )}
-                    {log.macros.fat_g > 0 && (
+                    {group.macros.fat_g > 0 && (
                       <View style={styles.loggedMacroBadge}>
                         <Text style={styles.loggedMacroText}>
-                          🥑 {language === 'bn' ? 'ফ্যাট' : 'Fat'}: {Math.round(log.macros.fat_g)}g
+                          🥑 {isBn ? 'ফ্যাট' : 'Fat'}: {Math.round(group.macros.fat_g)}g
                         </Text>
                       </View>
                     )}
@@ -920,6 +1040,20 @@ export default function MealsScreen() {
             );
           })}
         </View>
+
+        {groups.length > 2 && (
+          <TouchableOpacity
+            style={styles.seeMoreBtn}
+            onPress={() => { haptics.light(); setShowAllLogs(!showAllLogs); }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.seeMoreText}>
+              {showAllLogs 
+                ? (isBn ? 'কম দেখান ▲' : 'Show Less ▲') 
+                : (isBn ? `আরও দেখুন (${groups.length - 2}টি) ▼` : `See More (${groups.length - 2} more) ▼`)}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -1196,6 +1330,46 @@ export default function MealsScreen() {
         onClose={() => setShowProModal(false)}
         trigger={proTrigger}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteConfirmVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteConfirmVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{isBn ? 'খাবারটি ডিলিট করতে চান?' : 'Delete logged food?'}</Text>
+            <Text style={styles.modalMessage}>{isBn ? 'এই রেকর্ডটি আপনার আজকের ডায়েরি থেকে মুছে ফেলা হবে।' : 'This record will be permanently deleted from today\'s journal.'}</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => { haptics.light(); setDeleteConfirmVisible(false); setSlotToDelete(null); }}
+              >
+                <Text style={styles.cancelButtonText}>{isBn ? 'বাতিল' : 'Cancel'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.deleteButton]} 
+                onPress={() => {
+                  haptics.medium();
+                  if (idsToDelete) {
+                    deleteLogMutation.mutate(idsToDelete);
+                  }
+                  const todayPlanId = todayQ.data?.plan_id;
+                  if (slotToDelete && todayPlanId) {
+                    markMutation.mutate({ planId: todayPlanId, slot: slotToDelete, completed: false, items: [] });
+                  }
+                  setDeleteConfirmVisible(false);
+                  setSlotToDelete(null);
+                }}
+              >
+                <Text style={styles.deleteButtonText}>{isBn ? 'ডিলিট করুন' : 'Delete'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2066,5 +2240,86 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bn,
     fontSize: 11,
     color: colors.textSecondary,
+  },
+  seeMoreBtn: {
+    marginTop: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.primary + '10',
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  seeMoreText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
+    color: colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 201, 36, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontFamily: fonts.bn,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  cancelButton: {
+    backgroundColor: '#FAFBF7',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  cancelButtonText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  deleteButton: {
+    backgroundColor: colors.error,
+    borderColor: colors.error,
+  },
+  deleteButtonText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.white,
   },
 });

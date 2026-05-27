@@ -135,21 +135,7 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
     foods: ["ইলিশ মাছ", "রুই মাছ", "তিসির তেল", "আখরোট", "চিয়া সিড"],
     category: "ফ্যাটি অ্যাসিড"
   },
-  "Choline": {
-    desc: "কোষের গঠন বজায় রাখতে, চর্বি বিপাক করতে এবং স্মৃতিশক্তি ও স্নায়ুতন্ত্রের কার্যকারিতা সচল রাখতে সাহায্য করে।",
-    foods: ["ডিম", "গরুর কলিজা", "মুরগির মাংস", "ফুলকপি", "ব্রকলি", "সয়াবিন"],
-    category: "ভিটামিন"
-  },
-  "Vitamin B12": {
-    desc: "লাল রক্তকণিকা গঠনে, ডিএনএ সংশ্লেষণে এবং স্নায়ুতন্ত্রের কার্যকারিতা বজায় রাখতে অত্যন্ত গুরুত্বপূর্ণ ভূমিকা পালন করে।",
-    foods: ["গরুর কলিজা", "সামুদ্রিক মাছ", "দুধ", "দই", "পনির", "ডিম", "মুরগির মাংস"],
-    category: "ভিটামিন"
-  },
-  "Chloride (Cl)": {
-    desc: "শরীরে তরল ও electrolytes এর ভারসাম্য বজায় রাখতে এবং পাকস্থলীতে হজমকারী অ্যাসিড (HCl) তৈরিতে সাহায্য করে।",
-    foods: ["খাবার লবণ", "টমেটো", "লেটুস পাতা", "সবুজ শাকসবজি", "সামুদ্রিক মাছ"],
-    category: "খনিজ"
-  },
+
   "Iodine (I)": {
     desc: "থাইরয়েড হরমোন তৈরি করতে সাহায্য করে যা মেটাবলিজম, শারীরিক ও মানসিক বিকাশ এবং শক্তি নিয়ন্ত্রণ করে।",
     foods: ["আয়োডিনযুক্ত লবণ", "সামুদ্রিক মাছ", "চিংড়ি", "দুধ", "দই", "ডিম"],
@@ -277,26 +263,6 @@ const NUTRIENT_METADATA_EN: Record<string, { desc: string; foods: string[]; cate
     desc: "Protects the heart, reduces cholesterol, and helps eliminate inflammation.",
     foods: ["Hilsa Fish", "Rohu Fish", "Flaxseed Oil", "Walnut", "Chia Seeds"],
     category: "Fatty Acid"
-  },
-  "Choline": {
-    desc: "Helps maintain cell structure, metabolize fat, and keep memory and nervous system active.",
-    foods: ["Egg", "Beef Liver", "Chicken", "Cauliflower", "Broccoli", "Soybean"],
-    category: "Vitamin"
-  },
-  "Vitamin B12": {
-    desc: "Plays an extremely important role in red blood cell formation, DNA synthesis, and maintaining nervous system health.",
-    foods: ["Beef Liver", "Marine Fish", "Milk", "Yogurt", "Cheese", "Egg", "Chicken"],
-    category: "Vitamin"
-  },
-  "Chloride (Cl)": {
-    desc: "Helps maintain fluid and electrolyte balance, and produce digestive acid (HCl) in the stomach.",
-    foods: ["Table Salt", "Tomato", "Lettuce", "Green Leafy Vegetables", "Marine Fish"],
-    category: "Mineral"
-  },
-  "Iodine (I)": {
-    desc: "Helps produce thyroid hormones which regulate metabolism, physical and mental development, and energy.",
-    foods: ["Iodized Salt", "Marine Fish", "Shrimp", "Milk", "Yogurt", "Egg"],
-    category: "Mineral"
   }
 };
 
@@ -347,7 +313,7 @@ export default function TargetDetailsScreen() {
   });
 
   const trackingQ = useQuery({
-    queryKey: ['today_tracking'],
+    queryKey: ['daily_tracking'],
     queryFn: async () => (await mealTrackingApi.today()).data,
     retry: false,
   });
@@ -407,11 +373,12 @@ export default function TargetDetailsScreen() {
     });
   }
 
+  // No double-counting: consumed calories and macros are purely calculated from actual logged tracker logs
   const consumed = {
-    calories: Math.round(slotTotals.calories + trackedTotals.calories),
-    protein: Math.round(slotTotals.protein + trackedTotals.protein),
-    carbs: Math.round(slotTotals.carbs + trackedTotals.carbs),
-    fat: Math.round(slotTotals.fat + trackedTotals.fat),
+    calories: Math.round(trackedTotals.calories),
+    protein: Math.round(trackedTotals.protein),
+    carbs: Math.round(trackedTotals.carbs),
+    fat: Math.round(trackedTotals.fat),
   };
 
   // Targets
@@ -435,7 +402,8 @@ export default function TargetDetailsScreen() {
   const strokeDashoffset = circumference - (progressCal * circumference);
 
   // Micronutrients
-  const microTargets = planData?.micronutrient_targets || [];
+  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
+  const microTargets = (planData?.micronutrient_targets || []).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
   const microCompletedCount = microTargets.filter((n: any) => n.percentage >= 100).length;
 
   return (
