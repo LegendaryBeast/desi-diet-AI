@@ -821,3 +821,79 @@ export const mealBuilderApi = {
       body: JSON.stringify(data),
     }),
 };
+
+// ─── Live Docs Module ─────────────────────────────────────────────────────────
+
+export interface TeamMember {
+  name: string;
+  role: string;
+  email: string;
+  image_url?: string;
+}
+
+export interface DocSection {
+  id: string;
+  title: string;
+  content: string;
+  category: 'pitch' | 'tech';
+  order_index: number;
+}
+
+export interface DocsConfigResponse {
+  visible: boolean;
+  is_admin: boolean;
+  start_date: string;
+  end_date: string;
+  override_schedule: boolean;
+  visibility: boolean;
+  team_name: string;
+  team_members: TeamMember[];
+  sections: DocSection[];
+}
+
+export interface LiveStatsResponse {
+  timestamp: string;
+  database_counts: {
+    registered_patients: number;
+    patient_health_logs: number;
+    custom_meal_plans_generated: number;
+    ai_consultation_turns: number;
+    tracked_meals_logged: number;
+    prescribed_medicine_reminders: number;
+  };
+  knowledge_graph: {
+    status: 'connected' | 'disconnected';
+    food_nodes_loaded: number;
+    clinical_disease_nodes: number;
+  };
+  api_exposures: { path: string; method: string; desc: string }[];
+}
+
+export const docsApi = {
+  getConfig: () => apiFetch<DocsConfigResponse>('/docs-api/config'),
+  getLiveStats: () => apiFetch<LiveStatsResponse>('/docs-api/live-stats'),
+  updateSettings: (data: {
+    visibility: boolean;
+    override_schedule: boolean;
+    start_date: string;
+    end_date: string;
+  }) => apiFetch<{ message: string; visible_now: boolean }>('/docs-api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateSection: (data: { id: string; title: string; content: string }) =>
+    apiFetch<{ message: string }>('/docs-api/admin/sections', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  reorderSections: (sectionIds: string[]) =>
+    apiFetch<{ message: string }>('/docs-api/admin/sections/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ section_ids: sectionIds }),
+    }),
+  updateTeam: (data: { team_name: string; members: TeamMember[] }) =>
+    apiFetch<{ message: string }>('/docs-api/admin/team', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};

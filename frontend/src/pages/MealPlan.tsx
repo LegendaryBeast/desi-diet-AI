@@ -157,7 +157,7 @@ export const MealPlan = () => {
         // Auto-unmark slot complete in plan DB
         if (completedSlots.includes(slotName) && plan) {
           try {
-            await mealPlanApi.markComplete(plan.plan_id, slotName, false);
+            await mealPlanApi.markSlotComplete(plan.plan_id, slotName, false);
             setCompletedSlots((prev) => prev.filter((s) => s !== slotName));
           } catch (err) {
             console.warn('Failed to auto-unmark slot completed:', err);
@@ -299,7 +299,7 @@ export const MealPlan = () => {
     // Unmark slot completed in DB if it was complete
     if (completedSlots.includes(slotName) && plan) {
       try {
-        await mealPlanApi.markComplete(plan.plan_id, slotName, false);
+        await mealPlanApi.markSlotComplete(plan.plan_id, slotName, false);
         setCompletedSlots((prev) => prev.filter((s) => s !== slotName));
       } catch (err) {
         console.warn('Failed to unmark slot completed on log deletion:', err);
@@ -473,7 +473,7 @@ export const MealPlan = () => {
         // Also look through today's logs from the tracking service to ensure any backend matches are deleted
         try {
           const todayLogsRes = await mealTrackingApi.today();
-          const logs = todayLogsRes.data || [];
+          const logs = todayLogsRes || [];
           const logsToDelete = logs.filter((log: any) => log.meal_slot === backendSlot);
           const backendDeletePromises = logsToDelete.map(async (log: any) => {
             await mealTrackingApi.delete(log.id);

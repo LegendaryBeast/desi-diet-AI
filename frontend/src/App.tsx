@@ -13,6 +13,7 @@ import { ReportPage } from './pages/ReportPage';
 import { Conditions } from './pages/Conditions';
 import { Dashboard } from './pages/Dashboard';
 import { Micronutrients } from './pages/Micronutrients';
+import { Docs } from './pages/Docs';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
@@ -23,14 +24,14 @@ import { useLocation } from 'react-router-dom';
 
 const ConditionalNav = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Nav />;
 };
 
 const ConditionalFooter = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Footer />;
 };
@@ -44,6 +45,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function AppRoutes() {
   const [loading, setLoading] = useState(true);
+  const [urlDocsAccess, setUrlDocsAccess] = useState(false);
   const { isLoading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -69,6 +71,7 @@ function AppRoutes() {
               <Route path="/about" element={<About />} />
               <Route path="/conditions" element={<Conditions />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/docs" element={<Docs />} />
 
               {/* Protected routes */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

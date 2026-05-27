@@ -19,7 +19,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  language: 'en',
+  language: 'bn',
   notificationsEnabled: false,
   strictMode: false,
   mealTimes: {

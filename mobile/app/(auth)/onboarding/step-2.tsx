@@ -17,7 +17,7 @@ export default function Step2Screen() {
   const isComplete = data.weight_kg.length > 0 && data.height_cm.length > 0;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.content}>
         <Text style={styles.title}>শারীরিক গঠন</Text>
         <Text style={styles.subtitle}>সঠিক ক্যালরি হিসাবের জন্য এটি প্রয়োজন</Text>

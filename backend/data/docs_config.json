@@ -1,0 +1,149 @@
+{
+    "visibility": true,
+    "override_schedule": true,
+    "start_date": "2026-06-10T00:00:00",
+    "end_date": "2026-06-14T23:59:59",
+    "team_name": "Pusti AI Founders",
+    "team_members": [
+        {
+            "name": "Tanzim Hasan Prappo",
+            "role": "Lead Architect & Full-stack Developer",
+            "email": "admin@pustiai.com",
+            "image_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256&h=256"
+        },
+        {
+            "name": "Clinical Dietitian Advisor",
+            "role": "Medical Advisory & Content Lead",
+            "email": "dietitian@pustiai.com",
+            "image_url": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=256&h=256"
+        }
+    ],
+    "sections": [
+        {
+            "id": "pitch_problem",
+            "title": "1. The Problem",
+            "category": "pitch",
+            "order_index": 0,
+            "content": "### Culturally Disconnected and Unsafe Dietary Health\n\nGeneric nutrition apps (like MyFitnessPal) fail miserably in Bangladesh. They don't support Bengali language, lack databases of local South Asian food items, and fail to calculate complex mixed recipes (like Biryani or Bhorta).\n\nMore critically, generic Large Language Models (LLMs) suffer from **\"Medical Hallucinations\"**. When asked for dietary advice, they invent dangerous guidelines or ignore severe clinical contraindications for patients with Chronic Kidney Disease (CKD), Diabetes, or Hypertension. In a clinical context, a single incorrect dietary recommendation can be fatal.\n\nThere is no local-language, medically grounded digital health coach tailored to the Bengali population."
+        },
+        {
+            "id": "pitch_solution",
+            "title": "2. The Solution: Pushti AI",
+            "category": "pitch",
+            "order_index": 1,
+            "content": "### Clinical-Grade, Culturally Grounded Digital Health\n\nPushti AI (DesiDiet) is a specialized conversational AI nutritionist that is **physically blocked from hallucinating**. \n\nBy utilizing **Clinical Graph-RAG (Retrieval-Augmented Generation)**, the LLM is restricted from generating nutritional values or dietary constraints from its own parameters. Instead, it dynamically queries a **Neo4j Knowledge Graph** pre-seeded with:\n- **Food Composition Table (FCT 2025) for Bangladesh**\n- **National Dietary Guidelines for Bangladesh (BIRDEM 2025)**\n- Peer-reviewed South Asian dietary clinical research.\n\nPushti AI supports seamless natural language conversations in **Bengali and English**, tracks local food logs, generates daily meal plans, and ensures absolute medical safety."
+        },
+        {
+            "id": "pitch_why_now",
+            "title": "3. Why Now?",
+            "category": "pitch",
+            "order_index": 2,
+            "content": "### A Perfect Convergence of Technology and Need\n\n1. **Exploding Health Crisis:** Over **12 Million** people in Bangladesh live with Diabetes, and **30 Million** suffer from Hypertension. Lifestyle shifts in urban areas are accelerating these numbers rapidly.\n2. **Connectivity:** Mobile internet users in Bangladesh have surpassed **100 Million**. For the first time, clinical-grade digital health advice can be distributed at zero marginal cost.\n3. **The Rise of RAG Architecture:** We can now combine the natural conversational interface of modern LLMs with the absolute accuracy of structured databases (Graphs), creating a trustworthy clinical-grade consumer product."
+        },
+        {
+            "id": "pitch_demo",
+            "title": "4. Product Demo & Use Cases",
+            "category": "pitch",
+            "order_index": 3,
+            "content": "### Conversational, Simple, and Safe\n\n- **Clinical Intake Chatbot:** Guided conversation in Bengali that automatically extracts age, gender, height, weight, activity level, and medical conditions, saving a verified user profile.\n- **Dynamic Calorie Engine:** Automatically calculates Basal Metabolic Rate (BMR) and targets for macronutrients (protein, carbs, fats) and micronutrients.\n- **Natural Language Meal Logger:** Users type what they ate (e.g., \"সকালে ১টা রুটি আর ডাল খেয়েছি\") and Pushti AI automatically parses the local dishes, updates calorie logs, and logs macro targets.\n- **Medicine Reminder System:** Integrates routine health logs with medication scheduling to provide holistic health dashboards."
+        },
+        {
+            "id": "pitch_market",
+            "title": "5. Market Opportunity",
+            "category": "pitch",
+            "order_index": 4,
+            "content": "### Scaling to 170 Million People\n\n- **TAM (Total Addressable Market):** 170 Million citizens in Bangladesh, all representing potential users seeking dietary health optimization.\n- **SAM (Serviceable Addressable Market):** 42 Million patients suffering from chronic lifestyle conditions (Diabetes, Hypertension, Obesity, Cardiovascular disease) who require strict daily dietary tracking.\n- **SOM (Serviceable Obtainable Market):** 2 Million tech-forward urban professionals in Dhaka, Chittagong, and Sylhet willing to pay for premium health monitoring in the first 24 months."
+        },
+        {
+            "id": "pitch_business_model",
+            "title": "6. Business Model",
+            "category": "pitch",
+            "order_index": 5,
+            "content": "### Robust B2C and B2B Monetization Channels\n\n1. **B2C Premium Tier (Subscription):**\n   - Unlimited conversational health logging.\n   - Comprehensive PDF Health Reports to share with family doctors.\n   - Live integration with human nutritionists for plan reviews.\n2. **B2B SaaS Licensing:**\n   - Licensing our clinical Graph-RAG engine to local hospitals, diabetes clinics, and diagnostic groups (e.g., BIRDEM, Labaid, Square Hospitals) to automate patient outpatient monitoring."
+        },
+        {
+            "id": "pitch_traction",
+            "title": "7. Traction",
+            "category": "pitch",
+            "order_index": 6,
+            "content": "### Validation During Ingestion and Pilot Testing\n\n- **100% Medical Safety:** Zero instances of hallucinatory advice or contraindication violations recorded during clinical simulation runs.\n- **Local Ingestion Completed:** Ingested over 300+ local Bangladeshi food items, 20+ clinical nutrients, and 12 medical conditions into the Neo4j graph.\n- **Platform Ready:** Completed responsive Expo-based React Native mobile application for Android/iOS alongside a responsive Vite web frontend."
+        },
+        {
+            "id": "pitch_competition",
+            "title": "8. Competition",
+            "category": "pitch",
+            "order_index": 7,
+            "content": "### Pushti AI vs Traditional Solutions\n\n| Feature | Pushti AI | generic LLMs | MyFitnessPal |\n| :--- | :---: | :---: | :---: |\n| **Bangla Language Support** | **Full (Native)** | Partial | None |\n| **Bangladeshi Foods (FCT)** | **100% Built-in** | Inaccurate | Crowdsourced / Inaccurate |\n| **Medical Safety Guarantee** | **Yes (Graph-RAG)** | No (Hallucinates) | No (User inputted) |\n| **BIRDEM/NDG Guidelines** | **Strictly Followed** | No | No |"
+        },
+        {
+            "id": "pitch_advantage",
+            "title": "9. Unique Advantage",
+            "category": "pitch",
+            "order_index": 8,
+            "content": "### Our Moats: Ingestion and Architecture\n\n1. **The Graph Moat:** We have digitized and structured local regulatory dietary guidelines (BIRDEM) and peer-reviewed research papers into a highly connected Neo4j knowledge graph. This is not easily scrapable or reproducible.\n2. **Deterministic Security Pipeline:** Our custom RAG planner strictly queries Graph relationships first. The LLM acts solely as a natural language compiler, not a database, securing us against liability and clinical errors."
+        },
+        {
+            "id": "pitch_gtm",
+            "title": "10. Go-To-Market (GTM)",
+            "category": "pitch",
+            "order_index": 9,
+            "content": "### Reaching Users at Low Acquisition Cost\n\n- **Doctor Referrals:** Partnering with local clinical practitioners who can \"prescribe\" Pushti AI to diabetic and hypertensive outpatients to track food logs between visits.\n- **Content Marketing & SEO:** Creating the largest searchable, bilingual directory of Bangladeshi foods with clinical insights (which drives free organic traffic).\n- **Corporate Health Alliances:** Bundling the platform as a corporate wellness benefit for tech startups and local enterprises in Dhaka."
+        },
+        {
+            "id": "pitch_vision",
+            "title": "11. Vision",
+            "category": "pitch",
+            "order_index": 10,
+            "content": "### The Digital Health Infrastructure for Emerging Markets\n\nOur ultimate goal is to expand our Graph-RAG clinical dietary model to cover other regional diets and languages (including Hindi, Urdu, and regional dialects) across South Asia, providing localized, affordable, and safe digital nutrition consulting for over **1.8 Billion people**."
+        },
+        {
+            "id": "tech_overview",
+            "title": "1. Product Overview",
+            "category": "tech",
+            "order_index": 0,
+            "content": "### Digital Nutrition & Meal Planning Architecture\n\nPushti AI is a full-stack digital health application composed of:\n1. **Frontend Web Dashboard:** Built with React, Vite, Tailwind CSS, and Framer Motion.\n2. **Mobile Companion Application:** Built with React Native & Expo SDK 54, offering localized chats and meal logging.\n3. **Backend REST API:** Built with FastAPI (Python), Prisma ORM, and PostgreSQL.\n4. **Knowledge Engine:** Built on Neo4j Graph Database serving our proprietary Graph-RAG routing."
+        },
+        {
+            "id": "tech_architecture",
+            "title": "2. System Architecture",
+            "category": "tech",
+            "order_index": 1,
+            "content": "### High-Level Architecture Diagram\n\nThe system components interact as follows:\n\n```mermaid\ngraph TD\n    User([User App / Web]) -->|REST / SSE| API[FastAPI Gateway]\n    \n    subgraph Backend Services\n        API -->|JWT Auth| Dependencies[Dependencies & Security]\n        API -->|ORM Queries| Postgres[(PostgreSQL DB)]\n        API -->|Clinical Query| Planner[GraphRAG Planner]\n    end\n    \n    subgraph Knowledge Graph\n        Planner -->|Cypher Queries| Neo4j[(Neo4j Graph DB)]\n        Neo4j -.->|Ingested From| Guidelines[National Dietary Guidelines & FCT]\n    end\n    \n    subgraph AI Foundation\n        API -->|Token Streaming| LLM[OpenAI / Gemini / Llama]\n        Planner -->|Embedding Map| Models[SentenceTransformer / Local String Matcher]\n    end\n```"
+        },
+        {
+            "id": "tech_data_flow",
+            "title": "3. Data Flow",
+            "category": "tech",
+            "order_index": 2,
+            "content": "### User Query Processing Pipeline\n\nHow Pushti AI processes an unstructured user message (e.g. \"আমি ডায়াবেটিক রোগী, আজ আলু খেয়েছি\"):\n\n```mermaid\nsequenceDiagram\n    participant User as React Mobile/Web\n    participant API as FastAPI Router\n    participant Planner as GraphRAG Planner\n    participant DB as Neo4j Graph\n    participant LLM as OpenAI GPT-4o\n    \n    User->>API: Send Chat Message + Medical Profile\n    API->>Planner: Extract Condition (Diabetes) + Food (Potato)\n    Planner->>Planner: Semantic map food to database\n    Planner->>DB: Query Cypher (Check compatibility & avoid-rules)\n    DB-->>Planner: Return Rules (Potato is high-glycemic, Caution)\n    Planner->>API: Compile safe system context prompt\n    API->>LLM: Pass System Prompt + Context + User Message\n    LLM-->>API: Stream Safe response in Bengali\n    API-->>User: Render real-time tokens to user\n```"
+        },
+        {
+            "id": "tech_stack",
+            "title": "4. Technology Stack",
+            "category": "tech",
+            "order_index": 3,
+            "content": "### Comprehensive Tech Directory\n\n- **Mobile Frontend:** React Native (Expo 54), TypeScript, Expo Router, Tailwind (NativeWind), Zustand.\n- **Web Frontend:** React (Vite), TypeScript, TailwindCSS, Framer Motion, Lucide icons, Recharts.\n- **Backend API:** FastAPI (Python 3.11), Uvicorn.\n- **Relational Storage:** PostgreSQL hosted on Render, Prisma Client Python ORM.\n- **Graph Database:** Neo4j (Graph DB), Cypher Query Language, Bolt Protocol.\n- **AI Models:** OpenAI API (GPT-4o, GPT-4o-mini), Groq (Llama-3.3-70b), Google Generative AI (Gemini 1.5 Pro).\n- **Local Fallbacks:** Custom Jaccard/difflib token overlap string similarity running directly in-memory to fit 512MB RAM constraints."
+        },
+        {
+            "id": "tech_api",
+            "title": "5. API Documentation",
+            "category": "tech",
+            "order_index": 4,
+            "content": "### Core REST API Endpoints\n\nAll backend endpoints are documented and interactive via Swagger at `/docs` (FastAPI native UI).\n\n#### Auth Endpoints (`/auth`)\n- `POST /auth/register`: Create a new user (email or phone).\n- `POST /auth/login`: Exchange credentials for access + refresh JWTs.\n- `GET /auth/me`: Fetch authenticated user profile.\n\n#### Graph-RAG Chat (`/chat`)\n- `POST /chat`: Stream multi-turn chatbot conversation utilizing clinical context.\n- `POST /chat/diet-plan-chat`: Conversational intake system extracting user health parameters.\n\n#### Meal Logs & Plans (`/meal-plans`, `/meal-tracking`)\n- `POST /meal-plans`: Retrieve or scale daily customized meal plans.\n- `POST /meal-tracking`: Unstructured meal logger (parses natural language text to calories/macros)."
+        },
+        {
+            "id": "tech_ai_layer",
+            "title": "6. AI & RAG Layer",
+            "category": "tech",
+            "order_index": 5,
+            "content": "### The Clinical Graph-RAG Architecture\n\nTo guarantee clinical safety, we implement a custom **Clinical Graph-RAG**:\n\n1. **Deterministic Sourcing:** The LLM's system prompt strictly orders it *not* to calculate macronutrient targets or recommend food safety levels from memory.\n2. **Neo4j Constraints:** Food compatibility matches are derived programmatically by traversing graph edges:\n   - `(Disease)-[:REQUIRES]->(Nutrient)`\n   - `(Food)-[c:CONTAINS_NUTRIENT]->(Nutrient)`\n3. **Graph Cosine Similarity:** Foods are ranked by their ability to fulfill the user's specific age/gender Recommended Dietary Allowance (RDA) for the nutrients required by their health condition.\n4. **Token Optimization:** Standard text documents are bypassed. We only inject high-density data vectors (JSON list of top-50 safe foods with exact macros) into the LLM system prompt context, keeping latency low."
+        },
+        {
+            "id": "tech_changelog",
+            "title": "7. Version Changelog",
+            "category": "tech",
+            "order_index": 6,
+            "content": "### Pushti AI Release History\n\n- **v2.0.0 (Current):** \n  - Integrated complete BIRDEM National Dietary Guidelines 2025.\n  - Implemented dynamic Natural Language Meal Logging and scaling algorithms.\n  - Added support for multiple, conflicting medical conditions (Diabetes + CKD).\n- **v1.5.0:**\n  - Migrated core knowledge storage from a relational database to a Neo4j Graph.\n  - Switched from OpenAI embedding APIs to self-hosted, lightweight string matching to improve API response latency.\n- **v1.0.0:**\n  - Initial prototype with static meal plans and conversational intake chatbot."
+        }
+    ]
+}

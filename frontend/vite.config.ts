@@ -28,6 +28,7 @@ export default defineConfig({
       '/meal-tracking': apiProxy,
       '/medicine-reminders': apiProxy,
       '/meal-builder': apiProxy,
+      '/docs-api': { ...apiProxy, rewrite: (path: string) => path.replace(/^\/docs-api/, '/docs') },
     },
   },
 })
