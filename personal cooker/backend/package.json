@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "ingest": "node ingest.js"
+    "ingest": "node ingest.js",
+    "ingest:contextual": "node ingest_contextual.js"
   },
   "keywords": [],
   "author": "",
