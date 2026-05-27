@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriSaathi AI Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-top">
+                <div class="logo">
+                    <div class="logo-circle"></div>
+                    <h1>NutriSaathi</h1>
+                </div>
+                <div class="condition-selector">
+                    <select id="condition-select" class="premium-select">
+                        <option value="None">No specific condition</option>
+                        <option value="Diabetes">Diabetes</option>
+                        <option value="Hypertension">Hypertension (High BP)</option>
+                        <option value="Heart Disease">Heart Disease</option>
+                        <option value="Kidney Disease">Kidney Disease (CKD)</option>
+                        <option value="Kidney Stones">Kidney Stones</option>
+                        <option value="Liver Disease">Liver Disease / Fatty Liver</option>
+                        <option value="Obesity">Obesity / Weight Loss</option>
+                        <option value="Hypothyroidism">Hypothyroidism</option>
+                        <option value="Tuberculosis">Tuberculosis (TB)</option>
+                    </select>
+                    <button id="clear-btn" class="clear-btn" title="Clear Chat">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <p class="subtitle">Personalized Cooking Assistant</p>
+        </header>
+
+        <main class="chat-container">
+            <div class="chat-box" id="chat-box">
+                <!-- Messages will appear here -->
+                <div class="message system-message">
+                    <div class="message-content">
+                        <p>Hello! I am NutriSaathi, your personalized cooking and nutrition guide based on the National Dietary Guidelines for Bangladesh 2022. How can I help you manage your diet today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="user-input" placeholder="Ask about diets, medical conditions, or recipes..."
+                        autocomplete="off" required>
+                    <button type="submit" id="send-btn" class="send-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading overlay for friction animation -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
