@@ -3,8 +3,7 @@ import os
 import re
 from neo4j import GraphDatabase, basic_auth
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer, util
-import torch
+import difflib
 
 # --- CONFIGURATION ---
 load_dotenv()
@@ -113,19 +112,45 @@ def migrate_nutrients(driver, mapper, rda_df):
             
     print(f"✅ Migrated {len(all_nutrient_names)} nutrients and added RDA properties.")
 
-def map_clinical_to_scientific(clinical_nutrients, model, corpus, embeddings):
-    """Uses AI to map clinical terms to scientific terms."""
-    if not clinical_nutrients:
+def map_clinical_to_scientific(clinical_nutrients, corpus):
+    """Lightweight string matcher — no embeddings needed."""
+    if not clinical_nutrients or not corpus:
         return set()
 
     mapped_nutrients = set()
-    clinical_embeddings = model.encode(list(clinical_nutrients), convert_to_tensor=True)
-    cosine_scores = util.pytorch_cos_sim(clinical_embeddings, embeddings)
-
-    for i in range(len(clinical_nutrients)):
-        best_match_index = torch.argmax(cosine_scores[i]).item()
-        mapped_nutrients.add(corpus[best_match_index])
+    corpus_lower = [c.lower().strip() for c in corpus]
+    
+    for clinical in clinical_nutrients:
+        clinical_lower = clinical.lower().strip()
+        
+        # 1. Exact match
+        if clinical_lower in corpus_lower:
+            idx = corpus_lower.index(clinical_lower)
+            mapped_nutrients.add(corpus[idx])
+            continue
+            
+        # 2. Substring match
+        best_match = None
+        best_score = 0.0
+        for i, target_lower in enumerate(corpus_lower):
+            if clinical_lower in target_lower or target_lower in clinical_lower:
+                score = 0.85
+            else:
+                clinical_tokens = set(re.findall(r'\w+', clinical_lower))
+                target_tokens = set(re.findall(r'\w+', target_lower))
+                if clinical_tokens and target_tokens:
+                    intersection = clinical_tokens.intersection(target_tokens)
+                    union = clinical_tokens.union(target_tokens)
+                    score = len(intersection) / len(union)
+                else:
+                    score = 0.0
+            if score > best_score:
+                best_score = score
+                best_match = corpus[i]
                 
+        if best_match and best_score > 0.3:
+            mapped_nutrients.add(best_match)
+            
     return mapped_nutrients
 
 def migrate_diseases(driver, disease_df, nutrient_mapper, ai_models):
@@ -156,9 +181,7 @@ def migrate_diseases(driver, disease_df, nutrient_mapper, ai_models):
             
             scientific_nutrients = map_clinical_to_scientific(
                 clinical_nutrients,
-                ai_models["model"],
-                ai_models["target_nutrient_corpus"],
-                ai_models["nutrient_embeddings"]
+                ai_models["target_nutrient_corpus"]
             )
             
             for nutrient_name in scientific_nutrients:
@@ -362,19 +385,14 @@ def main():
         print("Please check your Neo4j credentials and that the database is running.")
         return
 
-    print("Loading AI model for semantic mapping...")
-    model = SentenceTransformer('all-MiniLM-L6-v2')
     abbreviations_df = load_data('nutrients_abbreviations.csv')
     abbreviations_df.columns = [col.strip().lower() for col in abbreviations_df.columns]
     target_nutrient_corpus = abbreviations_df['name'].dropna().unique().tolist()
-    nutrient_embeddings = model.encode(target_nutrient_corpus, convert_to_tensor=True)
     
     ai_models = {
-        "model": model,
-        "target_nutrient_corpus": target_nutrient_corpus,
-        "nutrient_embeddings": nutrient_embeddings
+        "target_nutrient_corpus": target_nutrient_corpus
     }
-    print("✅ AI models loaded for migration.")
+    print("✅ Nutrient corpus loaded for migration.")
 
     # Load all data
     disease_df = load_data('disease_nutrients.csv')

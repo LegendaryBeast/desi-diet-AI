@@ -54,6 +54,7 @@ export const MedicinePage = () => {
       setSuccess(result.confirmation);
       setInput('');
       fetchReminders();
+      window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'ওষুধ যোগ করতে সমস্যা হয়েছে');
     } finally {
@@ -65,6 +66,7 @@ export const MedicinePage = () => {
     try {
       await medicineApi.delete(id);
       setReminders((prev) => prev.filter((r) => r.id !== id));
+      window.dispatchEvent(new Event('data:refresh'));
     } catch {
       setError('মুছতে সমস্যা হয়েছে');
     }

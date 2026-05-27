@@ -101,16 +101,21 @@ def _get_cooked_name(raw_name_bn: str, raw_name_en: str, food_group_name: str) -
     """
     bn = raw_name_bn
     en = raw_name_en
+
+    # Dairy — keep as-is (milk, paneer, yogurt)
+    if food_group_name in ("Milk and Milk Products", "Dairy & Milk"):
+        return bn, en
+
     if "সিদ্ধ চাল" in raw_name_bn:
         bn = "সিদ্ধ চালের ভাত"
         en = "Cooked Parboiled Rice"
     elif "আতপ চাল" in raw_name_bn:
         bn = "আতপ চালের ভাত"
         en = "Cooked Atap Rice"
-    elif "আটা" in raw_name_bn:
+    elif "আটা" in raw_name_bn and food_group_name in ("Cereals and Millets", "Cereals", "Cereals & Grains"):
         bn = "আটা রুটি"
         en = "Atta Roti"
-    elif "ময়দা" in raw_name_bn:
+    elif "ময়দা" in raw_name_bn and food_group_name in ("Cereals and Millets", "Cereals", "Cereals & Grains"):
         bn = "ময়দা রুটি"
         en = "White Flour Roti"
     elif "সুজি" in raw_name_bn:
@@ -122,21 +127,23 @@ def _get_cooked_name(raw_name_bn: str, raw_name_en: str, food_group_name: str) -
     elif "পোলট্রি মুরগির  ডিম" in raw_name_bn or "মুরগির ডিম" in raw_name_bn or "ডিম" in raw_name_bn:
         bn = "সিদ্ধ মুরগির ডিম"
         en = "Boiled Poultry Egg"
-    elif "পোলট্রি মুরগি" in raw_name_bn or "মুরগি" in raw_name_bn:
+    elif "পোলট্রি মুরগি" in raw_name_bn or ("মুরগি" in raw_name_bn and food_group_name in ("Poultry", "Meat & Poultry")):
         bn = "মুরগির মাংসের তরকারি (কম তেল)"
         en = "Chicken Curry (Low Oil)"
-    elif "গরুর মাংস" in raw_name_bn or "গরুর" in raw_name_bn:
+    elif "গরুর মাংস" in raw_name_bn:
         bn = "গরুর মাংসের তরকারি (কম চর্বি)"
         en = "Beef Curry (Low Fat)"
-    elif "পাঁঠার মাংস" in raw_name_bn or "খাসি" in raw_name_bn:
+    elif "পাঁঠার মাংস" in raw_name_bn or ("খাসি" in raw_name_bn and food_group_name in ("Animal Meat", "Meat & Poultry")):
         bn = "খাসির মাংসের তরকারি"
         en = "Mutton Curry"
     elif "ডাল" in raw_name_bn:
-        bn = f"{raw_name_bn} (রান্না করা)"
-        en = f"Cooked {raw_name_en}"
+        if "(রান্না করা)" not in raw_name_bn and "Cooked" not in raw_name_en:
+            bn = f"{raw_name_bn} (রান্না করা)"
+            en = f"Cooked {raw_name_en}"
     elif "মটর" in raw_name_bn or "ছোলা" in raw_name_bn:
-        bn = f"{raw_name_bn}র তরকারি"
-        en = f"Cooked {raw_name_en}"
+        if "র তরকারি" not in raw_name_bn and "Cooked" not in raw_name_en:
+            bn = f"{raw_name_bn}র তরকারি"
+            en = f"Cooked {raw_name_en}"
     elif "মাছ" in raw_name_bn or food_group_name in ("Fish & Seafood", "Marine Fish", "Fresh Water Fish and Shellfish", "Marine Shellfish"):
         bn = f"{raw_name_bn}র হালকা ঝোল / দো পেঁয়াজা"
         en = f"{raw_name_en} Curry"
@@ -185,15 +192,7 @@ def _emoji_for_item(item: Dict[str, Any]) -> str:
 
 
 def _validate_emoji(item: Dict[str, Any]) -> str:
-    emoji_str = item.get("emoji")
-    if emoji_str and isinstance(emoji_str, str):
-        # Clean any extra spaces or text
-        emoji_str = emoji_str.strip()
-        # Find the first character that is classified as a symbol
-        for char in emoji_str:
-            if unicodedata.category(char) in ('So', 'Sk'):
-                return char
-    # If no valid emoji is found, fall back to our existing name-based lookup
+    # Always use our reliable name-based emoji lookup instead of trusting the LLM
     return _emoji_for_item(item)
 
 
@@ -303,44 +302,45 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
             slot_to_safe_foods[slot] = [f for f in safe_foods if f.get("code") in codes]
             
     standard_fallbacks = {
-        "breakfast": {
-            "food_code": "A019",
-            "name_bn": "আটা রুটি",
-            "name_en": "Atta Roti",
-            "calories": 150.0,
-            "protein": 5.0,
-            "food_group": "Cereals & Grains"
-        },
-        "lunch": {
-            "food_code": "A018",
-            "name_bn": "সিদ্ধ চালের ভাত",
-            "name_en": "Cooked Parboiled Rice",
-            "calories": 300.0,
-            "protein": 6.0,
-            "food_group": "Cereals & Grains"
-        },
-        "dinner": {
-            "food_code": "A018",
-            "name_bn": "সিদ্ধ চালের ভাত",
-            "name_en": "Cooked Parboiled Rice",
-            "calories": 250.0,
-            "protein": 5.0,
-            "food_group": "Cereals & Grains"
-        },
-        "snack": {
-            "food_code": "F005",
-            "name_bn": "পাকা কলা",
-            "name_en": "Ripe Banana",
-            "calories": 90.0,
-            "protein": 1.0,
-            "food_group": "Fruits"
-        }
+        "breakfast": [
+            {"food_code": "A019", "name_bn": "আটা রুটি", "name_en": "Atta Roti", "calories": 150.0, "protein": 5.0, "food_group": "Cereals & Grains"},
+            {"food_code": "M004", "name_bn": "সিদ্ধ মুরগির ডিম", "name_en": "Boiled Egg", "calories": 155.0, "protein": 13.0, "food_group": "Eggs"},
+            {"food_code": "B013", "name_bn": "মসুর ডাল (রান্না করা)", "name_en": "Cooked Masur Dal", "calories": 135.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+            {"food_code": "L002", "name_bn": "গরুর দুধ", "name_en": "Cow Milk", "calories": 60.0, "protein": 3.3, "food_group": "Dairy & Milk"},
+            {"food_code": "E009", "name_bn": "কলা", "name_en": "Banana", "calories": 90.0, "protein": 1.2, "food_group": "Fruits"},
+            {"food_code": "A022", "name_bn": "সুজির হালুয়া", "name_en": "Semolina Halwa", "calories": 140.0, "protein": 11.0, "food_group": "Cereals & Grains"},
+        ],
+        "lunch": [
+            {"food_code": "A015", "name_bn": "আতপ চালের ভাত", "name_en": "Cooked Atap Rice", "calories": 300.0, "protein": 8.0, "food_group": "Cereals & Grains"},
+            {"food_code": "B013", "name_bn": "মসুর ডাল (রান্না করা)", "name_en": "Cooked Masur Dal", "calories": 135.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+            {"food_code": "S006", "name_bn": "রুই মাছের হালকা ঝোল", "name_en": "Rohu Fish Curry", "calories": 130.0, "protein": 20.0, "food_group": "Fish & Seafood"},
+            {"food_code": "N003", "name_bn": "মুরগির মাংসের তরকারি (কম তেল)", "name_en": "Chicken Curry", "calories": 140.0, "protein": 22.0, "food_group": "Meat & Poultry"},
+            {"food_code": "C033", "name_bn": "পালং শাক ভাজি", "name_en": "Spinach Stir-fry", "calories": 25.0, "protein": 2.0, "food_group": "Leafy Vegetables"},
+            {"food_code": "D031", "name_bn": "বেগুনের তরকারি", "name_en": "Brinjal Curry", "calories": 30.0, "protein": 1.5, "food_group": "Vegetables"},
+        ],
+        "dinner": [
+            {"food_code": "A015", "name_bn": "আতপ চালের ভাত", "name_en": "Cooked Atap Rice", "calories": 250.0, "protein": 7.0, "food_group": "Cereals & Grains"},
+            {"food_code": "B010", "name_bn": "সবুজ মুগ ডাল (রান্না করা)", "name_en": "Cooked Mung Dal", "calories": 136.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+            {"food_code": "S002", "name_bn": "কাতল মাছের হালকা ঝোল", "name_en": "Catla Fish Curry", "calories": 120.0, "protein": 18.0, "food_group": "Fish & Seafood"},
+            {"food_code": "O003", "name_bn": "খাসির মাংসের তরকারি", "name_en": "Mutton Curry", "calories": 130.0, "protein": 22.0, "food_group": "Meat & Poultry"},
+            {"food_code": "D036", "name_bn": "ফুলকপির তরকারি", "name_en": "Cauliflower Curry", "calories": 25.0, "protein": 2.0, "food_group": "Vegetables"},
+            {"food_code": "C003", "name_bn": "লাল শাক ভাজি", "name_en": "Red Amaranth Stir-fry", "calories": 20.0, "protein": 4.0, "food_group": "Leafy Vegetables"},
+        ],
+        "snack": [
+            {"food_code": "E009", "name_bn": "কলা", "name_en": "Banana", "calories": 90.0, "protein": 1.2, "food_group": "Fruits"},
+            {"food_code": "E028", "name_bn": "পেয়ারা", "name_en": "Guava", "calories": 50.0, "protein": 1.4, "food_group": "Fruits"},
+            {"food_code": "H012", "name_bn": "চীনাবাদাম", "name_en": "Groundnut", "calories": 160.0, "protein": 24.0, "food_group": "Nuts & Seeds"},
+            {"food_code": "L002", "name_bn": "গরুর দুধ", "name_en": "Cow Milk", "calories": 60.0, "protein": 3.3, "food_group": "Dairy & Milk"},
+        ]
     }
 
     for meal in plan_data.get("meals", []) or []:
         slot_name = meal.get("slot", "").lower()
         items = meal.get("items", []) or []
         sanitized_items = []
+        fallback_idx = 0  # Rotate through fallback list so duplicates don't all get the same food
+        used_codes_in_meal = set()
+
         for item in items:
             code = item.get("food_code") or item.get("code") or ""
             name_en = item.get("name_en") or ""
@@ -358,16 +358,34 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
                     # 3. Match by name
                     db_food = _find_closest_food_by_name(driver, name_en, name_bn)
             
-            # 4. Fallback if still no match found
+            # 4. Fallback if still no match found — pick highest-similarity slot-appropriate food
             if not db_food:
                 pool = slot_to_safe_foods.get(slot_name) or slot_to_safe_foods.get("breakfast") or []
                 if pool:
-                    db_food = random.choice(pool)
+                    # Pick the highest-similarity food from the pool instead of random
+                    pool_sorted = sorted(pool, key=lambda f: f.get("similarity_score", 0), reverse=True)
+                    db_food = pool_sorted[0]
                 else:
-                    db_food = standard_fallbacks.get(slot_name) or standard_fallbacks["breakfast"]
+                    fallbacks = standard_fallbacks.get(slot_name) or standard_fallbacks["breakfast"]
+                    db_food = fallbacks[fallback_idx % len(fallbacks)]
+                    fallback_idx += 1
                 print(f"⚠️ Food '{name_en}' ({code}) not found. Falling back to '{db_food.get('name_en')}' ({db_food.get('code') or db_food.get('food_code')})")
 
             resolved_code = db_food.get("code") or db_food.get("food_code") or ""
+            
+            # If this code was already used in this meal, try to pick a different fallback
+            if resolved_code in used_codes_in_meal:
+                fallbacks = standard_fallbacks.get(slot_name) or standard_fallbacks["breakfast"]
+                for fb in fallbacks:
+                    fb_code = fb.get("code") or fb.get("food_code") or ""
+                    if fb_code and fb_code not in used_codes_in_meal:
+                        db_food = fb
+                        resolved_code = fb_code
+                        print(f"🔄 Duplicate avoidance: Replaced duplicate with '{fb_code}' ({fb.get('name_en')})")
+                        break
+                # If still duplicate (all fallbacks exhausted), accept it — better than crashing
+            
+            used_codes_in_meal.add(resolved_code)
             
             # Recalculate portion-based calories
             amount_g = _parse_amount_g(item.get("amount_g") or item.get("amount"))
@@ -397,6 +415,250 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
             
         meal["items"] = sanitized_items
         
+    return plan_data
+
+
+def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[str, set], safe_foods: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Post-process the LLM-generated plan to ensure every food is slot-appropriate.
+    If a food is not in the correct slot pool, replace it with the best slot-appropriate alternative.
+    """
+    if not slot_pools:
+        return plan_data
+
+    safe_by_code = {f["code"]: f for f in safe_foods if f.get("code")}
+
+    for meal in plan_data.get("meals", []) or []:
+        slot_name = meal.get("slot", "").lower()
+        allowed_codes = slot_pools.get(slot_name, set()) | slot_pools.get("supplementary", set()) | slot_pools.get("all", set())
+        if not allowed_codes:
+            continue
+
+        corrected_items = []
+        for item in meal.get("items", []) or []:
+            code = item.get("food_code") or item.get("code") or ""
+            # Check if this food is allowed in this slot
+            if code not in allowed_codes:
+                # Find a replacement: highest-similarity food from the allowed pool
+                candidates = [safe_by_code[c] for c in allowed_codes if c in safe_by_code]
+                candidates.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+                # Try to match food group for sensible replacement
+                original_group = item.get("food_group", "")
+                same_group = [c for c in candidates if c.get("food_group") == original_group]
+                replacement = same_group[0] if same_group else (candidates[0] if candidates else None)
+                if replacement:
+                    old_name = item.get("name_bn", "")
+                    item["food_code"] = replacement["code"]
+                    item["code"] = replacement["code"]
+                    item["name_bn"] = replacement.get("name_bn", replacement.get("name_en", ""))
+                    item["name_en"] = replacement.get("name_en", "")
+                    item["food_group"] = replacement.get("food_group", "")
+                    # Recalculate calories for the new food with same portion
+                    amount_g = item.get("amount_g", 100)
+                    kcal_per_100g = float(replacement.get("calories") or replacement.get("energy_kcal") or 0)
+                    item["calories"] = round((kcal_per_100g * amount_g) / 100.0)
+                    print(f"🔄 Slot enforcement: Replaced '{old_name}' ({code}) in {slot_name} with '{item['name_bn']}' ({replacement['code']})")
+            corrected_items.append(item)
+        meal["items"] = corrected_items
+
+    return plan_data
+
+
+def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Post-process to ensure no duplicate food codes appear within the same meal slot.
+    If duplicates are found, replace them with other foods from safe_foods of the same group.
+    """
+    safe_by_code = {f["code"]: f for f in safe_foods if f.get("code")}
+    group_to_foods = {}
+    for f in safe_foods:
+        g = f.get("food_group", "Other")
+        group_to_foods.setdefault(g, []).append(f)
+
+    for meal in plan_data.get("meals", []) or []:
+        slot_name = meal.get("slot", "").lower()
+        items = meal.get("items", []) or []
+        seen_codes = set()
+        deduped = []
+
+        for item in items:
+            code = item.get("food_code") or item.get("code") or ""
+            if code and code in seen_codes:
+                # Find replacement of same food group
+                original_group = item.get("food_group", "")
+                candidates = group_to_foods.get(original_group, safe_foods)
+                # Pick first candidate not already seen
+                replacement = None
+                for c in candidates:
+                    c_code = c.get("code", "")
+                    if c_code and c_code not in seen_codes:
+                        replacement = c
+                        break
+                if replacement:
+                    old_name = item.get("name_bn", "")
+                    amount_g = item.get("amount_g", 100)
+                    kcal_per_100g = float(replacement.get("calories") or replacement.get("energy_kcal") or 0)
+                    item["food_code"] = replacement["code"]
+                    item["code"] = replacement["code"]
+                    item["name_bn"] = replacement.get("name_bn", replacement.get("name_en", ""))
+                    item["name_en"] = replacement.get("name_en", "")
+                    item["food_group"] = replacement.get("food_group", "")
+                    item["calories"] = round((kcal_per_100g * amount_g) / 100.0)
+                    item["emoji"] = _validate_emoji(item)
+                    code = replacement["code"]
+                    print(f"🔄 Deduplication: Replaced duplicate '{old_name}' with '{item['name_bn']}' ({code}) in {slot_name}")
+                else:
+                    print(f"⚠️ Deduplication: Could not find replacement for duplicate {code} in {slot_name}")
+            
+            seen_codes.add(code)
+            deduped.append(item)
+        
+        meal["items"] = deduped
+
+    return plan_data
+
+
+# Module-level fallback pools for minimum-item enforcement
+_MINIMUM_FALLBACKS = {
+    "breakfast": [
+        {"food_code": "A019", "name_bn": "আটা রুটি", "name_en": "Atta Roti", "calories": 150.0, "protein": 5.0, "food_group": "Cereals & Grains"},
+        {"food_code": "M004", "name_bn": "সিদ্ধ মুরগির ডিম", "name_en": "Boiled Egg", "calories": 155.0, "protein": 13.0, "food_group": "Eggs"},
+        {"food_code": "B013", "name_bn": "মসুর ডাল (রান্না করা)", "name_en": "Cooked Masur Dal", "calories": 135.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+        {"food_code": "L002", "name_bn": "গরুর দুধ", "name_en": "Cow Milk", "calories": 60.0, "protein": 3.3, "food_group": "Dairy & Milk"},
+        {"food_code": "E009", "name_bn": "কলা", "name_en": "Banana", "calories": 90.0, "protein": 1.2, "food_group": "Fruits"},
+        {"food_code": "H005", "name_bn": "কাজু বাদাম", "name_en": "Cashew nut", "calories": 150.0, "protein": 5.0, "food_group": "Nuts & Seeds"},
+    ],
+    "lunch": [
+        {"food_code": "A015", "name_bn": "আতপ চালের ভাত", "name_en": "Cooked Atap Rice", "calories": 300.0, "protein": 8.0, "food_group": "Cereals & Grains"},
+        {"food_code": "B013", "name_bn": "মসুর ডাল (রান্না করা)", "name_en": "Cooked Masur Dal", "calories": 135.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+        {"food_code": "S006", "name_bn": "রুই মাছের হালকা ঝোল", "name_en": "Rohu Fish Curry", "calories": 130.0, "protein": 20.0, "food_group": "Fish & Seafood"},
+        {"food_code": "N003", "name_bn": "মুরগির মাংসের তরকারি (কম তেল)", "name_en": "Chicken Curry", "calories": 140.0, "protein": 22.0, "food_group": "Meat & Poultry"},
+        {"food_code": "C033", "name_bn": "পালং শাক ভাজি", "name_en": "Spinach Stir-fry", "calories": 25.0, "protein": 2.0, "food_group": "Leafy Vegetables"},
+        {"food_code": "D031", "name_bn": "বেগুনের তরকারি", "name_en": "Brinjal Curry", "calories": 30.0, "protein": 1.5, "food_group": "Vegetables"},
+    ],
+    "dinner": [
+        {"food_code": "A015", "name_bn": "আতপ চালের ভাত", "name_en": "Cooked Atap Rice", "calories": 250.0, "protein": 7.0, "food_group": "Cereals & Grains"},
+        {"food_code": "B010", "name_bn": "সবুজ মুগ ডাল (রান্না করা)", "name_en": "Cooked Mung Dal", "calories": 136.0, "protein": 24.0, "food_group": "Pulses & Legumes"},
+        {"food_code": "S002", "name_bn": "কাতল মাছের হালকা ঝোল", "name_en": "Catla Fish Curry", "calories": 120.0, "protein": 18.0, "food_group": "Fish & Seafood"},
+        {"food_code": "O003", "name_bn": "খাসির মাংসের তরকারি", "name_en": "Mutton Curry", "calories": 130.0, "protein": 22.0, "food_group": "Meat & Poultry"},
+        {"food_code": "D036", "name_bn": "ফুলকপির তরকারি", "name_en": "Cauliflower Curry", "calories": 25.0, "protein": 2.0, "food_group": "Vegetables"},
+        {"food_code": "C003", "name_bn": "লাল শাক ভাজি", "name_en": "Red Amaranth Stir-fry", "calories": 20.0, "protein": 4.0, "food_group": "Leafy Vegetables"},
+    ],
+    "snack": [
+        {"food_code": "E009", "name_bn": "কলা", "name_en": "Banana", "calories": 90.0, "protein": 1.2, "food_group": "Fruits"},
+        {"food_code": "E028", "name_bn": "পেয়ারা", "name_en": "Guava", "calories": 50.0, "protein": 1.4, "food_group": "Fruits"},
+        {"food_code": "H012", "name_bn": "চীনাবাদাম", "name_en": "Groundnut", "calories": 160.0, "protein": 24.0, "food_group": "Nuts & Seeds"},
+        {"food_code": "L002", "name_bn": "গরুর দুধ", "name_en": "Cow Milk", "calories": 60.0, "protein": 3.3, "food_group": "Dairy & Milk"},
+    ],
+}
+
+
+def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Ensures every meal slot meets its minimum item requirement with smart fallback selection.
+    - Breakfast: min 3 items (staple + protein + supplementary)
+    - Lunch: min 4 items (grain + pulse + protein + vegetable)
+    - Dinner: min 4 items (grain + pulse + protein + vegetable)
+    """
+    SLOT_MINIMUMS = {"breakfast": 3, "lunch": 4, "dinner": 4, "snack": 2}
+    SUPP_GROUPS = {"Fruits", "Dairy & Milk", "Nuts & Seeds"}
+    STAPLE_GROUPS = {"Cereals & Grains", "Cereals", "Cereals and Millets", "Cereals and Cereal Products"}
+    PULSE_GROUPS = {"Pulses & Legumes", "Grain Legumes", "Pulse and Pulse Products"}
+    PROTEIN_GROUPS = {"Fish & Seafood", "Meat & Poultry", "Eggs", "Egg and Egg Products",
+                      "Animal Meat", "Poultry", "Fresh Water Fish and Shellfish", "Marine Fish",
+                      "Marine Shellfish", "Marine Mollusks", "Fish and Fish Products"}
+    VEG_GROUPS = {"Vegetables", "Leafy Vegetables", "Other Vegetables", "Roots & Tubers",
+                  "Green Leafy Vegetables", "Roots and Tubers"}
+
+    def _group_of(item):
+        return item.get("food_group", "")
+
+    def _has_group(items, groups):
+        return any(_group_of(i) in groups for i in items)
+
+    def _make_item(fb, amount_g=100):
+        kcal_per_100g = float(fb.get("calories") or fb.get("energy_kcal") or 0)
+        fb_code = fb.get("food_code") or fb.get("code") or ""
+        return {
+            "food_code": fb_code,
+            "code": fb_code,
+            "name_bn": fb.get("name_bn", ""),
+            "name_en": fb.get("name_en", ""),
+            "food_group": fb.get("food_group", ""),
+            "calories": round((kcal_per_100g * amount_g) / 100.0),
+            "amount_g": amount_g,
+            "amount": f"{int(amount_g)}g",
+            "emoji": _validate_emoji({"name_en": fb.get("name_en", ""), "food_group": fb.get("food_group", "")}),
+        }
+
+    for meal in plan_data.get("meals", []) or []:
+        slot_name = meal.get("slot", "").lower()
+        items = meal.get("items", []) or []
+        existing_codes = {item.get("food_code") or item.get("code") or "" for item in items}
+        existing_codes.discard("")
+        min_items = SLOT_MINIMUMS.get(slot_name, 3)
+
+        if len(items) >= min_items:
+            continue
+
+        fallbacks = _MINIMUM_FALLBACKS.get(slot_name) or _MINIMUM_FALLBACKS.get("breakfast", [])
+        added = 0
+
+        # Smart selection: prioritize missing food group categories
+        for fb in fallbacks:
+            if len(items) >= min_items:
+                break
+            fb_code = fb.get("food_code") or fb.get("code") or ""
+            if not fb_code or fb_code in existing_codes:
+                continue
+
+            fb_group = fb.get("food_group", "")
+
+            # For breakfast: if already has a staple, prefer supplementary (fruit/dairy/nuts)
+            if slot_name == "breakfast":
+                has_staple = _has_group(items, STAPLE_GROUPS)
+                if has_staple and fb_group not in SUPP_GROUPS and len(items) >= 2:
+                    # Skip non-supplementary if we already have 2+ items including staple
+                    continue
+
+            # For lunch/dinner: ensure we have staple, pulse, protein, vegetable
+            if slot_name in ("lunch", "dinner"):
+                has_staple = _has_group(items, STAPLE_GROUPS)
+                has_pulse = _has_group(items, PULSE_GROUPS)
+                has_protein = _has_group(items, PROTEIN_GROUPS)
+                has_veg = _has_group(items, VEG_GROUPS)
+
+                # Prioritize missing category
+                if not has_pulse and fb_group not in PULSE_GROUPS:
+                    continue
+                if not has_protein and fb_group not in PROTEIN_GROUPS:
+                    continue
+                if not has_veg and fb_group not in VEG_GROUPS:
+                    continue
+                if not has_staple and fb_group not in STAPLE_GROUPS:
+                    continue
+
+            items.append(_make_item(fb))
+            existing_codes.add(fb_code)
+            added += 1
+            print(f"📦 Minimum items: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
+
+        # Second pass: if still below minimum, add any non-duplicate fallback
+        for fb in fallbacks:
+            if len(items) >= min_items:
+                break
+            fb_code = fb.get("food_code") or fb.get("code") or ""
+            if fb_code and fb_code not in existing_codes:
+                items.append(_make_item(fb))
+                existing_codes.add(fb_code)
+                added += 1
+                print(f"📦 Minimum items (2nd pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
+
+        if len(items) < min_items:
+            print(f"⚠️ Could not reach {min_items} items for {slot_name} (has {len(items)}). All fallbacks exhausted or duplicated.")
+
+        meal["items"] = items
+
     return plan_data
 
 
@@ -657,26 +919,26 @@ def _build_meal_plan_prompt(
             else:
                 others.append(f)
                 
-        # Shuffle each category for maximum variety
-        random.shuffle(staples)
-        random.shuffle(proteins)
-        random.shuffle(veggies)
-        random.shuffle(others)
+        # Sort by graph similarity score (highest first) so LLM sees best-ranked foods
+        staples.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        proteins.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        veggies.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        others.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         
-        # Build structured text block
+        # Build structured text block — show more foods so LLM has full range
         lines = []
         if staples:
             lines.append("  STAPLES (grains/roti/rice):")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:6]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:12]])
         if proteins:
             lines.append("  PROTEINS (meat/poultry/fish/eggs/lentils):")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in proteins[:12]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in proteins[:20]])
         if veggies:
             lines.append("  VEGETABLES & GREENS:")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in veggies[:10]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in veggies[:15]])
         if others and slot in ["breakfast", "snack"]:
             lines.append("  OTHER (supplementary/dairy/fruits):")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in others[:6]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in others[:10]])
             
         return "\n".join(lines)
 
@@ -707,9 +969,8 @@ def _build_meal_plan_prompt(
 
     pairings_section = ""
     if pairings:
-        # Shuffle pairings to provide diverse inspiration
-        display_pairings = pairings[:25]
-        random.shuffle(display_pairings)
+        # Use top pairings sorted by popularity (no shuffle — deterministic)
+        display_pairings = sorted(pairings, key=lambda p: p.get("popularity", 0), reverse=True)[:30]
         pairings_lines = []
         for p in display_pairings:
             pairings_lines.append(f"- {p['f1_bn']} ({p['f1_en']}) pairs well with {p['f2_bn']} ({p['f2_en']}) [Popularity weight: {p['popularity']}, Type: {p['pairing_type']}, Slot: {p['meal_slot']}]")
@@ -735,9 +996,18 @@ CRITICAL RULES:
 11. Lunch and dinner MUST include a staple grain (Rice/ভাত or Roti/রুটি) from the food list.
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations!
-14. MEAL SLOT RULES: Follow the food-to-slot compatibility data below. Do NOT serve breakfast-only foods (fruits, nuts, milk) as lunch/dinner main items. Lunch and dinner should contain heavy foods: rice/roti + protein curry + dal + vegetable. Breakfast should be lighter: roti/bread + egg/dal + optional fruit.
+14. MEAL SLOT RULES — STRICTLY ENFORCED:
+    - BREAKFAST (সকালের নাস্তা): Light morning food. Typical Bangladeshi breakfast = Roti/Paratha + Egg/Dal + Tea/Milk. May also include: Semai, Suji, Bread, Banana, seasonal fruits, nuts, milk. NEVER serve rice + fish curry or heavy dal + bhorta for breakfast. Breakfast should NOT look like lunch.
+    - LUNCH (দুপুরের খাবার): Heavy main meal. MUST include: Rice (ভাত) as staple + Dal (মসুর/মুগ ডাল) + Protein curry (Fish/Chicken/Beef/Egg) + Vegetable bhaji/torkari. This is the biggest meal of the day.
+    - DINNER (রাতের খাবার): Substantial but can be lighter than lunch. Options: Rice + Dal + Protein + Veg, OR Roti + Protein curry + Veg. Do NOT serve only fruits or only bread for dinner.
+    - SNACK: Fruits, nuts, milk, small portions.
+15. MINIMUM ITEMS PER MEAL (CRITICAL): Every meal slot MUST contain at least 3 items, ideally 4. Do NOT generate meals with only 1 or 2 items.
+    - BREAKFAST must have: 1 staple (Roti/Paratha/Suji/Semai) + 1 protein (Egg/Dal) + 1 supplementary (Milk/Fruit/Nuts). That's 3 items minimum.
+    - LUNCH must have: 1 grain (Rice) + 1 pulse (Dal) + 1 protein (Fish/Chicken/Beef/Egg) + 1 vegetable. That's 4 items.
+    - DINNER must have: 1 grain (Rice/Roti) + 1 pulse (Dal) + 1 protein (Fish/Chicken/Beef/Egg) + 1 vegetable. That's 4 items.
+    If you generate fewer than 3 items for any meal, the plan will be rejected.
 16. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), Rice (ভাত), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. This is authentic Bangladeshi morning food culture.
-15. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
+17. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
   - If you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
   - If you choose `আটা` (wheat flour), list it as `আটা রুটি` (atta roti).
   - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
@@ -746,6 +1016,12 @@ CRITICAL RULES:
   - If you choose lentils like `মসুর ডাল`, list it as `মসুর ডাল (রান্না করা)`.
   This makes the meal plan highly practical and realistic for daily eating.
 16. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
+17. NO DUPLICATE FOODS: Within a single meal slot (breakfast / lunch / dinner), every item MUST have a UNIQUE `food_code`. Do NOT repeat the same food code twice in the same meal. For example, if breakfast already has A019 (Atta Roti), the next item must be a different code like M004 (Egg) or B013 (Dal).
+18. ONLINE PLATFORM SUGGESTIONS: At the end of the meal plan, add a short "Shopping Tips" section. For each main ingredient category, suggest where to buy it online in Bangladesh:
+  - Fresh vegetables, fish, meat, dairy, rice, dal, atta → Chaldal (chaldal.com)
+  - Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
+  - Organic / farm-fresh items → Khaas Food (khaasfood.com)
+  - Packaged foods, snacks, supplements → Daraz (daraz.com.bd)
 """
 
     user_prompt = f"""{lang_instruction}
@@ -877,26 +1153,26 @@ def _build_weekly_meal_plan_prompt(
             else:
                 others.append(f)
                 
-        # Shuffle each category for maximum variety
-        random.shuffle(staples)
-        random.shuffle(proteins)
-        random.shuffle(veggies)
-        random.shuffle(others)
+        # Sort by graph similarity score (highest first)
+        staples.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        proteins.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        veggies.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+        others.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         
         # Build structured text block
         lines = []
         if staples:
             lines.append("  STAPLES (grains/roti/rice):")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:6]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:12]])
         if proteins:
             lines.append("  PROTEINS (meat/poultry/fish/eggs/lentils):")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in proteins[:12]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in proteins[:20]])
         if veggies:
             lines.append("  VEGETABLES & GREENS:")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in veggies[:10]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in veggies[:15]])
         if others and slot in ["breakfast", "snack"]:
             lines.append("  OTHER (supplementary/dairy/fruits):")
-            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in others[:6]])
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in others[:10]])
             
         return "\n".join(lines)
 
@@ -913,8 +1189,7 @@ def _build_weekly_meal_plan_prompt(
 
     pairings_section = ""
     if pairings:
-        display_pairings = pairings[:30]
-        random.shuffle(display_pairings)
+        display_pairings = sorted(pairings, key=lambda p: p.get("popularity", 0), reverse=True)[:30]
         pairings_lines = []
         for p in display_pairings:
             pairings_lines.append(f"- {p['f1_bn']} ({p['f1_en']}) pairs well with {p['f2_bn']} ({p['f2_en']}) [Popularity weight: {p['popularity']}, Type: {p['pairing_type']}, Slot: {p['meal_slot']}]")
@@ -938,8 +1213,17 @@ CRITICAL RULES:
 11. Authentic Bengali lunch and dinner MUST include a staple grain: Rice (ভাত), Roti/Chapati (রুটি), or similar.
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations across the 7 days!
-15. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), Rice (ভাত), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. This applies for every single day in the 7-day plan. This is authentic Bangladeshi morning food culture.
-14. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
+14. MEAL SLOT RULES — STRICTLY ENFORCED (applies to EVERY day):
+    - BREAKFAST (সকালের নাস্তা): Light morning food. Typical Bangladeshi breakfast = Roti/Paratha + Egg/Dal + Tea/Milk. May also include: Semai, Suji, Bread, Banana, seasonal fruits, nuts, milk. NEVER serve rice + fish curry or heavy dal + bhorta for breakfast. Breakfast should NOT look like lunch.
+    - LUNCH (দুপুরের খাবার): Heavy main meal. MUST include: Rice (ভাত) as staple + Dal (মসুর/মুগ ডাল) + Protein curry (Fish/Chicken/Beef/Egg) + Vegetable bhaji/torkari. This is the biggest meal of the day.
+    - DINNER (রাতের খাবার): Substantial but can be lighter than lunch. Options: Rice + Dal + Protein + Veg, OR Roti + Protein curry + Veg. Do NOT serve only fruits or only bread for dinner.
+15. MINIMUM ITEMS PER MEAL (CRITICAL): Every meal slot MUST contain at least 3 items, ideally 4. Do NOT generate meals with only 1 or 2 items.
+    - BREAKFAST must have: 1 staple (Roti/Paratha/Suji/Semai) + 1 protein (Egg/Dal) + 1 supplementary (Milk/Fruit/Nuts). That's 3 items minimum.
+    - LUNCH must have: 1 grain (Rice) + 1 pulse (Dal) + 1 protein (Fish/Chicken/Beef/Egg) + 1 vegetable. That's 4 items.
+    - DINNER must have: 1 grain (Rice/Roti) + 1 pulse (Dal) + 1 protein (Fish/Chicken/Beef/Egg) + 1 vegetable. That's 4 items.
+    If you generate fewer than 3 items for any meal on any day, the plan will be rejected.
+16. BREAKFAST VEGETABLE RULE (CRITICAL): Vegetables (শাক/সবজি) are ONLY acceptable at breakfast when the breakfast includes Ruti (রুটি) or Paratha (পরোটা) as the staple. If breakfast uses Semolina (সুজি), Semai (সেমাই), Rice (ভাত), or any non-roti grain, DO NOT include any vegetables in that breakfast slot. This applies for every single day in the 7-day plan. This is authentic Bangladeshi morning food culture.
+17. COOKED BANGLADESHI FOOD NAMING REASONING (CRITICAL): Do NOT return raw ingredient names in the final plan. Perform culinary reasoning to convert the raw ingredients you choose from the list into realistic, cooked Bangladeshi dishes for the `name_bn` field. 
   - If you choose `সিদ্ধ চাল` (raw parboiled rice), list it as `সিদ্ধ চালের ভাত` (cooked rice).
   - If you choose `আটা` (wheat flour), list it as `আটা রুটি` (atta roti).
   - If you choose `কচু পাতা` (colocasia leaves), list it as `কচু পাতার ভর্তা` (colocasia leaf bhorta) or `কচু পাতার তরকারি`.
@@ -947,7 +1231,13 @@ CRITICAL RULES:
   - If you choose a leafy vegetable like `লাল শাক` or `পালং শাক`, list it as `লাল শাক ভাজি` or `পালং শাকের তরকারি`.
   - If you choose lentils like `মসুর ডাল`, list it as `মসুর ডাল (রান্না করা)`.
   This makes the meal plan highly practical and realistic for daily eating.
-15. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
+18. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
+19. NO DUPLICATE FOODS: Within a single meal slot on any given day, every item MUST have a UNIQUE `food_code`. Do NOT repeat the same food code twice in the same meal.
+20. ONLINE PLATFORM SUGGESTIONS: At the end of the meal plan, add a short "Shopping Tips" section. For each main ingredient category, suggest where to buy it online in Bangladesh:
+  - Fresh vegetables, fish, meat, dairy, rice, dal, atta → Chaldal (chaldal.com)
+  - Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
+  - Organic / farm-fresh items → Khaas Food (khaasfood.com)
+  - Packaged foods, snacks, supplements → Daraz (daraz.com.bd)
 """
 
     dietary_context = ""
@@ -1220,6 +1510,31 @@ def _generate_fallback_meal_plan(
                 "why_bn": "ভিটামিন ও আঁশ সমৃদ্ধ" if language == "bn" else "Rich in vitamins and fiber",
             })
 
+        # Ensure minimum 3 items per meal — add supplementary if needed
+        if len(items) < 3:
+            # Pick a supplementary item (fruit, dairy, nuts) not already in this meal
+            existing_codes = {i.get("food_code") or i.get("code") or "" for i in items}
+            for supp_cat in ["Fruits", "Dairy & Milk", "Nuts & Seeds"]:
+                candidate = pick_slot_specific(supp_cat, slot, used_codes)
+                if candidate and candidate["code"] not in existing_codes:
+                    s_cal_per_100 = candidate.get("calories", 60)
+                    s_amt = 100 if supp_cat != "Nuts & Seeds" else 30
+                    s_cal = round(s_cal_per_100 * s_amt / 100)
+                    s_bn, s_en = _get_cooked_name(
+                        candidate["name_bn"], candidate["name_en"], candidate.get("food_group", supp_cat)
+                    )
+                    items.append({
+                        "food_code": candidate["code"],
+                        "name_bn": s_bn,
+                        "name_en": s_en,
+                        "amount_g": s_amt,
+                        "calories": s_cal,
+                        "food_group": candidate.get("food_group"),
+                        "why_bn": "সহায়ক খাবার" if language == "bn" else "Supplementary food",
+                    })
+                    print(f"📦 Fallback minimum: Added '{s_bn}' to {slot} (now {len(items)} items)")
+                    break
+
         return {
             "slot": slot,
             "slot_bn": slot_bn,
@@ -1333,12 +1648,15 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
         messages = _build_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
         llm_response = await llm_client.chat_completion(
             messages=messages,
-            temperature=0.85,
+            temperature=0.35,
             max_tokens=4096,
             response_format={"type": "json_object"},
         )
         plan_data = json.loads(llm_response)
         plan_data = _validate_and_sanitize_meal_plan_foods(plan_data, safe_foods, rag.get_neo4j_driver(), slot_pools)
+        plan_data = _enforce_slot_appropriateness(plan_data, slot_pools, safe_foods)
+        plan_data = _deduplicate_meal_items(plan_data, safe_foods)
+        plan_data = _ensure_meal_minimum_items(plan_data)
     except Exception as e:
         print(f"LLM daily meal plan error: {e}")
         plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language)
@@ -1421,7 +1739,7 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
         messages = _build_weekly_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
         llm_response = await llm_client.chat_completion(
             messages=messages,
-            temperature=0.85,
+            temperature=0.35,
             max_tokens=4096,
             response_format={"type": "json_object"},
         )
@@ -1435,6 +1753,9 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
             p.setdefault("target_calories", targets["target_calories"])
             # ✅ Validate and sanitize foods in weekly plan
             _validate_and_sanitize_meal_plan_foods(p, safe_foods, rag.get_neo4j_driver(), slot_pools)
+            _enforce_slot_appropriateness(p, slot_pools, safe_foods)
+            _deduplicate_meal_items(p, safe_foods)
+            _ensure_meal_minimum_items(p)
             # ✅ Scale each day's portions so calories hit the target
             _scale_plan_to_target(p, targets["target_calories"])
             # 🎨 Fill in emoji on each item

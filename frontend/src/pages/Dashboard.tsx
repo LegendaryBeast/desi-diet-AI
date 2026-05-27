@@ -16,6 +16,7 @@ import {
   Utensils,
   Search,
   Sparkles,
+  ChefHat,
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -56,6 +57,16 @@ export const Dashboard = () => {
 
   useEffect(() => {
     fetchData();
+    const handleRefresh = () => fetchData();
+    window.addEventListener('data:refresh', handleRefresh);
+    const onVisible = () => {
+      if (!document.hidden) fetchData();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('data:refresh', handleRefresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [fetchData]);
 
   const targets = profileData?.targets;
@@ -331,6 +342,30 @@ export const Dashboard = () => {
             </div>
             <Link to="/chat" className="mt-3 pt-2 border-t border-ink/5 flex items-center justify-between text-[0.68rem] text-accent hover:text-accent/80 font-bold">
               <span>AI পুষ্টিবিদ চ্যাট</span>
+              <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {/* Card 7: Personal Cooker */}
+          <div className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
+            <div>
+              <div className="flex items-center justify-between mb-2 border-b border-ink/5 pb-1">
+                <h3 className="font-bold text-xs text-ink flex items-center gap-1">
+                  <ChefHat className="w-3.5 h-3.5 text-forest" /> নিজের রান্নাঘর
+                </h3>
+                <span className="text-[0.55rem] text-forest font-bold bg-forest/5 px-1 rounded flex items-center gap-0.5">
+                  <Sparkles className="w-2.5 h-2.5" /> RAG
+                </span>
+              </div>
+              <p className="text-[0.68rem] text-ink-muted leading-snug py-1">
+                আপনার রোগ অনুযায়ী নিরাপদ রেসিপি, রান্নার পদ্ধতি এবং খাবারের নিরাপত্তা জানুন।
+              </p>
+              <div className="bg-cream/40 p-1.5 rounded text-[0.62rem] text-ink-faint italic truncate mt-1">
+                "কিডনি রোগে লাউ কি খেতে পারব?"
+              </div>
+            </div>
+            <Link to="/personal-cooker" className="mt-3 pt-2 border-t border-ink/5 flex items-center justify-between text-[0.68rem] text-forest hover:text-forest/80 font-bold">
+              <span>নুট্রিসাথী চ্যাট</span>
               <ChevronRight className="w-3 h-3" />
             </Link>
           </div>

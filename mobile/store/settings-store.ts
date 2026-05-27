@@ -21,7 +21,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   language: 'bn',
   notificationsEnabled: false,
-  strictMode: false,
+  strictMode: true,
   mealTimes: {
     breakfast: '08:00',
     lunch: '13:00',
@@ -56,7 +56,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set((state) => ({
         language: (lang as 'en' | 'bn') || state.language,
         notificationsEnabled: notifs === 'true',
-        strictMode: strict === 'true',
+        strictMode: strict === null ? true : strict === 'true',
         mealTimes: timesStr ? JSON.parse(timesStr) : state.mealTimes,
       }));
     } catch (e) {

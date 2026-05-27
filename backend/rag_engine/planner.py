@@ -177,8 +177,12 @@ def get_rda_key(age: int, gender: str) -> str:
     elif age > 70: age_key = "gt_70"
     else: age_key = "19_30"  # Default fallback
 
+    # Fallback: Neo4j only has male/female RDA properties (no "both").
+    # Also 9_13 age bracket is absent in the dataset, fall back to 14_18.
     if gender_key not in ["male", "female"]:
-        gender_key = "both"
+        gender_key = "male"
+    if age_key == "9_13":
+        age_key = "14_18"
 
     return f"rda_{gender_key}_{age_key}_mg"
 

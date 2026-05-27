@@ -4,7 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, mealPlanApi, mealTrackingApi, profileApi, medicineApi } from '../../lib/api';
 import { fonts, colors } from '../../lib/theme';
-import { Search, Crown, Play, ChevronLeft, ChevronRight, Check, Flame, Apple, Activity, Pill, Shield, Bot, ArrowLeft, Clock, Bell } from 'lucide-react-native';
+import { Search, Crown, Play, ChevronLeft, ChevronRight, Check, Flame, Apple, Activity, Pill, Shield, Bot, ArrowLeft, Clock, Bell, ChefHat, ShoppingCart } from 'lucide-react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { HomeScreenSkeleton } from '../../components/SkeletonLoader';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -231,7 +231,9 @@ export default function HomeScreen() {
           { label: t('foods'), icon: Apple, route: '/foods', bg: '#EBF0D8', color: colors.primary },
           { label: t('healthLog'), icon: Activity, route: '/health-log', bg: '#E2F2F5', color: colors.accent },
           { label: t('medicine'), icon: Pill, route: '/medicine', bg: '#FFF7E6', color: '#B06000' },
-          { label: t('micros'), icon: Shield, route: '/target-details', bg: '#EAF7EE', color: colors.success }
+          { label: t('micros'), icon: Shield, route: '/target-details', bg: '#EAF7EE', color: colors.success },
+          { label: language === 'bn' ? 'রান্নাঘর' : 'Cooker', icon: ChefHat, route: '/personal-cooker', bg: '#F0F8E2', color: '#3B7A2F' },
+          { label: language === 'bn' ? 'কেনাকাটা' : 'Grocery', icon: ShoppingCart, route: '/grocery', bg: '#FFF0F5', color: '#C2185B' }
         ].map((act, i) => {
           const Icon = act.icon;
           return (

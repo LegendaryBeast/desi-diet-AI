@@ -18,9 +18,33 @@ from app.services.diet_plan_chat_service import (
     extract_collected_data,
     generate_plan_from_collected,
 )
+from app.services.grocery_service import suggest_groceries_from_chat
+from app.services import chat_tools
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+# ── Tool dispatch map ─────────────────────────────────────────────────────────
+# Maps function names to (handler_coroutine, needs_user_id)
+TOOL_DISPATCH = {
+    "log_meal": (None, True),  # handled inline for historical reasons
+    "get_profile": (chat_tools.tool_get_profile, True),
+    "update_profile": (chat_tools.tool_update_profile, True),
+    "get_meal_plan": (chat_tools.tool_get_meal_plan, True),
+    "mark_meal_complete": (chat_tools.tool_mark_meal_complete, True),
+    "log_health": (chat_tools.tool_log_health, True),
+    "get_health_logs": (chat_tools.tool_get_health_logs, True),
+    "get_medicine_reminders": (chat_tools.tool_get_medicine_reminders, True),
+    "add_medicine_reminder": (chat_tools.tool_add_medicine_reminder, True),
+    "delete_medicine_reminder": (chat_tools.tool_delete_medicine_reminder, True),
+    "search_food": (chat_tools.tool_search_food, True),
+    "get_food_safety": (chat_tools.tool_get_food_safety, True),
+    "get_health_report": (chat_tools.tool_get_health_report, True),
+    "navigate_to": (chat_tools.tool_navigate_to, True),
+    "show_toast": (chat_tools.tool_show_toast, True),
+    "personal_cooker_chat": (chat_tools.tool_personal_cooker_chat, True),
+}
 
 
 async def perform_meal_logging(user_id: str, input_text: str, meal_slot: str, language: str) -> dict:
@@ -505,7 +529,25 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "weight logs, or a 3-day/7-day/30-day health report, you MUST provide a friendly summary of their calories, "
             "nutrients, and weights from their history inside USER'S COMPLETE CONTEXT. "
             "Additionally, you MUST append the exact tag '[HEALTH_REPORT_LINK]' (including brackets) at the very end of your response text. "
-            "This tag automatically generates an interactive high-fidelity PDF report download card for the user!\n\n"
+            "This tag automatically generates an interactive high-fidelity PDF report download card for the user!\n"
+            "9. ALWAYS NAME SPECIFIC FOODS: Whenever you suggest meals, recipes, or ingredients, you MUST explicitly name "
+            "the specific foods using common Bangladeshi names (e.g. ভাত, ডাল, মাছ, মুরগি, ডিম, আলু, পালং শাক, আটা রুটি, ইলিশ). "
+            "Do NOT give vague advice like 'eat some protein' or 'have vegetables' — always say WHICH protein or WHICH vegetable. "
+            "This is critical because the app automatically shows grocery purchase cards with live prices and nearest shop locations "
+            "for every food you mention. The more specific foods you mention, the more helpful the grocery cards become.\n"
+            "10. YOU HAVE ACCESS TO APP TOOLS — USE THEM: You are equipped with many tools to control the app. "
+            "Whenever the user asks to DO something (not just ask a question), USE the appropriate tool. Examples:\n"
+            "   - 'I ate rice and fish' → call log_meal\n"
+            "   - 'Show my meal plan' → call get_meal_plan\n"
+            "   - 'I weigh 72kg now' → call update_profile + log_health\n"
+            "   - 'Remind me to take Metformin at 8am' → call add_medicine_reminder\n"
+            "   - 'What did I eat today?' → call get_meal_plan\n"
+            "   - 'Is rice safe for diabetes?' → call search_food, then get_food_safety\n"
+            "   - 'Go to my profile' → call navigate_to\n"
+            "   - 'Show my medicines' → call get_medicine_reminders\n"
+            "   - 'I feel dizzy' → call log_health with symptoms\n"
+            "   - 'My blood pressure is 140/90' → call log_health with blood_pressure\n"
+            "Do NOT describe what you would do — actually call the tool.\n\n"
             f"=== USER'S COMPLETE CONTEXT ===\n{user_context}\n"
             f"{rag_food_context}"
         )
@@ -532,7 +574,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
         else:
             messages.append({"role": "user", "content": req.message})
 
-        # Define tools for meal logging
+        # ── Tool definitions: every app feature callable from chat ────────────
         tools = [
             {
                 "type": "function",
@@ -542,20 +584,226 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "description": {
-                                "type": "string",
-                                "description": "Description of the food items eaten. Be specific. If there is an image, list all the foods visible."
-                            },
-                            "meal_slot": {
-                                "type": "string",
-                                "enum": ["breakfast", "lunch", "dinner", "snack"],
-                                "description": "The meal slot. Default to 'snack' if not clear."
-                            }
+                            "description": {"type": "string", "description": "Description of the food items eaten. Be specific. If there is an image, list all the foods visible."},
+                            "meal_slot": {"type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"], "description": "The meal slot. Default to 'snack' if not clear."}
                         },
                         "required": ["description"]
                     }
                 }
-            }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_profile",
+                    "description": "Fetch the user's health profile (age, weight, height, conditions, goals, etc.). Use when the user asks about their profile, BMI, targets, or personal data.",
+                    "parameters": {"type": "object", "properties": {}, "required": []}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_profile",
+                    "description": "Update the user's profile fields. Use when the user says their weight changed, they want to update age, conditions, goals, etc. Only include fields that need to change.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "weight_kg": {"type": "number", "description": "Current weight in kg"},
+                            "height_cm": {"type": "number", "description": "Height in cm"},
+                            "age": {"type": "integer", "description": "Age in years"},
+                            "gender": {"type": "string", "enum": ["male", "female", "other"], "description": "Gender"},
+                            "activity_level": {"type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active"], "description": "Activity level"},
+                            "goal": {"type": "string", "enum": ["Lose Weight", "Maintain", "Gain Weight", "Muscle Gain"], "description": "Diet goal"},
+                            "medical_conditions": {"type": "array", "items": {"type": "string"}, "description": "List of medical conditions"},
+                            "preferred_foods": {"type": "array", "items": {"type": "string"}, "description": "Foods the user likes"},
+                            "disliked_foods": {"type": "array", "items": {"type": "string"}, "description": "Foods the user dislikes"},
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_meal_plan",
+                    "description": "Get the user's meal plan for today. Use when the user asks 'what should I eat today?', 'show my meal plan', or wants to see today's breakfast/lunch/dinner.",
+                    "parameters": {"type": "object", "properties": {}, "required": []}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_meal_complete",
+                    "description": "Mark a meal slot as eaten or uneaten. Use when the user says they finished a meal, skipped a meal, or want to mark a slot complete.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "slot": {"type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"], "description": "The meal slot"},
+                            "completed": {"type": "boolean", "description": "True to mark as eaten, false to unmark"}
+                        },
+                        "required": ["slot"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "log_health",
+                    "description": "Log health metrics like weight, blood pressure, blood sugar, HbA1c, or symptoms. Use when the user reports any health measurement or symptom.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "weight_kg": {"type": "number", "description": "Weight in kg"},
+                            "blood_pressure": {"type": "string", "description": "Blood pressure e.g. '120/80'"},
+                            "blood_sugar": {"type": "number", "description": "Blood sugar in mmol/L"},
+                            "hba1c": {"type": "number", "description": "HbA1c percentage"},
+                            "symptoms": {"type": "string", "description": "Any symptoms the user reports"},
+                            "notes": {"type": "string", "description": "Additional notes"}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_health_logs",
+                    "description": "Get recent health log entries. Use when the user asks about their weight history, blood pressure trends, or recent symptoms.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "description": "Number of recent logs to fetch (max 30)", "default": 7}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_medicine_reminders",
+                    "description": "List the user's active medicine reminders. Use when the user asks 'what medicines should I take?' or wants to see their reminders.",
+                    "parameters": {"type": "object", "properties": {}, "required": []}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "add_medicine_reminder",
+                    "description": "Add a new medicine reminder. Use when the user says they need to take a medicine at certain times.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Medicine name e.g. 'Metformin 500mg'"},
+                            "dose": {"type": "string", "description": "Dose instructions e.g. '1 tablet'"},
+                            "times": {"type": "array", "items": {"type": "string"}, "description": "Times in 24h format e.g. ['08:00', '20:00']"},
+                            "with_food": {"type": "boolean", "description": "Should be taken with food"},
+                            "notes": {"type": "string", "description": "Extra notes"}
+                        },
+                        "required": ["name", "times"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "delete_medicine_reminder",
+                    "description": "Delete a medicine reminder. Use when the user says they stopped a medicine or want to remove a reminder.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "reminder_id": {"type": "string", "description": "The reminder ID to delete"}
+                        },
+                        "required": ["reminder_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_food",
+                    "description": "Search the food database by name. Use when the user asks about a specific food's nutrition, calories, or safety.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Food name in Bengali or English e.g. 'ভাত', 'egg', 'ইলিশ'"}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_food_safety",
+                    "description": "Get personalized food safety analysis for the user's conditions. Use when the user asks 'is X safe for diabetes?' or similar.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "food_code": {"type": "string", "description": "Food code from search results e.g. 'A019'"}
+                        },
+                        "required": ["food_code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_health_report",
+                    "description": "Generate a health summary report for a period. Use when the user asks for their report, progress, or summary.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "days": {"type": "integer", "description": "Number of days to include (max 30)", "default": 7}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "navigate_to",
+                    "description": "Navigate the user to a different page in the app. Use when the user says 'show my meal plan', 'go to my profile', 'take me to medicine reminders', etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "page": {"type": "string", "enum": ["/dashboard", "/chat", "/meal-plan", "/health-log", "/profile", "/medicine", "/foods", "/report", "/micronutrients"], "description": "Page path to navigate to"}
+                        },
+                        "required": ["page"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "show_toast",
+                    "description": "Show a toast notification to the user. Use sparingly for important confirmations.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string", "description": "Toast message text"},
+                            "level": {"type": "string", "enum": ["info", "success", "warning", "error"], "description": "Toast severity level"}
+                        },
+                        "required": ["message"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "personal_cooker_chat",
+                    "description": "Invoke the Personal Cooker (NutriSaathi) for condition-specific recipes, cooking methods, or food safety advice. Use when the user asks for recipes tailored to a medical condition, cooking instructions for restricted diets, or whether a specific food is safe for their disease.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string", "description": "The user's recipe, cooking, or food-safety question"},
+                            "condition": {"type": "string", "description": "Medical condition to tailor the answer for, e.g. Diabetes, Hypertension, CKD, None"},
+                            "session_id": {"type": "string", "description": "Optional session ID for continuity. Omit to use auto-generated daily session."}
+                        },
+                        "required": ["message", "condition"]
+                    }
+                }
+            },
         ]
 
         # 5. Stream LLM response
@@ -600,8 +848,16 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                                 existing["function"]["arguments"] += tc.function.arguments
 
             # If tool calls were requested, execute them
+            # Tools that mutate user data — after these run we MUST rebuild context
+            _MUTATING_TOOLS = {
+                "update_profile", "log_health", "log_meal",
+                "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
+            }
             if tool_calls:
-                # Filter out empty entries or merge them
+                formatted_tool_calls = []
+                tool_results = []
+                mutated = False
+
                 for tool_call in tool_calls:
                     func_name = tool_call["function"]["name"]
                     arguments_str = tool_call["function"]["arguments"]
@@ -609,48 +865,148 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         args = json.loads(arguments_str)
                     except Exception:
                         args = {}
-                    
+
+                    formatted_tool_calls.append({
+                        "id": tool_call["id"],
+                        "type": "function",
+                        "function": {
+                            "name": func_name,
+                            "arguments": arguments_str
+                        }
+                    })
+
+                    result = None
+
+                    # ── Special inline handler for log_meal (has custom SSE event) ──
                     if func_name == "log_meal":
                         description = args.get("description", "")
                         meal_slot = args.get("meal_slot", "snack")
-                        
-                        # Log the meal
                         logged_meal = await perform_meal_logging(
                             user_id=current_user.id,
                             input_text=description,
                             meal_slot=meal_slot,
                             language=req.language
                         )
-                        
-                        # Yield the meal_logged event to the frontend
                         yield f"data: {json.dumps({'meal_logged': logged_meal})}\n\n"
-                        
-                        # Add tool invocation & response to conversation context
-                        # Construct a list of dicts that match the API payload schema
-                        # AsyncOpenAI client accepts tool_calls with exact shape
-                        formatted_tool_calls = []
-                        for tc in tool_calls:
-                            formatted_tool_calls.append({
-                                "id": tc["id"],
-                                "type": "function",
-                                "function": {
-                                    "name": tc["function"]["name"],
-                                    "arguments": tc["function"]["arguments"]
-                                }
-                            })
+                        result = logged_meal
+                        mutated = True
 
-                        messages.append({
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": formatted_tool_calls
-                        })
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call["id"],
-                            "name": func_name,
-                            "content": json.dumps(logged_meal)
-                        })
-                
+                    # ── Generic dispatch for all other tools ──
+                    elif func_name in TOOL_DISPATCH:
+                        handler, needs_user = TOOL_DISPATCH[func_name]
+                        if handler:
+                            try:
+                                if needs_user:
+                                    result = await handler(current_user.id, args)
+                                else:
+                                    result = await handler(args)
+                            except Exception as e:
+                                logger.warning("Tool %s failed: %s", func_name, e)
+                                result = {"success": False, "error": str(e)}
+
+                            # Emit action SSE event if the tool returned one
+                            if isinstance(result, dict) and result.get("action"):
+                                yield f"data: {json.dumps({'action': result['action']})}\n\n"
+                                # Also yield a tool_result event for inline cards
+                                yield f"data: {json.dumps({'tool_result': {'tool': func_name, 'result': result['data']}})}\n\n"
+                            elif isinstance(result, dict) and result.get("success"):
+                                yield f"data: {json.dumps({'tool_result': {'tool': func_name, 'result': result.get('data', result)}})}\n\n"
+                            elif isinstance(result, dict):
+                                yield f"data: {json.dumps({'tool_result': {'tool': func_name, 'result': result}})}\n\n"
+                        else:
+                            result = {"success": False, "error": f"Handler not found for {func_name}"}
+                    else:
+                        result = {"success": False, "error": f"Unknown tool: {func_name}"}
+
+                    if func_name in _MUTATING_TOOLS:
+                        mutated = True
+
+                    tool_results.append({
+                        "tool_call_id": tool_call["id"],
+                        "name": func_name,
+                        "result": result,
+                    })
+
+                # Add tool invocation to conversation context
+                messages.append({
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": formatted_tool_calls
+                })
+                for tr in tool_results:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tr["tool_call_id"],
+                        "name": tr["name"],
+                        "content": json.dumps(tr["result"])
+                    })
+
+                # If mutating tools ran, rebuild user context so the LLM sees fresh data
+                if mutated:
+                    fresh_context = await _build_user_context(current_user.id)
+                    fresh_system = (
+                        "You are পুষ্টি এআই (PushtiAI), a prestigious Bangladeshi diet and nutrition assistant backed by a "
+                        "verified Graph-RAG food database. Your SOLE purpose is to help users with:\n"
+                        "  - Personalized food and meal recommendations\n"
+                        "  - Daily diet planning based on their health profile and goals\n"
+                        "  - Calorie and macro-nutrient information (from the verified database only)\n"
+                        "  - Meal logging and food tracking\n"
+                        "  - Complete Health & Nutrition Reports, including calorie history, weights, and compliance\n"
+                        "  - Nutritional analysis of foods (calories, protein, carbs, fat, fiber)\n"
+                        "  - Which foods to prefer or avoid based on their logged medical conditions\n\n"
+                        "=== HARD RESTRICTIONS — NEVER VIOLATE ===\n"
+                        "You are STRICTLY FORBIDDEN from:\n"
+                        "  1. Providing any medical consultation, diagnosis, or treatment advice.\n"
+                        "  2. Recommending medicines, prescription drug clinical dosages, or medical therapies.\n"
+                        "  3. Interpreting blood reports or lab results as a doctor's opinion.\n"
+                        "  4. Answering ANY question unrelated to food, diet, nutrition, or weight health reports "
+                        "(e.g. history, politics, coding, math, travel, entertainment, relationships).\n"
+                        "  5. Generating creative content (stories, poems, essays, jokes).\n"
+                        "  6. Pretending to be any other assistant or persona.\n\n"
+                        "If the user asks ANYTHING outside of food/diet/nutrition/reports, respond ONLY with:\n"
+                        "  Bengali: 'দুঃখিত, আমি শুধুমাত্র খাদ্য, পুষ্টি এবং ডায়েট পরিকল্পনা বিষয়ক প্রশ্নের উত্তর দিতে সক্ষম। "
+                        "চিকিৎসা পরামর্শ বা অন্য যেকোনো বিষয়ের জন্য সংশ্লিষ্ট বিশেষজ্ঞের সাথে যোগাযোগ করুন।'\n"
+                        "  English: 'Sorry, I can only assist with food, nutrition, and diet planning. "
+                        "For medical advice or any other topic, please consult the relevant expert.'\n\n"
+                        "=== NUTRITION RESPONSE RULES ===\n"
+                        "1. Always reply in Bengali if the user writes in Bengali, English otherwise.\n"
+                        "2. If the user has not set up their profile, gently guide them to complete it.\n"
+                        "3. For food/meal questions, cross-reference the user's medical conditions, recent meal logs, "
+                        "and nutrition targets from the context below.\n"
+                        "4. For calorie/macro data, ONLY use values from the Graph-RAG context below. "
+                        "NEVER invent or estimate nutrition values from your own training memory.\n"
+                        "5. When discussing any food, always state: name + amount + calories from the database "
+                        "(e.g. '১০০ গ্রাম ভাতে ১৩০ ক্যালোরি').\n"
+                        "6. Keep responses concise and warm. Use bullet points for lists.\n"
+                        "7. MEAL LOGGING: If the user says they ate something or uploads a food photo, "
+                        "call the `log_meal` tool with a clear description of the food items.\n"
+                        "8. HEALTH REPORT & PDF GENERATION: If the user asks for a health report, nutrition progress summary, "
+                        "weight logs, or a 3-day/7-day/30-day health report, you MUST provide a friendly summary of their calories, "
+                        "nutrients, and weights from their history inside USER'S COMPLETE CONTEXT. "
+                        "Additionally, you MUST append the exact tag '[HEALTH_REPORT_LINK]' (including brackets) at the very end of your response text. "
+                        "This tag automatically generates an interactive high-fidelity PDF report download card for the user!\n"
+                        "9. ALWAYS NAME SPECIFIC FOODS: Whenever you suggest meals, recipes, or ingredients, you MUST explicitly name "
+                        "the specific foods using common Bangladeshi names (e.g. ভাত, ডাল, মাছ, মুরগি, ডিম, আলু, পালং শাক, আটা রুটি, ইলিশ). "
+                        "Do NOT give vague advice like 'eat some protein' or 'have vegetables' — always say WHICH protein or WHICH vegetable. "
+                        "This is critical because the app automatically shows grocery purchase cards with live prices and nearest shop locations "
+                        "for every food you mention. The more specific foods you mention, the more helpful the grocery cards become.\n"
+                        "10. YOU HAVE ACCESS TO APP TOOLS — USE THEM: You are equipped with many tools to control the app. "
+                        "Whenever the user asks to DO something (not just ask a question), USE the appropriate tool. Examples:\n"
+                        "   - 'I ate rice and fish' → call log_meal\n"
+                        "   - 'Show my meal plan' → call get_meal_plan\n"
+                        "   - 'I weigh 72kg now' → call update_profile + log_health\n"
+                        "   - 'Remind me to take Metformin at 8am' → call add_medicine_reminder\n"
+                        "   - 'What did I eat today?' → call get_meal_plan\n"
+                        "   - 'Is rice safe for diabetes?' → call search_food, then get_food_safety\n"
+                        "   - 'Go to my profile' → call navigate_to\n"
+                        "   - 'Show my medicines' → call get_medicine_reminders\n"
+                        "   - 'I feel dizzy' → call log_health with symptoms\n"
+                        "   - 'My blood pressure is 140/90' → call log_health with blood_pressure\n"
+                        "Do NOT describe what you would do — actually call the tool.\n\n"
+                        f"=== USER'S COMPLETE CONTEXT ===\n{fresh_context}\n"
+                    )
+                    messages[0] = {"role": "system", "content": fresh_system}
+
                 # Stream the final response after tool execution!
                 second_response = await llm_client.client.chat.completions.create(
                     model=llm_client.model,
@@ -664,6 +1020,21 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         if content:
                             assistant_response += content
                             yield f"data: {json.dumps({'token': content})}\n\n"
+
+            # ── Grocery Suggestions (compute BEFORE saving so we can persist them) ──
+            grocery_result = None
+            try:
+                grocery_result = suggest_groceries_from_chat(
+                    chat_text=req.message,
+                    user_lat=req.lat,
+                    user_lng=req.lng,
+                    parsed_food_items=None,
+                    assistant_response=assistant_response,
+                )
+                if grocery_result and grocery_result.get("total_items", 0) > 0:
+                    yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
+            except Exception as e:
+                logger.warning("Grocery suggestion failed in chat: %s", e)
 
             # 6. Save messages to the database
             if req.message:
@@ -685,6 +1056,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                             "userId": current_user.id,
                             "role": "assistant",
                             "content": assistant_response,
+                            "groceryData": json.dumps(grocery_result) if grocery_result else None,
                         }
                     )
                 except Exception as e:
@@ -721,6 +1093,20 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "content": fallback,
                     }
                 )
+            except Exception:
+                pass
+
+            # Also try to send grocery suggestions even on fallback
+            try:
+                grocery_result = suggest_groceries_from_chat(
+                    chat_text=req.message,
+                    user_lat=req.lat,
+                    user_lng=req.lng,
+                    parsed_food_items=None,
+                    assistant_response=fallback,
+                )
+                if grocery_result and grocery_result.get("total_items", 0) > 0:
+                    yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
             except Exception:
                 pass
 
@@ -807,6 +1193,28 @@ async def diet_plan_session(req: DietPlanChatRequest, current_user=Depends(get_c
                 )
                 
                 yield f"data: {json.dumps({'plan_ready': response_data.model_dump()})}\n\n"
+
+                # Also send grocery suggestions for the generated plan
+                try:
+                    plan_data = plan_result.get("plan_data", {})
+                    food_names = []
+                    for meal in plan_data.get("meals", []):
+                        for item in meal.get("items", []):
+                            name = item.get("name_bn") or item.get("name_en")
+                            if name:
+                                food_names.append(name)
+                    if food_names:
+                        from app.services.grocery_service import suggest_groceries_for_foods
+                        grocery_result = suggest_groceries_for_foods(
+                            food_names,
+                            user_lat=getattr(req, 'lat', None) or 23.8103,
+                            user_lng=getattr(req, 'lng', None) or 90.4125,
+                            limit_per_food=1,
+                        )
+                        if grocery_result and grocery_result.get("total_items", 0) > 0:
+                            yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
+                except Exception as e:
+                    logger.warning("Grocery suggestion failed in diet plan session: %s", e)
             except Exception as e:
                 err_msg = "পরিকল্পনা তৈরি করতে সমস্যা হয়েছে।" if req.language == "bn" else "Failed to generate plan."
                 yield f"data: {json.dumps({'error': err_msg})}\n\n"
@@ -954,7 +1362,12 @@ async def get_chat_history(current_user=Depends(get_current_user)):
             order={"createdAt": "asc"},
             take=50
         )
-        return [{"role": msg.role, "content": msg.content, "id": msg.messageId} for msg in messages]
+        return [{
+            "role": msg.role,
+            "content": msg.content,
+            "id": msg.messageId,
+            "groceryData": json.loads(msg.groceryData) if msg.groceryData else None,
+        } for msg in messages]
     except Exception as e:
         logger.exception("Failed to fetch chat history: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch chat history")

@@ -219,3 +219,22 @@ export const medicineApi = {
   list: () => api.get('/medicine-reminders'),
   delete: (id: string) => api.delete(`/medicine-reminders/${id}`),
 };
+
+// Grocery API
+export const groceryApi = {
+  search: (foods: string, lat: number, lng: number) =>
+    api.get(`/groceries/search?foods=${encodeURIComponent(foods)}&lat=${lat}&lng=${lng}`),
+  nearbyShops: (lat: number, lng: number) =>
+    api.get(`/groceries/nearby-shops?lat=${lat}&lng=${lng}`),
+};
+
+// Personal Cooker API
+export const personalCookerApi = {
+  chat: (message: string, condition: string, sessionId: string) =>
+    api.post('/personal-cooker/chat', { message, condition, session_id: sessionId }),
+  history: (sessionId: string) =>
+    api.get(`/personal-cooker/history?session_id=${sessionId}`),
+  clearHistory: (sessionId: string) =>
+    api.delete(`/personal-cooker/history?session_id=${sessionId}`),
+  conditions: () => api.get('/personal-cooker/conditions'),
+};

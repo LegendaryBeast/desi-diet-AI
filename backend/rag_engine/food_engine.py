@@ -7,26 +7,32 @@ Falls back to mock data when Neo4j is unavailable.
 
 from typing import List, Dict, Any, Optional
 from .dietary_rules_data import NDG_DIETARY_RULES
+from .static_foods import get_static_safe_foods
 
 # Neo4j connection config from app settings
 _neo4j_driver = None
 
 
 def _get_neo4j_driver():
-    """Lazy-load Neo4j driver from app config."""
+    """Lazy-load Neo4j driver from app config. Returns None if unavailable."""
     global _neo4j_driver
     if _neo4j_driver is not None:
         return _neo4j_driver
 
-    from neo4j import GraphDatabase
-    from app.config import settings
-    _neo4j_driver = GraphDatabase.driver(
-        settings.neo4j_uri,
-        auth=(settings.neo4j_user, settings.neo4j_password),
-    )
-    _neo4j_driver.verify_connectivity()
-    print("✅ RAG Engine: Neo4j connected.")
-    return _neo4j_driver
+    try:
+        from neo4j import GraphDatabase
+        from app.config import settings
+        _neo4j_driver = GraphDatabase.driver(
+            settings.neo4j_uri,
+            auth=(settings.neo4j_user, settings.neo4j_password),
+        )
+        _neo4j_driver.verify_connectivity()
+        print("✅ RAG Engine: Neo4j connected.")
+        return _neo4j_driver
+    except Exception as e:
+        print(f"⚠️ RAG Engine: Neo4j unavailable ({e}). Running without graph database.")
+        _neo4j_driver = None
+        return None
 
 
 class MockFoodEngine:
@@ -281,33 +287,47 @@ class Neo4jFoodEngine:
 class KhadokGraphRAG:
     """
     Unified RAG engine — queries Neo4j exclusively.
+    Falls back to empty results when Neo4j is unavailable.
     """
 
     def __init__(self):
         driver = _get_neo4j_driver()
-        self._real = Neo4jFoodEngine(driver)
+        self._real = Neo4jFoodEngine(driver) if driver else None
 
     def get_safe_foods(self, conditions, goal="Maintain", limit=40):
+        if not self._real:
+            return get_static_safe_foods(conditions, goal, limit)
         return self._real.get_safe_foods(conditions, goal, limit)
 
     def get_alternatives(self, code, conditions, goal="Maintain", limit=10):
+        if not self._real:
+            return []
         return self._real.get_alternatives(code, conditions, goal, limit)
 
     def search_food(self, query_text):
+        if not self._real:
+            return []
         return self._real.search_food(query_text)
 
     def resolve_alias(self, query_text):
+        if not self._real:
+            return None
         return self._real.resolve_alias(query_text)
 
     def compare_meals(self, meal_1_codes, meal_2_codes, conditions):
+        if not self._real:
+            return {"meal_1": {}, "meal_2": {}, "insight": "Graph database unavailable."}
         return self._real.compare_meals(meal_1_codes, meal_2_codes, conditions)
 
     def get_chatbot_context(self, food_code_or_name, conditions):
+        if not self._real:
+            return f"'{food_code_or_name}' — Graph database unavailable."
         return self._real.get_chatbot_context(food_code_or_name, conditions)
 
     def get_neo4j_driver(self):
         """Get the underlying Neo4j driver for RAG planner queries."""
-        return self._real.driver
+        return self._real.driver if self._real else None
 
     def close(self):
-        self._real.close()
+        if self._real:
+            self._real.close()

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -15,12 +15,13 @@ model User {
   language     String   @default("bn")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  profile           Profile?
-  healthLogs        HealthLog[]
-  mealPlans         MealPlan[]
-  chatMessages      ChatMessage[]
-  mealTrackings     MealTracking[]
-  medicineReminders MedicineReminder[]
+  profile              Profile?
+  healthLogs           HealthLog[]
+  mealPlans            MealPlan[]
+  chatMessages         ChatMessage[]
+  mealTrackings        MealTracking[]
+  medicineReminders    MedicineReminder[]
+  personalCookerChats  PersonalCookerChat[]
 
   @@map("users")
 }
@@ -82,14 +83,15 @@ model MealPlan {
 }
 
 model ChatMessage {
-  messageId String   @id @default(uuid()) @map("message_id")
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageId    String   @id @default(uuid()) @map("message_id")
+  userId       String   @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  role      String
-  content   String
-  intent    String?
-  createdAt DateTime @default(now()) @map("created_at")
+  role         String
+  content      String
+  intent       String?
+  groceryData  String?  @map("grocery_data") // JSON: grocery suggestion payload
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("chat_messages")
 }
@@ -125,4 +127,19 @@ model MedicineReminder {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("medicine_reminders")
+}
+
+model PersonalCookerChat {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionId String   @map("session_id")
+  role      String
+  content   String
+  condition String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, sessionId])
+  @@map("personal_cooker_chats")
 }

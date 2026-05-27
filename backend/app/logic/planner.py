@@ -177,9 +177,12 @@ def get_rda_key(age: int, gender: str) -> str:
     elif age > 70: age_key = "gt_70"
     else: age_key = "19_30" # Default fallback
     
-    # Handles "both" gender case from the RDA table
+    # Fallback: Neo4j only has male/female RDA properties (no "both").
+    # Also 9_13 age bracket is absent in the dataset, fall back to 14_18.
     if gender_key not in ["male", "female"]:
-        gender_key = "both"
+        gender_key = "male"
+    if age_key == "9_13":
+        age_key = "14_18"
 
     # Property keys were created like: rda_female_19_30_mg
     return f"rda_{gender_key}_{age_key}_mg"
@@ -325,6 +328,11 @@ async def generate_final_plan_with_gemini(profile: UserProfile, disease: str, nu
     
     After all meals, include:
     - A short "Notes & Tips" section (3 practical tips using only allowed foods).
+    - A short "Shopping Tips (Bangladesh)" section suggesting where to buy ingredients online:
+      * Fresh vegetables, fish, meat, dairy, rice, dal, atta → Chaldal (chaldal.com)
+      * Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
+      * Organic / farm-fresh items → Khaas Food (khaasfood.com)
+      * Packaged foods, snacks, supplements → Daraz (daraz.com.bd)
     - A clear disclaimer: this is not medical advice and the user should consult a doctor.
 
     **Formatting Requirements:**

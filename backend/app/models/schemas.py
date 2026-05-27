@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Dict, Any, Optional
 
 # Pydantic model for the incoming request body.
 # This ensures the frontend sends data in the correct format.
@@ -25,4 +25,5 @@ class UserProfile(BaseModel):
 # This ensures the API always returns data in a consistent format.
 class DietPlanResponse(BaseModel):
     plan: str
+    grocery_suggestions: Optional[Dict[str, Any]] = None
 

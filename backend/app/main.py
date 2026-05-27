@@ -13,8 +13,9 @@ from app.config import settings
 from app.db import lifespan
 from app.routers import (
     auth, profile, health_log, meal_plan, chat, foods, report,
-    meal_tracking, medicine, meal_builder, docs
+    meal_tracking, medicine, meal_builder, groceries, docs,
 )
+from app.personal_cooker.router import router as personal_cooker_router
 from app.models.schemas import UserProfile as JournalUserProfile, DietPlanResponse as JournalDietPlanResponse
 from app.logic.planner import generate_plan_logic
 
@@ -45,7 +46,9 @@ app.include_router(report.router, prefix="/reports", tags=["Reports"])
 app.include_router(meal_tracking.router, prefix="/meal-tracking", tags=["Meal Tracking"])
 app.include_router(medicine.router, prefix="/medicine-reminders", tags=["Medicine"])
 app.include_router(meal_builder.router, prefix="/meal-builder", tags=["Meal Builder"])
+app.include_router(groceries.router, prefix="/groceries", tags=["Groceries"])
 app.include_router(docs.router, prefix="/docs", tags=["Documentation"])
+app.include_router(personal_cooker_router, tags=["Personal Cooker"])
 
 
 # --- Q1 Journal Endpoints ---
@@ -55,6 +58,7 @@ async def generate_plan_endpoint(user_profile: JournalUserProfile, request: Requ
     """
     Q1 Journal direct endpoint.
     Receives user profile, processes it through GraphRAG, and returns a Gemini-generated diet plan.
+    Also returns grocery suggestions with live prices and nearest shop locations.
     """
     neo4j_driver = request.app.state.neo4j_driver
     ai_models = request.app.state.ai_models
@@ -66,7 +70,21 @@ async def generate_plan_endpoint(user_profile: JournalUserProfile, request: Requ
 
     try:
         plan_content = await generate_plan_logic(user_profile, neo4j_driver, ai_models)
-        return {"plan": plan_content}
+
+        # Always extract grocery suggestions from the generated plan text
+        grocery_data = None
+        try:
+            from app.services.grocery_service import suggest_groceries_from_chat
+            grocery_data = suggest_groceries_from_chat(
+                chat_text="",
+                user_lat=None,
+                user_lng=None,
+                assistant_response=plan_content,
+            )
+        except Exception as e:
+            print(f"⚠️ Grocery extraction failed for Q1 plan: {e}")
+
+        return {"plan": plan_content, "grocery_suggestions": grocery_data}
     except Exception as e:
         print(f"❌ Error generating Q1 plan: {e}")
         raise HTTPException(status_code=500, detail="Internal server error occurred.")

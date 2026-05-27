@@ -20,9 +20,15 @@ import {
   X,
   Crown,
   Sparkles,
+  MapPin,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
+import { GroceryCard } from '../grocery/GroceryCard';
+import { ToolResultCard } from './ToolResultCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useChatActions } from '../../contexts/ChatActionContext';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import { ProModal } from '../ui/ProModal';
 import { chatApi, type ChatHistoryItem, isAuthenticated, type MealTrackingResponse } from '../../lib/api';
@@ -35,6 +41,8 @@ interface Message {
   /** Optional inline image (data-URL) attached to this message. */
   imageDataUrl?: string;
   loggedMeal?: MealTrackingResponse;
+  grocerySuggestions?: Record<string, unknown>;
+  toolResult?: Record<string, unknown>;
 }
 
 const renderFormattedText = (text: string) => {
@@ -80,6 +88,7 @@ export const ChatWindow = () => {
   const { t, i18n } = useTranslation();
   const { profileData, isLoggedIn } = useAuth();
   const { isPro, canSendMessage, messageCount, incrementMessageCount, FREE_MESSAGE_LIMIT } = useSubscription();
+  const { navigateTo, showToast } = useChatActions();
   const [showProModal, setShowProModal] = useState(false);
 
   const [input, setInput] = useState('');
@@ -91,29 +100,74 @@ export const ChatWindow = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
+  // localStorage key for offline grocery cache
+  const GROCERY_LS_KEY = 'desidiet_grocery_cache';
+
+  // Get user location once on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          // Fallback to Dhaka center
+          setUserLocation({ lat: 23.8103, lng: 90.4125 });
+        }
+      );
+    } else {
+      setUserLocation({ lat: 23.8103, lng: 90.4125 });
+    }
+  }, []);
+
+  // Load chat history + cached groceries
   useEffect(() => {
     if (!isLoggedIn || !isAuthenticated()) return;
+    let cancelled = false;
     setLoadingHistory(true);
+    setHistoryError(null);
+
     chatApi.history()
       .then((data) => {
+        if (cancelled) return;
         if (data && data.length > 0) {
-          const formatted = data.map((msg, index) => ({
+          const formatted: Message[] = data.map((msg, index) => ({
             id: index + 1,
             type: msg.role === 'user' ? 'user' as const : 'ai' as const,
             text: msg.content,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            grocerySuggestions: msg.groceryData || undefined,
           }));
-          setMessages(formatted);
+          setMessages((prev) => {
+            // Merge: keep any local-only messages that aren't in history yet
+            const historyIds = new Set(formatted.map((m) => m.id));
+            const localOnly = prev.filter((m) => !historyIds.has(m.id));
+            return [...formatted, ...localOnly];
+          });
         }
       })
       .catch((err) => {
+        if (cancelled) return;
         console.warn("Failed fetching web chat history:", err);
+        setHistoryError(isBn ? 'বার্তা ইতিহাস লোড করতে ব্যর্থ।' : 'Failed to load chat history.');
+        // Fallback: try to restore from localStorage
+        try {
+          const cached = localStorage.getItem('desidiet_chat_messages');
+          if (cached) {
+            const parsed = JSON.parse(cached) as Message[];
+            setMessages((prev) => (prev.length === 0 ? parsed : prev));
+          }
+        } catch { /* ignore */ }
       })
       .finally(() => {
-        setLoadingHistory(false);
+        if (!cancelled) setLoadingHistory(false);
       });
-  }, [isLoggedIn, i18n.language]);
+
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
 
   // Realtime voice state
   const [voiceState, setVoiceState] = useState<'idle' | 'connecting' | 'live' | 'error'>('idle');
@@ -410,17 +464,65 @@ export const ChatWindow = () => {
       () => {
         setIsStreaming(false);
         abortRef.current = null;
+        // Persist final messages to localStorage
+        try {
+          const toSave = messages.map((m) => ({
+            ...m,
+            grocerySuggestions: m.grocerySuggestions,
+          }));
+          localStorage.setItem('desidiet_chat_messages', JSON.stringify(toSave));
+        } catch { /* ignore */ }
       },
       (err) => {
         setIsStreaming(false);
         setApiError(err);
         abortRef.current = null;
       },
-      attachedImage ? { imageDataUrl: attachedImage.dataUrl } : undefined,
+      attachedImage
+        ? { imageDataUrl: attachedImage.dataUrl, lat: userLocation?.lat, lng: userLocation?.lng }
+        : { lat: userLocation?.lat, lng: userLocation?.lng },
       (meal) => {
         setMessages((prev) =>
           prev.map((m) => (m.id === aiMsgId ? { ...m, loggedMeal: meal } : m))
         );
+        window.dispatchEvent(new Event('data:refresh'));
+      },
+      (groceryData) => {
+        setMessages((prev) => {
+          const updated = prev.map((m) => (m.id === aiMsgId ? { ...m, grocerySuggestions: groceryData } : m));
+          try {
+            localStorage.setItem(GROCERY_LS_KEY, JSON.stringify({
+              msgId: aiMsgId,
+              data: groceryData,
+              savedAt: Date.now(),
+            }));
+          } catch { /* ignore */ }
+          return updated;
+        });
+      },
+      // onAction: handle frontend actions from chat tools
+      (action) => {
+        const type = action.type as string;
+        const payload = (action.payload || {}) as Record<string, unknown>;
+        if (type === 'navigate' && payload.to) {
+          navigateTo(String(payload.to));
+        } else if (type === 'show_toast') {
+          showToast(String(payload.message || ''), (payload.level as 'info' | 'success' | 'warning' | 'error') || 'info');
+        }
+      },
+      // onToolResult: attach tool results to the AI message for inline cards
+      (toolResult) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiMsgId ? { ...m, toolResult } : m))
+        );
+        // Notify dashboard and other pages to refresh when data mutates
+        const mutatingTools = new Set([
+          'update_profile', 'log_health', 'log_meal',
+          'mark_meal_complete', 'add_medicine_reminder', 'delete_medicine_reminder',
+        ]);
+        if (toolResult && mutatingTools.has(String((toolResult as any).tool))) {
+          window.dispatchEvent(new Event('data:refresh'));
+        }
       }
     );
 
@@ -470,10 +572,18 @@ export const ChatWindow = () => {
       )}
       headerActions={(
         <button
-          onClick={() => { abortRef.current?.(); setMessages([]); setApiError(null); }}
+          onClick={() => {
+            abortRef.current?.();
+            setMessages([]);
+            setApiError(null);
+            try {
+              localStorage.removeItem('desidiet_chat_messages');
+              localStorage.removeItem(GROCERY_LS_KEY);
+            } catch { /* ignore */ }
+          }}
           className="p-2 md:p-3 bg-cream text-ink-muted hover:bg-red-50 hover:text-red-500 rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm"
         >
-          <History size={16} />
+          <Trash2 size={16} />
           <span className="hidden sm:inline">{t('chat.clear_chat')}</span>
         </button>
       )}
@@ -494,6 +604,47 @@ export const ChatWindow = () => {
           >
             <WifiOff className="w-4 h-4 shrink-0" />
             <span>{apiError}</span>
+          </motion.div>
+        )}
+
+        {/* History Error Banner with Retry */}
+        {historyError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="m-3 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-3 text-amber-700 text-sm font-bn z-20"
+          >
+            <WifiOff className="w-4 h-4 shrink-0" />
+            <span className="flex-1">{historyError}</span>
+            <button
+              onClick={() => {
+                setHistoryError(null);
+                setLoadingHistory(true);
+                chatApi.history()
+                  .then((data) => {
+                    if (data && data.length > 0) {
+                      const formatted: Message[] = data.map((msg, index) => ({
+                        id: index + 1,
+                        type: msg.role === 'user' ? 'user' as const : 'ai' as const,
+                        text: msg.content,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        grocerySuggestions: msg.groceryData || undefined,
+                      }));
+                      setMessages((prev) => {
+                        const historyIds = new Set(formatted.map((m) => m.id));
+                        const localOnly = prev.filter((m) => !historyIds.has(m.id));
+                        return [...formatted, ...localOnly];
+                      });
+                    }
+                  })
+                  .catch(() => setHistoryError(isBn ? 'বার্তা ইতিহাস লোড করতে ব্যর্থ।' : 'Failed to load chat history.'))
+                  .finally(() => setLoadingHistory(false));
+              }}
+              className="px-2.5 py-1 bg-white border border-amber-200 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1"
+            >
+              <RotateCcw size={12} />
+              {isBn ? 'আবার চেষ্টা' : 'Retry'}
+            </button>
           </motion.div>
         )}
 
@@ -685,6 +836,29 @@ export const ChatWindow = () => {
                         )}
                       </div>
                     )}
+                    {/* Grocery Suggestions Card */}
+                    {msg.type === 'ai' && msg.grocerySuggestions && (
+                      <GroceryCard
+                        data={msg.grocerySuggestions as Record<string, unknown>}
+                        userLat={userLocation?.lat}
+                        userLng={userLocation?.lng}
+                        isBn={isBn}
+                        onClose={() =>
+                          setMessages((prev) =>
+                            prev.map((m) =>
+                              m.id === msg.id ? { ...m, grocerySuggestions: undefined } : m
+                            )
+                          )
+                        }
+                      />
+                    )}
+                    {/* Tool Result Card */}
+                    {msg.type === 'ai' && msg.toolResult && (
+                      <ToolResultCard
+                        result={msg.toolResult}
+                        isBn={isBn}
+                      />
+                    )}
                     {/* Streaming cursor */}
                     {msg.type === 'ai' && isStreaming && msg.text !== '' && (
                       <span className="inline-block w-0.5 h-4 bg-accent ml-1 animate-pulse" />
@@ -815,8 +989,28 @@ export const ChatWindow = () => {
 
           <div className="max-w-4xl mx-auto flex items-center gap-2 md:gap-3 px-1">
             <button
-              aria-label="View history"
-              onClick={() => setMessages([])}
+              aria-label="Reload history"
+              onClick={() => {
+                setHistoryError(null);
+                setLoadingHistory(true);
+                chatApi.history()
+                  .then((data) => {
+                    if (data && data.length > 0) {
+                      const formatted: Message[] = data.map((msg, index) => ({
+                        id: index + 1,
+                        type: msg.role === 'user' ? 'user' as const : 'ai' as const,
+                        text: msg.content,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        grocerySuggestions: msg.groceryData || undefined,
+                      }));
+                      setMessages(formatted);
+                    } else {
+                      setMessages([]);
+                    }
+                  })
+                  .catch(() => setHistoryError(isBn ? 'বার্তা ইতিহাস লোড করতে ব্যর্থ।' : 'Failed to load chat history.'))
+                  .finally(() => setLoadingHistory(false));
+              }}
               className="p-3 bg-ink text-cream rounded-xl md:rounded-2xl shadow hover:bg-accent transition-all shrink-0 group relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform" />

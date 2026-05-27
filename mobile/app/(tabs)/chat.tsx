@@ -2,12 +2,14 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image, Alert
 } from 'react-native';
+import { ToolResultCard } from '../../components/chat/ToolResultCard';
+import { GroceryCard } from '../../components/chat/GroceryCard';
 import { useState, useRef, useEffect } from 'react';
 import { useLocalSearchParams, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   Send, Bot, Sparkles, CalendarDays, TrendingUp, Flame, ChevronRight,
-  Image as ImageIcon, Mic, Camera, Crown, X, FileText, Download
+  Image as ImageIcon, Mic, Camera, Crown, X, FileText, Download, Trash2
 } from 'lucide-react-native';
 import { API_BASE_URL, profileApi, chatApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,6 +31,8 @@ interface Message {
   content: string;
   id: string;
   image?: string;
+  toolResult?: Record<string, any>;
+  groceryData?: Record<string, any>;
 }
 
 const QUICK_PROMPTS_BN = [
@@ -99,6 +103,8 @@ export default function ChatScreen() {
             role: msg.role,
             content: msg.content,
             id: msg.id || `msg-${index}`,
+            groceryData: msg.groceryData || undefined,
+            toolResult: msg.toolResult || undefined,
           }));
           setMessages(formatted);
           setShowQuickPrompts(false);
@@ -428,6 +434,8 @@ export default function ChatScreen() {
             .slice(-10)
             .map((m) => ({ role: m.role, content: m.content })),
           ...(imgData ? { image_data_url: imgData } : {}),
+          lat: 23.8103,
+          lng: 90.4125,
         }),
       });
 
@@ -441,6 +449,16 @@ export default function ChatScreen() {
               accumulated += data.token;
               setMessages((prev) =>
                 prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m)
+              );
+            }
+            if (data.tool_result) {
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, toolResult: data.tool_result } : m)
+              );
+            }
+            if (data.grocery_suggestions) {
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, groceryData: data.grocery_suggestions } : m)
               );
             }
             if (data.done) {
@@ -532,6 +550,12 @@ export default function ChatScreen() {
                     </Text>
                   </View>
                 </TouchableOpacity>
+              )}
+              {item.toolResult && (
+                <ToolResultCard result={item.toolResult} isBn={language === 'bn'} />
+              )}
+              {item.groceryData && (
+                <GroceryCard data={item.groceryData} isBn={language === 'bn'} />
               )}
             </View>
           )}
@@ -666,6 +690,28 @@ export default function ChatScreen() {
             <Text style={styles.premiumBadgeText}>PRO</Text>
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert(
+              language === 'bn' ? 'চ্যাট মুছুন' : 'Clear Chat',
+              language === 'bn' ? 'আপনি কি নিশ্চিত যে সমস্ত বার্তা মুছে ফেলতে চান?' : 'Are you sure you want to clear all messages?',
+              [
+                { text: language === 'bn' ? 'বাতিল' : 'Cancel', style: 'cancel' },
+                {
+                  text: language === 'bn' ? 'মুছুন' : 'Clear',
+                  style: 'destructive',
+                  onPress: () => {
+                    setMessages([{ role: 'assistant', content: welcomeText, id: 'welcome' }]);
+                    setShowQuickPrompts(true);
+                  },
+                },
+              ]
+            );
+          }}
+          style={{ padding: 4, marginLeft: 8 }}
+        >
+          <Trash2 size={16} color={colors.textSecondary} />
+        </TouchableOpacity>
         <View style={styles.onlineDot} />
       </View>
 

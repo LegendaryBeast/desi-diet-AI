@@ -372,6 +372,7 @@ export const MealPlan = () => {
       } else if (offset === 1) {
         setTomorrowPlan(data);
       }
+      window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'প্ল্যান পুনরায় তৈরি করতে সমস্যা হয়েছে');
     } finally {
@@ -503,6 +504,7 @@ export const MealPlan = () => {
       setHistoryPlans((prev) =>
         prev.map((p) => (p.plan_id === targetPlan.plan_id ? res : p))
       );
+      window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'স্লট পরিবর্তন করতে সমস্যা হয়েছে');
     }
@@ -545,6 +547,7 @@ export const MealPlan = () => {
       const updated = await mealPlanApi.editPlan(plan.plan_id, editingPlanData, newUserCal);
       setPlan(updated);
       setIsEditing(false);
+      window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
       setError('প্ল্যান সেভ করতে সমস্যা হয়েছে');
     } finally {

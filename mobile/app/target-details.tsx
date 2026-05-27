@@ -1,13 +1,13 @@
 import * as React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Platform, Dimensions, Modal,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { mealPlanApi, profileApi, mealTrackingApi } from '../lib/api';
 import { colors, fonts, spacing, radius } from '../lib/theme';
-import { ArrowLeft, Flame, Zap, Utensils, Droplet, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Flame, Zap, Utensils, Droplet, Sparkles, CheckCircle2, ChevronRight, Search } from 'lucide-react-native';
 import { useHaptics } from '../hooks/useHaptics';
 import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTranslation } from '../lib/translations';
@@ -299,6 +299,8 @@ export default function TargetDetailsScreen() {
   const router = useRouter();
   const haptics = useHaptics();
   const [selectedNutrient, setSelectedNutrient] = React.useState<any>(null);
+  const [activeTab, setActiveTab] = React.useState<'all' | 'vitamins' | 'minerals' | 'fats'>('all');
+  const [searchQuery, setSearchQuery] = React.useState('');
   const { language } = useTranslation();
 
   // Queries (loads from react-query cache instantly)
@@ -403,8 +405,45 @@ export default function TargetDetailsScreen() {
 
   // Micronutrients
   const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
-  const microTargets = (planData?.micronutrient_targets || []).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
-  const microCompletedCount = microTargets.filter((n: any) => n.percentage >= 100).length;
+  const allMicros = (planData?.micronutrient_targets || []).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
+
+  const VITAMIN_NAMES = [
+    "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+    "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
+    "Pantothenic acid (B5)", "Biotin (B7)"
+  ];
+  const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
+
+  const vitamins = allMicros.filter((n: any) => VITAMIN_NAMES.includes(n.name));
+  const minerals = allMicros.filter((n: any) => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name));
+  const fatty = allMicros.filter((n: any) => FATTY_NAMES.includes(n.name));
+
+  const getFilteredMicros = () => {
+    let items = allMicros;
+    if (activeTab === 'vitamins') items = vitamins;
+    else if (activeTab === 'minerals') items = minerals;
+    else if (activeTab === 'fats') items = fatty;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((n: any) =>
+        (n.name || '').toLowerCase().includes(q) ||
+        (n.name_bn || '').toLowerCase().includes(q)
+      );
+    }
+    return items;
+  };
+
+  const microTargets = getFilteredMicros();
+  const microCompletedCount = allMicros.filter((n: any) => n.percentage >= 100).length;
+  const totalMicroCount = allMicros.length;
+  const metPercentage = totalMicroCount > 0 ? Math.round((microCompletedCount / totalMicroCount) * 100) : 0;
+
+  // Top 3 deficiencies for gap analysis
+  const deficiencies = [...allMicros]
+    .filter((n: any) => n.percentage < 100)
+    .sort((a: any, b: any) => a.percentage - b.percentage)
+    .slice(0, 3);
 
   return (
     <View style={styles.container}>
@@ -567,13 +606,99 @@ export default function TargetDetailsScreen() {
           </View>
         </View>
 
+        {/* Overall Micronutrient Score Card */}
+        {totalMicroCount > 0 && (
+          <View style={styles.scoreCard}>
+            <View style={styles.scoreLeft}>
+              <View style={styles.scoreRingWrapper}>
+                <Svg width={90} height={90}>
+                  <Circle cx={45} cy={45} r={36} stroke={colors.border} strokeWidth={7} fill="transparent" />
+                  <Circle
+                    cx={45} cy={45} r={36}
+                    stroke={colors.accent}
+                    strokeWidth={7}
+                    fill="transparent"
+                    strokeDasharray={2 * Math.PI * 36}
+                    strokeDashoffset={2 * Math.PI * 36 * (1 - metPercentage / 100)}
+                    strokeLinecap="round"
+                    transform="rotate(-90 45 45)"
+                  />
+                </Svg>
+                <View style={styles.scoreRingCenter}>
+                  <Text style={styles.scorePct}>{metPercentage}%</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.scoreRight}>
+              <Text style={styles.scoreTitle}>
+                {language === 'bn' ? 'দৈনিক পুষ্টি স্কোর' : 'Daily Nutrition Score'}
+              </Text>
+              <Text style={styles.scoreDesc}>
+                {language === 'bn'
+                  ? `আজ মোট ${totalMicroCount}টি উপাদানের মধ্যে ${microCompletedCount}টি সম্পূর্ণ গ্রহণ করেছেন।`
+                  : `You have completed ${microCompletedCount} out of ${totalMicroCount} target micronutrients today.`}
+              </Text>
+              <View style={styles.scoreBadgesRow}>
+                <View style={[styles.scoreMiniBadge, { backgroundColor: '#FFF8E1' }]}>
+                  <Text style={[styles.scoreMiniText, { color: '#B45309' }]}>
+                    {language === 'bn' ? `ভিটামিন: ${vitamins.filter((n:any)=>n.percentage>=100).length}/${vitamins.length}` : `Vitamins: ${vitamins.filter((n:any)=>n.percentage>=100).length}/${vitamins.length}`}
+                  </Text>
+                </View>
+                <View style={[styles.scoreMiniBadge, { backgroundColor: '#E3F2FD' }]}>
+                  <Text style={[styles.scoreMiniText, { color: '#1565C0' }]}>
+                    {language === 'bn' ? `খনিজ: ${minerals.filter((n:any)=>n.percentage>=100).length}/${minerals.length}` : `Minerals: ${minerals.filter((n:any)=>n.percentage>=100).length}/${minerals.length}`}
+                  </Text>
+                </View>
+                <View style={[styles.scoreMiniBadge, { backgroundColor: '#E8F5E9' }]}>
+                  <Text style={[styles.scoreMiniText, { color: '#2E7D32' }]}>
+                    {language === 'bn' ? `ফ্যাটি: ${fatty.filter((n:any)=>n.percentage>=100).length}/${fatty.length}` : `Fatty: ${fatty.filter((n:any)=>n.percentage>=100).length}/${fatty.length}`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Filter Tabs + Search */}
+        <View style={styles.filterSearchCard}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
+            {([
+              { id: 'all', labelBn: 'সব', labelEn: 'All' },
+              { id: 'vitamins', labelBn: 'ভিটামিন', labelEn: 'Vitamins' },
+              { id: 'minerals', labelBn: 'খনিজ', labelEn: 'Minerals' },
+              { id: 'fats', labelBn: 'ফ্যাটি অ্যাসিড', labelEn: 'Fatty Acids' },
+            ] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabChip, activeTab === tab.id && styles.tabChipActive]}
+                onPress={() => setActiveTab(tab.id as any)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tabChipText, activeTab === tab.id && styles.tabChipTextActive]}>
+                  {language === 'bn' ? tab.labelBn : tab.labelEn}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={styles.searchBox}>
+            <Search size={14} color={colors.textSecondary} style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={language === 'bn' ? 'পুষ্টির নাম খুঁজুন...' : 'Search nutrients...'}
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
         {/* Micronutrients Section Header */}
         <View style={styles.microHeaderRow}>
           <Text style={styles.sectionTitle}>{language === 'bn' ? 'ভিটামিন ও খনিজ লক্ষ্যমাত্রা' : 'Vitamin & Mineral Targets'}</Text>
           {microTargets.length > 0 && (
             <View style={styles.badgeContainer}>
               <Text style={styles.microCompletedBadge}>
-                {language === 'bn' ? `${microCompletedCount}/${microTargets.length} সম্পন্ন` : `${microCompletedCount}/${microTargets.length} Completed`}
+                {language === 'bn' ? `${microCompletedCount}/${totalMicroCount} সম্পন্ন` : `${microCompletedCount}/${totalMicroCount} Completed`}
               </Text>
             </View>
           )}
@@ -582,9 +707,11 @@ export default function TargetDetailsScreen() {
         {microTargets.length === 0 ? (
           <View style={styles.emptyMicroBox}>
             <Text style={styles.emptyMicroText}>
-              {language === 'bn'
-                ? 'আজকের ডায়েট পরিকল্পনা অনুযায়ী কোন ভিটামিন বা মিনারেল লক্ষ্যমাত্রা সংজ্ঞায়িত নেই। বিস্তারিত ট্র্যাকিং পেতে এআই দিয়ে মিল প্ল্যান তৈরি করুন।'
-                : 'No vitamin or mineral targets are defined for today\'s meal plan. Generate an AI meal plan for detailed tracking.'}
+              {searchQuery.trim()
+                ? (language === 'bn' ? 'কোন পুষ্টি উপাদান পাওয়া যায়নি।' : 'No nutrients found matching your search.')
+                : (language === 'bn'
+                  ? 'আজকের ডায়েট পরিক্ল্পনা অনুযায়ী কোন ভিটামিন বা মিনারেল লক্ষ্যমাত্রা সংজ্ঞায়িত নেই। বিস্তারিত ট্র্যাকিং পেতে এআই দিয়ে মিল প্ল্যান তৈরি করুন।'
+                  : 'No vitamin or mineral targets are defined for today\'s meal plan. Generate an AI meal plan for detailed tracking.')}
             </Text>
           </View>
         ) : (
@@ -592,6 +719,11 @@ export default function TargetDetailsScreen() {
             {microTargets.map((item: any, idx: number) => {
               const displayPct = Math.min(100, Math.round(item.percentage || 0));
               const isCompleted = item.percentage >= 100;
+              const isAmber = !isCompleted && item.percentage >= 50;
+              const isRed = !isCompleted && item.percentage > 0 && item.percentage < 50;
+              const barColor = isCompleted ? '#43A047' : isAmber ? '#FF8F00' : isRed ? '#C62828' : colors.border;
+              const badgeBg = isCompleted ? '#E8F5E9' : isAmber ? '#FFF8E1' : isRed ? '#FFEBEE' : '#F5F5F5';
+              const badgeText = isCompleted ? colors.success : isAmber ? '#E65100' : isRed ? colors.error : colors.textSecondary;
               return (
                 <TouchableOpacity
                   key={idx}
@@ -618,29 +750,73 @@ export default function TargetDetailsScreen() {
                     <Text style={styles.microCardValue} numberOfLines={1}>
                       {Math.round(item.consumed)}/{item.target}{item.unit}
                     </Text>
-                    <View style={[styles.microBadge, isCompleted ? styles.microBadgeCompleted : styles.microBadgePending]}>
-                      <Text style={[styles.microBadgeText, isCompleted ? styles.microBadgeTextCompleted : styles.microBadgeTextPending]}>
+                    <View style={[styles.microBadge, { backgroundColor: badgeBg }]}>
+                      <Text style={[styles.microBadgeText, { color: badgeText }]}>
                         {displayPct}%
                       </Text>
                     </View>
                   </View>
 
-                  {/* Bottom: SVG gradient progress bar */}
+                  {/* Bottom: progress bar */}
                   <View style={styles.microCardProgressBg}>
-                    <Svg width="100%" height="4">
-                      <Defs>
-                        <LinearGradient id={`microGrad_${idx}`} x1="0%" y1="0%" x2="100%" y2="0%">
-                          <Stop offset="0%" stopColor={isCompleted ? '#8FB41E' : '#BEE3ED'} />
-                          <Stop offset="100%" stopColor={isCompleted ? '#43A047' : '#7ABDD1'} />
-                        </LinearGradient>
-                      </Defs>
-                      <Rect width="100%" height="4" rx="2" fill={colors.border} />
-                      <Rect width={`${displayPct}%`} height="4" rx="2" fill={`url(#microGrad_${idx})`} />
-                    </Svg>
+                    <View style={[styles.microProgressTrack, { backgroundColor: colors.border }]}>
+                      <View style={[styles.microProgressFill, { width: `${displayPct}%`, backgroundColor: barColor }]} />
+                    </View>
                   </View>
                 </TouchableOpacity>
               );
             })}
+          </View>
+        )}
+
+        {/* Gap Analysis */}
+        {totalMicroCount > 0 && (
+          <View style={styles.gapCard}>
+            <View style={styles.gapHeader}>
+              <View style={[styles.gapIndicator, { backgroundColor: colors.error }]} />
+              <Text style={styles.gapTitle}>
+                {language === 'bn' ? 'পুষ্টি ঘাটতি বিশ্লেষণ' : 'Nutritional Gap Analysis'}
+              </Text>
+            </View>
+            <Text style={styles.gapDesc}>
+              {language === 'bn'
+                ? 'আপনার আজকের মিল প্ল্যান অনুযায়ী নিচের উপাদানগুলোর ঘাটতি সবচেয়ে বেশি।'
+                : 'Based on your logs, you are most deficient in these micronutrients today.'}
+            </Text>
+            {deficiencies.length === 0 ? (
+              <View style={styles.gapAllMet}>
+                <CheckCircle2 size={16} color={colors.success} />
+                <Text style={styles.gapAllMetText}>
+                  {language === 'bn' ? 'সব পুষ্টি উপাদান সফলভাবে পূর্ণ!' : 'All nutrient targets met!'}
+                </Text>
+              </View>
+            ) : (
+              deficiencies.map((def: any) => {
+                const meta = language === 'bn' ? NUTRIENT_METADATA[def.name] : NUTRIENT_METADATA_EN[def.name];
+                return (
+                  <View key={def.name} style={styles.gapRow}>
+                    <View style={styles.gapRowHeader}>
+                      <Text style={styles.gapRowName}>{language === 'bn' ? (def.name_bn || def.name) : def.name}</Text>
+                      <View style={[styles.gapRowBadge, { backgroundColor: '#FFEBEE' }]}>
+                        <Text style={[styles.gapRowBadgeText, { color: colors.error }]}>{def.percentage}%</Text>
+                      </View>
+                    </View>
+                    {meta && (
+                      <>
+                        <Text style={styles.gapRowDesc} numberOfLines={2}>{meta.desc}</Text>
+                        <View style={styles.gapFoodsRow}>
+                          {meta.foods.slice(0, 3).map((f: string, i: number) => (
+                            <View key={i} style={styles.gapFoodBadge}>
+                              <Text style={styles.gapFoodText}>{f}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                );
+              })
+            )}
           </View>
         )}
       </ScrollView>
@@ -1257,5 +1433,241 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bnBold,
     fontSize: 15,
     color: colors.white,
+  },
+
+  // ── Score Card ───────────────────────────────────────────────
+  scoreCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  scoreLeft: {
+    marginRight: spacing.md,
+  },
+  scoreRingWrapper: {
+    width: 90,
+    height: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreRingCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scorePct: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 20,
+    color: colors.textPrimary,
+  },
+  scoreRight: {
+    flex: 1,
+  },
+  scoreTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  scoreDesc: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  scoreBadgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  scoreMiniBadge: {
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  scoreMiniText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 9,
+  },
+
+  // ── Filter + Search ──────────────────────────────────────────
+  filterSearchCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 10,
+  },
+  tabChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: '#FFFDF5',
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+  },
+  tabChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  tabChipText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  tabChipTextActive: {
+    color: colors.white,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFDF5',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: fonts.bn,
+    fontSize: 12,
+    color: colors.textPrimary,
+    padding: 0,
+  },
+
+  // ── Micro Progress (updated) ─────────────────────────────────
+  microProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  microProgressFill: {
+    height: 4,
+    borderRadius: 2,
+  },
+
+  // ── Gap Analysis ─────────────────────────────────────────────
+  gapCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  gapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  gapIndicator: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+  },
+  gapTitle: {
+    fontFamily: fonts.bnBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  gapDesc: {
+    fontFamily: fonts.bn,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  gapAllMet: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  gapAllMetText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 12,
+    color: colors.success,
+  },
+  gapRow: {
+    backgroundColor: '#FFFDF5',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+  },
+  gapRowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  gapRowName: {
+    fontFamily: fonts.bnBold,
+    fontSize: 12,
+    color: colors.textPrimary,
+  },
+  gapRowBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  gapRowBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+  },
+  gapRowDesc: {
+    fontFamily: fonts.bn,
+    fontSize: 10,
+    color: colors.textSecondary,
+    lineHeight: 15,
+    marginBottom: 6,
+  },
+  gapFoodsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  gapFoodBadge: {
+    backgroundColor: colors.white,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+  },
+  gapFoodText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 9,
+    color: colors.accent,
   },
 });

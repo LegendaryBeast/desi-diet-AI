@@ -299,6 +299,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         setText('');
         setConfirmedInputText('');
         fetchTodayLogs();
+        window.dispatchEvent(new Event('data:refresh'));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log meal');
@@ -330,6 +331,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         setIsConfirmed(true);
         clearPhoto();
         fetchTodayLogs();
+        window.dispatchEvent(new Event('data:refresh'));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze photo');
@@ -356,6 +358,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         onLogDeleted(slotName);
       }
       fetchTodayLogs();
+      window.dispatchEvent(new Event('data:refresh'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete log');
     }

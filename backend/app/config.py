@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="gpt-4o-mini", alias="LLM_MODEL")
     llm_max_tokens: int = Field(default=1024, alias="LLM_MAX_TOKENS")
 
+    # Pinecone (Personal Cooker RAG)
+    pinecone_api_key: str = Field(default="", alias="PINECONE_API_KEY")
+    pinecone_index: str = Field(default="bd-cooking-rag", alias="PINECONE_INDEX")
+
     @property
     def cors_origin_list(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]

@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   Switch,
+  Modal,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -79,6 +80,8 @@ export default function MedicineRemindersScreen() {
   };
 
   const [tab, setTab] = useState<'list' | 'add'>('list');
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [medIdToDelete, setMedIdToDelete] = useState<string | null>(null);
   const [medNameToDelete, setMedNameToDelete] = useState<string | null>(null);
@@ -490,6 +493,66 @@ export default function MedicineRemindersScreen() {
             <Text style={styles.addTitle}>{t('addNewMed')}</Text>
             <Text style={styles.addSubTitle}>{language === 'bn' ? 'ওষুধের নাম, ডোজ এবং সময় নির্ধারণ করুন' : 'Set medicine name, dose, and time'}</Text>
 
+            {/* AI Natural Language Input */}
+            <View style={[styles.inputGroup, { backgroundColor: '#F5F8E8', padding: 12, borderRadius: 12 }]}>
+              <Text style={[styles.inputLabel, { color: colors.primary }]}>
+                {language === 'bn' ? '🤖 AI দিয়ে যোগ করুন' : '🤖 Add with AI'}
+              </Text>
+              <TextInput
+                style={[styles.textInput, { backgroundColor: colors.white, minHeight: 60 }]}
+                multiline
+                placeholder={language === 'bn' ? 'যেমন: সকালে ও রাতে মেটফরমিন ৫০০ mg খাবারের পরে...' : 'e.g. Take Metformin 500mg after breakfast and dinner...'}
+                placeholderTextColor={colors.textSecondary}
+                value={aiInput}
+                onChangeText={setAiInput}
+              />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {EXAMPLES.map((ex, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => setAiInput(ex)}
+                    style={{ backgroundColor: 'rgba(167,201,36,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+                  >
+                    <Text style={{ fontSize: 11, color: colors.primary, fontFamily: fonts.bn }}>
+                      {language === 'bn' ? `উদাহরণ ${i + 1}` : `Ex ${i + 1}`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={[styles.submitBtn, { marginTop: 10, backgroundColor: colors.primary }]}
+                onPress={async () => {
+                  if (!aiInput.trim()) return;
+                  setAiLoading(true);
+                  try {
+                    const res = await medicineApi.add(aiInput.trim(), language);
+                    if (res.data?.success) {
+                      haptics.success();
+                      setSuccessMsg(t('medAddedSuccess'));
+                      setAiInput('');
+                      queryClient.invalidateQueries({ queryKey: ['medicine_reminders'] });
+                      setTab('list');
+                    } else {
+                      setErrorMsg(res.data?.error || (language === 'bn' ? 'পার্স করতে ব্যর্থ' : 'Failed to parse'));
+                    }
+                  } catch (e: any) {
+                    setErrorMsg(e?.message || (language === 'bn' ? 'ত্রুটি হয়েছে' : 'Error occurred'));
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                disabled={aiLoading || !aiInput.trim()}
+              >
+                {aiLoading ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>{language === 'bn' ? 'AI দিয়ে বিশ্লেষণ করুন' : 'Analyze with AI'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ height: 1, backgroundColor: '#EAEAEA', marginVertical: 16 }} />
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('inputMedName')}</Text>
               <TextInput
@@ -674,9 +737,8 @@ export default function MedicineRemindersScreen() {
                 style={[styles.modalButton, styles.deleteButton]} 
                 onPress={() => {
                   haptics.medium();
-                  if (medIdToDelete && medNameToDelete) {
+                  if (medIdToDelete) {
                     cancelNotifications(medIdToDelete);
-                    cancelNotifications(medNameToDelete);
                     deleteMutation.mutate(medIdToDelete);
                   }
                   setDeleteConfirmVisible(false);

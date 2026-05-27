@@ -14,17 +14,19 @@ import { Conditions } from './pages/Conditions';
 import { Dashboard } from './pages/Dashboard';
 import { Micronutrients } from './pages/Micronutrients';
 import { Docs } from './pages/Docs';
+import { PersonalCooker } from './pages/PersonalCooker';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { ChatActionProvider } from './contexts/ChatActionContext';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const ConditionalNav = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Nav />;
 };
@@ -57,9 +59,10 @@ function AppRoutes() {
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AnimatePresence mode="wait">
-        {loading && <PageLoader />}
-      </AnimatePresence>
+      <ChatActionProvider>
+        <AnimatePresence mode="wait">
+          {loading && <PageLoader />}
+        </AnimatePresence>
 
       {!loading && (
         <div className="flex flex-col min-h-screen">
@@ -73,21 +76,23 @@ function AppRoutes() {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/docs" element={<Docs />} />
 
-              {/* Protected routes */}
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/health-log" element={<ProtectedRoute><HealthLog /></ProtectedRoute>} />
-              <Route path="/meal-plan" element={<ProtectedRoute><MealPlan /></ProtectedRoute>} />
-              <Route path="/medicine" element={<ProtectedRoute><MedicinePage /></ProtectedRoute>} />
-              <Route path="/foods" element={<ProtectedRoute><FoodsPage /></ProtectedRoute>} />
-              <Route path="/report" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
-              <Route path="/micronutrients" element={<ProtectedRoute><Micronutrients /></ProtectedRoute>} />
-            </Routes>
-          </main>
-          <ConditionalFooter />
-        </div>
-      )}
+                {/* Protected routes */}
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/health-log" element={<ProtectedRoute><HealthLog /></ProtectedRoute>} />
+                <Route path="/meal-plan" element={<ProtectedRoute><MealPlan /></ProtectedRoute>} />
+                <Route path="/medicine" element={<ProtectedRoute><MedicinePage /></ProtectedRoute>} />
+                <Route path="/foods" element={<ProtectedRoute><FoodsPage /></ProtectedRoute>} />
+                <Route path="/report" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
+                <Route path="/micronutrients" element={<ProtectedRoute><Micronutrients /></ProtectedRoute>} />
+              <Route path="/personal-cooker" element={<ProtectedRoute><PersonalCooker /></ProtectedRoute>} />
+              </Routes>
+            </main>
+            <ConditionalFooter />
+          </div>
+        )}
+      </ChatActionProvider>
     </Router>
   );
 }

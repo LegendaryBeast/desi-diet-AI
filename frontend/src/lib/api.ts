@@ -260,6 +260,7 @@ export const mealPlanApi = {
 export interface ChatHistoryItem {
   role: 'user' | 'assistant';
   content: string;
+  groceryData?: Record<string, unknown> | null;
 }
 
 export const chatApi = {
@@ -277,8 +278,11 @@ export const chatApi = {
     onToken: (token: string) => void,
     onDone: () => void,
     onError: (err: string) => void,
-    options?: { imageDataUrl?: string },
+    options?: { imageDataUrl?: string; lat?: number; lng?: number },
     onMealLogged?: (meal: MealTrackingResponse) => void,
+    onGrocerySuggestions?: (data: Record<string, unknown>) => void,
+    onAction?: (action: Record<string, unknown>) => void,
+    onToolResult?: (result: Record<string, unknown>) => void,
   ): (() => void) => {
     const token = getToken();
     const ctrl = new AbortController();
@@ -302,6 +306,8 @@ export const chatApi = {
         language,
         history,
         ...(options?.imageDataUrl ? { image_data_url: options.imageDataUrl } : {}),
+        ...(options?.lat != null ? { lat: options.lat } : {}),
+        ...(options?.lng != null ? { lng: options.lng } : {}),
       }),
       signal: ctrl.signal,
     })
@@ -334,6 +340,9 @@ export const chatApi = {
                 const data = JSON.parse(line.slice(6));
                 if (data.token) onToken(data.token);
                 if (data.meal_logged && onMealLogged) onMealLogged(data.meal_logged);
+                if (data.grocery_suggestions && onGrocerySuggestions) onGrocerySuggestions(data.grocery_suggestions);
+                if (data.action && onAction) onAction(data.action);
+                if (data.tool_result && onToolResult) onToolResult(data.tool_result);
                 if (data.done) finish();
                 if (data.error) onError(data.error);
               } catch { /* ignore parse errors */ }
@@ -347,6 +356,7 @@ export const chatApi = {
             const data = JSON.parse(buffer.slice(6));
             if (data.token) onToken(data.token);
             if (data.meal_logged && onMealLogged) onMealLogged(data.meal_logged);
+            if (data.grocery_suggestions && onGrocerySuggestions) onGrocerySuggestions(data.grocery_suggestions);
             if (data.done) finish();
             if (data.error) onError(data.error);
           } catch { /* ignore parse errors */ }
@@ -374,7 +384,10 @@ export const chatApi = {
     onToken: (token: string) => void,
     onDone: () => void,
     onPlanReady: (plan: Record<string, unknown>) => void,
-    onError: (err: string) => void
+    onError: (err: string) => void,
+    onGrocerySuggestions?: (data: Record<string, unknown>) => void,
+    lat?: number,
+    lng?: number,
   ): (() => void) => {
     const token = getToken();
     const ctrl = new AbortController();
@@ -393,7 +406,7 @@ export const chatApi = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ message, language, history, collected }),
+      body: JSON.stringify({ message, language, history, collected, lat, lng }),
       signal: ctrl.signal,
     })
       .then(async (res) => {
@@ -426,6 +439,9 @@ export const chatApi = {
                 if (data.token) onToken(data.token);
                 if (data.done) finish();
                 if (data.plan_ready) onPlanReady(data.plan_ready);
+                if (data.grocery_suggestions && onGrocerySuggestions) {
+                  onGrocerySuggestions(data.grocery_suggestions);
+                }
                 if (data.error) onError(data.error);
               } catch { /* ignore */ }
             }
@@ -439,6 +455,9 @@ export const chatApi = {
             if (data.token) onToken(data.token);
             if (data.done) finish();
             if (data.plan_ready) onPlanReady(data.plan_ready);
+            if (data.grocery_suggestions && onGrocerySuggestions) {
+              onGrocerySuggestions(data.grocery_suggestions);
+            }
             if (data.error) onError(data.error);
           } catch { /* ignore */ }
         }

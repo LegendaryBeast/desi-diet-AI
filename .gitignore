@@ -25,3 +25,18 @@ Thumbs.db
 
 # Native binaries
 *.apk
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# JDK / Tools
+backend/tools/
+
+# Expo
+.expo/
+mobile/dist/
+
+# Environment
+mobile/.env*.local

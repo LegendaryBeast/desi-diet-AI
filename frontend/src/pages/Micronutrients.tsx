@@ -165,12 +165,13 @@ export const Micronutrients: React.FC = () => {
     const fetchPlanData = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await mealPlanApi.getDaily('bn');
         if (data && data.plan_data) {
           const parsed = typeof data.plan_data === 'string'
             ? JSON.parse(data.plan_data)
             : data.plan_data;
-          if (parsed && parsed.micronutrient_targets) {
+          if (parsed && parsed.micronutrient_targets && parsed.micronutrient_targets.length > 0) {
             setMicronutrients(parsed.micronutrient_targets);
             return;
           }
@@ -183,6 +184,9 @@ export const Micronutrients: React.FC = () => {
       }
     };
     fetchPlanData();
+    const handleRefresh = () => fetchPlanData();
+    window.addEventListener('data:refresh', handleRefresh);
+    return () => window.removeEventListener('data:refresh', handleRefresh);
   }, [isBn]);
 
   const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];

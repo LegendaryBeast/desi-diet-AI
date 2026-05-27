@@ -87,25 +87,26 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         else:
             return "mg", db_val_mg
 
-    # 4. Extract all food items in the plan (only if slot is marked complete/taken)
+    # 4. Extract all food items in the plan (use ALL meals so users see plan nutrients
+    # immediately, not just after marking slots eaten)
     food_inputs = []
     for meal in plan_data.get("meals", []):
-        slot_name = meal.get("slot")
-        if slot_name not in completed_slots:
-            continue
-            
         for item in meal.get("items", []):
             code = item.get("code") or item.get("food_code") or ""
             name_en = item.get("name_en") or ""
             name_bn = item.get("name_bn") or ""
-            amount_g = item.get("amount_g") or item.get("amount") or 100.0
+            amount_g = item.get("amount_g")
+            if amount_g is None:
+                amount_g = item.get("amount")
+            if amount_g is None:
+                amount_g = 100.0
             
             # Parse amount_g to float
             try:
                 amount_g = float(amount_g)
             except Exception:
                 import re
-                match = re.search(r"\d+", str(amount_g))
+                match = re.search(r"\d+(?:\.\d+)?", str(amount_g))
                 amount_g = float(match.group()) if match else 100.0
                 
             food_inputs.append({

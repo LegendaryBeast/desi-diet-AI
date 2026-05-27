@@ -166,6 +166,8 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional base64 data-URL (e.g. 'data:image/jpeg;base64,...') for vision input",
     )
+    lat: Optional[float] = Field(default=None, description="User latitude for nearest grocery shop lookup")
+    lng: Optional[float] = Field(default=None, description="User longitude for nearest grocery shop lookup")
 
 
 class DietPlanChatRequest(BaseModel):
@@ -176,6 +178,8 @@ class DietPlanChatRequest(BaseModel):
     # Already-collected fields from prior turns (merged on frontend)
     collected: Dict[str, Any] = Field(default_factory=dict,
         description="Fields confirmed so far: age, gender, height_cm, weight_kg, activity_level, goal, medical_conditions")
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 
 class DietPlanChatResponse(BaseModel):

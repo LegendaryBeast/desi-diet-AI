@@ -166,6 +166,7 @@ export const ProfileWizard = () => {
         await profileApi.create(payload);
       }
       await refreshProfile();
+      window.dispatchEvent(new Event('data:refresh'));
       navigate('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'প্রোফাইল সংরক্ষণ করতে সমস্যা হয়েছে');
