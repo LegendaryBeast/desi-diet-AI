@@ -55,6 +55,9 @@ Users describe their medicine schedule in natural language and the system extrac
 **Meal Builder**
 An interactive tool for constructing custom meals by selecting and weighing individual food items. The system evaluates the assembled meal against the user's nutrition targets and condition constraints, returning an AI-generated insight.
 
+**NutriSaathi / Personal Cooker**
+A condition-specific personalized cooking assistant that generates culturally grounded Bangladeshi recipes, suggests ingredient alternatives, and performs medical-profile-based safety checks for users with chronic conditions.
+
 **Bilingual Interface**
 All user-facing content, meal plan data, and AI responses are delivered in Bengali (default) or English depending on user preference.
 
@@ -65,50 +68,51 @@ The chat interface supports audio recording transcribed via OpenAI Whisper. A We
 
 ## System Architecture
 
-```
-User Browser (React SPA)
-        |
-        | HTTPS / SSE
-        |
-FastAPI Backend (Python)
-    |           |           |
-Prisma ORM   Neo4j       OpenAI API
-(PostgreSQL) Graph DB   (LLM / Vision /
-                         Whisper / TTS)
-```
+The application is structured across four scalable layers:
 
-The backend initializes three resources at startup:
+1. **L1 Client (React Vite+TS, Expo React Native):** Web pages (Auth, Dashboard, Chat, MealPlan, HealthLog, Medicine, Report, Conditions, Profile) and Mobile app (Home, Chat, Diet-Plan, Meals, Report, Profile). Communicates via HTTPS/REST.
+2. **L2 API Gateway (FastAPI + Uvicorn, JWT, SSE):** Groups functionalities into conceptual services without exposing explicit routes: Auth Services, Feature Services (Profiles, Health Logs, Foods), Meal & Cooking Services (Plans, Builder), and Chat Services (SSE Streaming).
+3. **L3 Intelligence (GraphRAG, Pinecone RAG, Calorie Engine):** Meal Plan Service, Diet Chat Service, GraphRAG Planner, Calorie Engine (BMI, TDEE, Macros), and the **NutriSaathi / Personal Cooker Service**, which drives condition-specific recipe generation.
+4. **L4 Data (Neo4j, Pinecone, PostgreSQL/Prisma, OpenAI GPT-4):** **Neo4j** acts as a **food compatibility store** utilized to **suggest traditional meal combinations**. **Pinecone** acts as a vector DB storing embedded recipes. **PostgreSQL** handles relational state (User, Profile, Logs, Plans). **OpenAI API** handles LLM inferences.
 
-1. **Prisma client** connected to a PostgreSQL database (relational user data, plans, logs, chat history).
-2. **Neo4j driver** connected to the food knowledge graph (food nodes, food groups, nutrients, conditions, dietary rules).
-3. **SentenceTransformer model** loaded into application state for vector similarity search in the RAG planner.
+### Data Flow
 
-The Graph-RAG pipeline operates as follows:
+- ① Client (Web/Mobile) sends HTTPS/REST request or opens SSE stream for real-time chat.
+- ② FastAPI API Gateway authenticates via JWT and delegates to the correct internal service group.
+- ③ Intelligence Layer processes the request — querying Pinecone for relevant recipe vectors and querying Neo4j via Cypher for food-nutrient-disease graph knowledge.
+- ④ PostgreSQL (Prisma ORM) is read/written for user profiles, health logs, meal history, and medicine reminders via SQL/ORM.
+- ⑤ OpenAI GPT-4 API is called for language-model inference (chat, meal generation, medicine parsing, NutriSaathi recipe synthesis).
+- ⑥ Response returns as JSON over HTTPS/REST or as a token stream over SSE to the client.
 
-1. The user's medical conditions and dietary goal are extracted from the Prisma database.
-2. Neo4j Cypher queries retrieve relevant food nodes, condition-food relationship rules, and micronutrient data.
-3. The retrieved context is formatted into a structured text block and injected into the LLM system prompt.
-4. The LLM generates a response grounded exclusively in the retrieved database values.
+See [docs/Project_Summary.md](docs/Project_Summary.md) for the detailed architecture diagram and summary.
 
-See [docs/architecture.md](docs/architecture.md) for a detailed breakdown.
+### Architecture & Data Models
+
+**1. Graph RAG Pipeline & Architecture:**  
+![Graph RAG Architecture](docs/graph_rag_architecture.png)
+
+**2. PostgreSQL Relational Schema (Prisma):**  
+![PostgreSQL Schema](docs/postgres_schema.png)
+
+**3. Neo4j Graph Database Schema:**  
+![Neo4j Schema](docs/neo4j_schema.png)
 
 ---
 
 ## Technology Stack
 
-**Backend**
+**Backend & Intelligence**
 
 | Component | Technology |
 |---|---|
-| Web Framework | FastAPI 0.116 |
-| ASGI Server | Uvicorn |
-| ORM | Prisma Client Python 0.15 |
-| Relational Database | PostgreSQL |
-| Graph Database | Neo4j (Bolt protocol) |
-| LLM Client | OpenAI Python SDK 2.37 (OpenAI-compatible) |
-| Auth | JWT (python-jose), bcrypt |
+| Web Framework | FastAPI 0.116 (with Uvicorn) |
+| Relational DB & ORM | PostgreSQL + Prisma Client Python 0.15 |
+| Graph Database | Neo4j (Food compatibility store & traditional meal combinations) |
+| Vector Database | Pinecone (Recipe retrieval for NutriSaathi) |
+| LLM & AI Models | OpenAI GPT-4 / Whisper (via OpenAI Python SDK) |
+| GraphRAG Engine | Neo4j + SentenceTransformer (`planner.py`) |
+| Auth & Security | JWT (python-jose), bcrypt |
 | Data Validation | Pydantic v2 |
-| Audio | OpenAI Whisper / GPT-4o-transcribe |
 | Containerization | Docker |
 
 **Frontend**
