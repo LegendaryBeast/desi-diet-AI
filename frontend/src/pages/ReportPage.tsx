@@ -130,7 +130,7 @@ export const ReportPage = () => {
       "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
       "Pantothenic acid (B5)", "Biotin (B7)"
     ];
-    const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)"];
+    const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Sodium", "Sodium (Na)"];
     const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
     const vitamins = deficiencies.filter(n => VITAMIN_NAMES.includes(n.name));
@@ -833,7 +833,7 @@ export const ReportPage = () => {
                       "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
                       "Pantothenic acid (B5)", "Biotin (B7)"
                     ];
-                    const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)"];
+                    const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Sodium", "Sodium (Na)"];
                     const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
                     const all = report.micronutrient_targets;
                     const vitamins = all.filter(n => VITAMIN_NAMES.includes(n.name));

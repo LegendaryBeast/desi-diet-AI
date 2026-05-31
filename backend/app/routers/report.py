@@ -307,7 +307,7 @@ async def get_health_summary(
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
         "Pantothenic acid (B5)", "Biotin (B7)",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Sodium (Na)", "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
+        "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
         "Molybdenum (Mo)", "Potassium (K)",
         "Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids",
     ]
@@ -315,7 +315,7 @@ async def get_health_summary(
     NUTRIENT_NAMES_BN = {
         "Calcium (Ca)": "ক্যালসিয়াম (Calcium)", "Iron (Fe)": "আয়রন (Iron)",
         "Magnesium (Mg)": "ম্যাগনেসিয়াম (Magnesium)", "Phosphorus (P)": "ফসফরাস (Phosphorus)",
-        "Sodium (Na)": "সোডিয়াম (Sodium)", "Copper (Cu)": "কপার (Copper)",
+        "Copper (Cu)": "কপার (Copper)",
         "Selenium (Se)": "সিলেনিয়াম (Selenium)",
         "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
         "Chromium (Cr)": "ক্রোমিয়াম (Chromium)", "Molybdenum (Mo)": "মলিবডেনাম (Molybdenum)",

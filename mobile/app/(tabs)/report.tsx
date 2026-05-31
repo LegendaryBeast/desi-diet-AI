@@ -157,7 +157,7 @@ export default function ReportScreen() {
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
         "Pantothenic acid (B5)", "Biotin (B7)"
       ];
-      const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
+      const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)", "Sodium", "Sodium (Na)"];
       const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
       const mappedMicros = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
@@ -177,7 +177,6 @@ export default function ReportScreen() {
             { name: "Vitamin D", nameBn: "ভিটামিন ডি (Vitamin D)", unit: "mcg", target: 15, avg: Math.round(15 * complianceRate * 0.65), percentage: Math.round(65 * complianceRate) },
             { name: "Calcium (Ca)", nameBn: "ক্যালসিয়াম (Calcium)", unit: "mg", target: 1000, avg: Math.round(1000 * complianceRate * 0.95), percentage: Math.round(95 * complianceRate) },
             { name: "Iron (Fe)", nameBn: "আয়রন (Iron)", unit: "mg", target: 17, avg: Math.round(17 * complianceRate * 0.72), percentage: Math.round(72 * complianceRate) },
-            { name: "Sodium (Na)", nameBn: "সোডিয়াম (Sodium)", unit: "mg", target: 2000, avg: Math.round(2000 * complianceRate * 1.35), percentage: Math.round(135 * complianceRate) },
             { name: "Potassium (K)", nameBn: "পটাশিয়াম (Potassium)", unit: "mg", target: 3500, avg: Math.round(3500 * complianceRate * 0.82), percentage: Math.round(82 * complianceRate) },
             { name: "Zinc (Zn)", nameBn: "জিঙ্ক (Zinc)", unit: "mg", target: 12, avg: Math.round(12 * complianceRate * 0.88), percentage: Math.round(88 * complianceRate) }
           ];
@@ -584,7 +583,7 @@ export default function ReportScreen() {
   const avgFat = healthSummary?.macro_summary?.fat_g ? (healthSummary.macro_summary.fat_g / selectedDuration) : (activeTargets.fat_g * complianceRate);
   const avgFiber = healthSummary?.macro_summary?.fiber_g ? (healthSummary.macro_summary.fiber_g / selectedDuration) : (activeTargets.fiber_g * complianceRate);
 
-  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
+  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)", "Sodium", "Sodium (Na)"];
   const micronutrients = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
     ? healthSummary.micronutrient_targets
         .filter((micro: any) => !EXCLUDE_NAMES.includes(micro.name))
@@ -599,7 +598,6 @@ export default function ReportScreen() {
         { nameBn: "ক্যালসিয়াম", nameEn: "Calcium", unit: "mg", target: 1000, avg: 1000 * complianceRate * 0.95 },
         { nameBn: "আয়রন", nameEn: "Iron", unit: "mg", target: 17, avg: 17 * complianceRate * 0.72 },
         { nameBn: "জিঙ্ক", nameEn: "Zinc", unit: "mg", target: 12, avg: 12 * complianceRate * 0.88 },
-        { nameBn: "সোডিয়াম", nameEn: "Sodium", unit: "mg", target: 2000, avg: 2000 * complianceRate * 1.35 },
         { nameBn: "পটাসিয়াম", nameEn: "Potassium", unit: "mg", target: 3500, avg: 3500 * complianceRate * 0.82 },
         { nameBn: "ভিটামিন এ", nameEn: "Vitamin A", unit: "mcg", target: 900, avg: 900 * complianceRate * 0.78 },
         { nameBn: "ভিটামিন সি", nameEn: "Vitamin C", unit: "mg", target: 80, avg: 80 * complianceRate * 1.05 },

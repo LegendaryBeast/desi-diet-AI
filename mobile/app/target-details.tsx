@@ -404,7 +404,7 @@ export default function TargetDetailsScreen() {
   const strokeDashoffset = circumference - (progressCal * circumference);
 
   // Micronutrients
-  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
+  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)", "Sodium", "Sodium (Na)"];
   const allMicros = (planData?.micronutrient_targets || []).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
 
   const VITAMIN_NAMES = [

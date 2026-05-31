@@ -835,7 +835,7 @@ export const MealPlan = () => {
 
         {/* Compact Micronutrients Summary Call-to-action */}
         {p.plan_data && (p.plan_data as any).micronutrient_targets && (p.plan_data as any).micronutrient_targets.length > 0 && (() => {
-          const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)"];
+          const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Sodium", "Sodium (Na)"];
           const targets = ((p.plan_data as any).micronutrient_targets as any[]).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
           const total = targets.length;
           const completed = targets.filter((n: any) => n.percentage >= 100).length;

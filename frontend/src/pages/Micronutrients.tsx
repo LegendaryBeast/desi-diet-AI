@@ -189,7 +189,7 @@ export const Micronutrients: React.FC = () => {
     return () => window.removeEventListener('data:refresh', handleRefresh);
   }, [isBn]);
 
-  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)"];
+  const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)", "Sodium", "Sodium (Na)"];
   const vitamins = micronutrients.filter(n => VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
   const minerals = micronutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
   const fatty = micronutrients.filter(n => FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
