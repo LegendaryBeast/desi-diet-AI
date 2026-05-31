@@ -587,6 +587,9 @@ export const foodsApi = {
       `/foods/${encodeURIComponent(code)}/justify${name ? `?name=${encodeURIComponent(name)}` : ''}`
     ),
 
+  alternatives: (code: string) =>
+    apiFetch<any[]>(`/foods/${encodeURIComponent(code)}/alternatives`),
+
   searchWithInsight: (q: string, slot = 'any') =>
     apiFetch<FoodWithInsightResponse[]>(
       `/foods/search-with-insight?q=${encodeURIComponent(q)}&slot=${slot}`
@@ -915,4 +918,133 @@ export const docsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+};
+
+// ─── Grocery ──────────────────────────────────────────────────────────────────
+
+export interface GroceryOffer {
+  platform_id: string;
+  platform_name: string;
+  platform_name_bn: string;
+  price_bdt: number;
+  delivery_time: string;
+  nearest_shop?: { name: string; distance_km: number; area: string } | null;
+}
+
+export interface GrocerySearchItem {
+  item_id: string;
+  name_bn: string;
+  name_en: string;
+  unit: string;
+  image: string;
+  best_price_bdt: number;
+  best_platform_id: string;
+  offers: GroceryOffer[];
+}
+
+export interface GrocerySearchResponse {
+  items: GrocerySearchItem[];
+  total_items: number;
+}
+
+export interface NearbyShop {
+  name: string;
+  area: string;
+  distance_km: number;
+  address?: string;
+}
+
+export interface NearbyShopsResponse {
+  shops: NearbyShop[];
+  user_location: { lat: number; lng: number };
+}
+
+export const groceryApi = {
+  search: (foods: string, lat = 23.8103, lng = 90.4125, limit = 2) =>
+    apiFetch<GrocerySearchResponse>(
+      `/groceries/search?foods=${encodeURIComponent(foods)}&lat=${lat}&lng=${lng}&limit=${limit}`
+    ),
+
+  nearbyShops: (lat: number, lng: number, radius = 15, limit = 10) =>
+    apiFetch<NearbyShopsResponse>(
+      `/groceries/nearby-shops?lat=${lat}&lng=${lng}&radius=${radius}&limit=${limit}`
+    ),
+
+  fromChat: (data: { chat_text?: string; parsed_items?: unknown[]; lat?: number; lng?: number }) =>
+    apiFetch<GrocerySearchResponse>('/groceries/from-chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// ─── Personal Cooker ─────────────────────────────────────────────────────────
+
+export interface PersonalCookerMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface PersonalCookerHistoryResponse {
+  history: PersonalCookerMessage[];
+}
+
+export const personalCookerApi = {
+  history: (sessionId: string) =>
+    apiFetch<PersonalCookerHistoryResponse>(`/personal-cooker/history?session_id=${sessionId}`),
+
+  clearHistory: (sessionId: string) =>
+    apiFetch<{ message: string }>(`/personal-cooker/history?session_id=${sessionId}`, { method: 'DELETE' }),
+
+  /** Stream chat via SSE — returns a cancel function. */
+  stream: (
+    message: string,
+    condition: string,
+    sessionId: string,
+    language: string,
+    onToken: (t: string) => void,
+    onDone: () => void,
+    onError: (e: string) => void,
+  ): (() => void) => {
+    const token = getToken();
+    const ctrl = new AbortController();
+    let finished = false;
+    const finish = () => { if (!finished) { finished = true; onDone(); } };
+
+    fetch(`${BASE_URL}/personal-cooker/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ message, condition, session_id: sessionId, language }),
+      signal: ctrl.signal,
+    }).then(async (res) => {
+      if (!res.ok || !res.body) { onError('Connection failed'); finish(); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const d = JSON.parse(line.slice(6));
+              if (d.token) onToken(d.token);
+              if (d.done) finish();
+              if (d.error) onError(d.error);
+            } catch { /* ignore */ }
+          }
+        }
+      }
+      finish();
+    }).catch((err) => {
+      if (err.name !== 'AbortError') { onError(err.message); finish(); }
+    });
+
+    return () => ctrl.abort();
+  },
 };

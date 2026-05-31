@@ -399,34 +399,6 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         </div>
       </div>
 
-      {/* Today's totals strip */}
-      {todayLogs.length > 0 && (
-        <div className="grid grid-cols-4 gap-2 md:gap-3 bg-cream/50 p-3 md:p-4 rounded-2xl">
-          <div className="text-center">
-            <div className="font-body text-lg md:text-2xl font-bold text-ink">{todayTotal}</div>
-            <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">kcal</div>
-          </div>
-          <div className="text-center">
-            <div className="font-body text-lg md:text-2xl font-bold text-ink">
-              {Math.round(todayMacros.protein_g)}g
-            </div>
-            <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">protein</div>
-          </div>
-          <div className="text-center">
-            <div className="font-body text-lg md:text-2xl font-bold text-ink">
-              {Math.round(todayMacros.carbs_g)}g
-            </div>
-            <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">carbs</div>
-          </div>
-          <div className="text-center">
-            <div className="font-body text-lg md:text-2xl font-bold text-ink">
-              {Math.round(todayMacros.fat_g)}g
-            </div>
-            <div className="font-body text-[0.6rem] uppercase tracking-widest text-ink-faint font-bold">fat</div>
-          </div>
-        </div>
-      )}
-
       {/* Mode tabs */}
       <div className="flex gap-2 p-1 bg-cream/50 rounded-2xl">
         {([
@@ -772,15 +744,18 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
         const visibleGroups = showAllLogs ? groups : groups.slice(0, 2);
 
         return (
-          <div className="space-y-2">
+          <div className="space-y-4 mt-6 pt-6 border-t border-ink/5">
             <div className="flex items-center justify-between">
-              <div className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
-                {isBn ? `আজকের খাবার লগ · ${groups.length}` : `Today's logs · ${groups.length}`}
+              <h3 className="font-bn font-black text-lg md:text-xl text-ink">
+                {isBn ? 'আজকের লগ করা খাবার' : "Today's Logged Foods"}
+              </h3>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-[#A7C924]/10 text-[#7C971B] rounded-full text-xs font-bold font-body">
+                <span className="text-sm">🔥</span>
+                <span>{todayTotal} kcal</span>
               </div>
-              {loadingLogs && <Loader2 className="w-3 h-3 animate-spin text-ink-faint" />}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {visibleGroups.map((group) => {
                 const slotMeta = SLOT_OPTIONS.find((s) => s.value === group.meal_slot);
                 const Icon = slotMeta?.icon || Utensils;
@@ -814,34 +789,68 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                 return (
                   <div
                     key={group.meal_slot}
-                    className="flex flex-col gap-2 bg-cream/40 p-4 rounded-2xl border border-ink/5"
+                    className="flex flex-col bg-white p-4 rounded-2xl border-[1.2px] border-[#A7C924]/20 shadow-sm"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-white border border-ink/5 flex items-center justify-center text-ink-muted shrink-0">
-                        <Icon size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bn text-sm font-bold text-ink truncate leading-tight">
-                          {combinedFoodNames}
+                    <div className="flex items-center justify-between gap-3">
+                      {/* Left Side: Icon & Details */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#A7C924]/10 flex items-center justify-center text-[#7C971B] shrink-0">
+                          <Icon size={14} />
                         </div>
-                        <div className="text-[0.6rem] uppercase tracking-widest font-body font-bold text-ink-faint mt-0.5">
-                          {slotLabel} · {time}
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bn font-bold text-sm text-ink truncate leading-tight">
+                            {combinedFoodNames}
+                          </h4>
+                          <div className="flex items-center gap-1 text-xs text-[#5C574F] mt-0.5">
+                            <span className="font-bn">{slotLabel}</span>
+                            {time && (
+                              <>
+                                <span className="text-ink-faint mx-1">•</span>
+                                <span className="font-body text-[0.7rem]">{time}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="font-body font-bold text-ink shrink-0 flex items-center gap-2">
-                        <span>
-                          {group.total_calories}
-                          <span className="text-[0.6rem] text-ink-faint font-body ml-1">kcal</span>
+
+                      {/* Right Side: Calories & Delete */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-display font-black text-sm text-ink">
+                          {group.total_calories} <span className="text-[0.65rem] font-body text-ink-muted">kcal</span>
                         </span>
                         <button
                           onClick={() => deleteLog(group.ids, group.meal_slot)}
-                          className="p-1.5 text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          className="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors shrink-0"
                           title={isBn ? 'মুছে ফেলুন' : 'Delete'}
                         >
                           <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
+
+                    {/* Macro Badges Row */}
+                    {group.macros && (group.macros.protein_g > 0 || group.macros.carbs_g > 0 || group.macros.fat_g > 0) && (
+                      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-ink/5">
+                        {group.macros.protein_g > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
+                            <span>💪</span>
+                            <span>{isBn ? 'প্রোটিন' : 'Protein'}: {Math.round(group.macros.protein_g)}g</span>
+                          </div>
+                        )}
+                        {group.macros.carbs_g > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
+                            <span>🍞</span>
+                            <span>{isBn ? 'কার্বস' : 'Carbs'}: {Math.round(group.macros.carbs_g)}g</span>
+                          </div>
+                        )}
+                        {group.macros.fat_g > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
+                            <span>🥑</span>
+                            <span>{isBn ? 'ফ্যাট' : 'Fat'}: {Math.round(group.macros.fat_g)}g</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -850,7 +859,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
             {groups.length > 2 && (
               <button
                 onClick={() => setShowAllLogs(!showAllLogs)}
-                className="w-full mt-2 py-2.5 bg-cream/40 hover:bg-cream/60 text-ink-muted border border-ink/5 rounded-xl font-bn font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                className="w-full mt-2 py-2.5 bg-[#A7C924]/10 hover:bg-[#A7C924]/20 text-[#7C971B] border border-[#A7C924]/20 rounded-xl font-bn font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
               >
                 {showAllLogs 
                   ? (isBn ? 'কম দেখান ▲' : 'Show Less ▲') 

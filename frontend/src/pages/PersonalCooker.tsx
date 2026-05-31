@@ -19,20 +19,26 @@ interface ChatMessage {
   content: string;
 }
 
-const CONDITIONS = [
-  'None', 'Anemia', 'Asthma', 'Bronchitis', 'Burns', 'Cancer',
-  'Chronic Kidney Disease', 'Coronary Heart Disease', 'Diabetes',
-  'Diarrhoea', 'Hypertension', 'Hypothyroidism', 'Kidney Stones',
-  'Liver Disease', 'Obesity', 'Tuberculosis',
-];
+const DISEASE_MAPPING: Record<string, string> = {
+  'Diabetes': 'Diabetes', 'Hypertension': 'Hypertension', 'Obesity': 'Obesity',
+  'Anemia': 'Anemia', 'Asthma': 'Asthma', 'Bronchitis': 'Bronchitis',
+  'Burns': 'Burns', 'Cancer': 'Cancer',
+  'Chronic Kidney Disease': 'Chronic Kidney Disease', 'Kidney Disease': 'Chronic Kidney Disease',
+  'Coronary Heart Disease': 'Coronary Heart Disease', 'Heart Disease': 'Coronary Heart Disease',
+  'Diarrhea': 'Diarrhoea', 'Diarrhoea': 'Diarrhoea',
+  'Hypothyroidism': 'Hypothyroidism', 'Thyroid Disorders': 'Hypothyroidism',
+  'Kidney Stones': 'Kidney Stones', 'Liver Disease': 'Liver Disease',
+  'Tuberculosis': 'Tuberculosis', 'Tuberculosis (TB)': 'Tuberculosis',
+};
 
 export const PersonalCooker = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profileData } = useAuth();
 
   const [condition, setCondition] = useState('None');
+  const [availableConditions, setAvailableConditions] = useState<string[]>(['None']);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,6 +46,23 @@ export const PersonalCooker = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const sessionId = `pc_${user?.id || 'guest'}_${new Date().toISOString().slice(0, 10)}`;
+
+  // Auto-fetch conditions from profile
+  useEffect(() => {
+    const profileConditions = profileData?.profile?.medical_conditions || [];
+    const matched = new Set<string>();
+    for (const c of profileConditions) {
+      if (DISEASE_MAPPING[c]) matched.add(DISEASE_MAPPING[c]);
+    }
+    const arr = Array.from(matched);
+    if (arr.length > 0) {
+      setAvailableConditions([...arr, 'None']);
+      setCondition(arr[0]);
+    } else {
+      setAvailableConditions(['None']);
+      setCondition('None');
+    }
+  }, [profileData]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -177,19 +200,24 @@ export const PersonalCooker = () => {
           <HeartPulse size={18} className="text-accent shrink-0" />
           <div className="flex-1 min-w-0">
             <label className="text-[0.62rem] text-ink-faint uppercase tracking-wider font-bold block mb-1">
-              {isBn ? 'শরীরিক অবস্থা নির্বাচন করুন' : 'Select your condition'}
+              {isBn ? 'প্রোফাইল থেকে:' : 'From profile:'}
             </label>
-            <select
-              value={condition}
-              onChange={(e) => setCondition(e.target.value)}
-              className="w-full bg-cream/40 border border-ink/10 rounded-lg py-1.5 px-2 text-xs font-bold text-ink outline-none focus:border-accent/40"
-            >
-              {CONDITIONS.map((c) => (
-                <option key={c} value={c}>
+            <div className="flex gap-1.5 flex-wrap">
+              {availableConditions.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCondition(c)}
+                  className={`px-2.5 py-1 rounded-full text-[0.65rem] font-bold border transition-all ${condition === c ? 'bg-ink text-cream border-ink' : 'border-ink/10 text-ink-muted hover:border-ink/30'}`}
+                >
                   {c}
-                </option>
+                </button>
               ))}
-            </select>
+              {availableConditions.length === 1 && availableConditions[0] === 'None' && (
+                <button onClick={() => navigate('/profile')} className="px-2 py-1 rounded-full text-[0.6rem] font-bold bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all">
+                  {isBn ? '+ যোগ করুন' : '+ Add Info'}
+                </button>
+              )}
+            </div>
           </div>
           <button
             onClick={clearChat}

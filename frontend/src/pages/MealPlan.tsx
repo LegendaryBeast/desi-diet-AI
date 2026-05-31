@@ -7,6 +7,7 @@ import {
   Moon,
   RefreshCw,
   Info,
+  ArrowLeftRight,
   Flame,
   Droplet,
   Zap,
@@ -122,6 +123,10 @@ export const MealPlan = () => {
   const [justifications, setJustifications] = useState<Record<string, string>>({});
   const [justificationLoading, setJustificationLoading] = useState<Record<string, boolean>>({});
 
+  const [loadingSwapKey, setLoadingSwapKey] = useState<string | null>(null);
+  const [originalItems, setOriginalItems] = useState<Record<string, any>>({});
+  const [skippedCodes, setSkippedCodes] = useState<Record<string, string[]>>({});
+
   const [loggingFoods, setLoggingFoods] = useState<Record<string, boolean>>({});
   const [loggedFoods, setLoggedFoods] = useState<Record<string, boolean>>({});
   const [loggedFoodIds, setLoggedFoodIds] = useState<Record<string, string>>({});
@@ -236,6 +241,109 @@ export const MealPlan = () => {
       setJustifications((prev) => ({ ...prev, [code]: 'বিশ্লেষণ লোড করতে সমস্যা হয়েছে।' }));
     } finally {
       setJustificationLoading((prev) => ({ ...prev, [code]: false }));
+    }
+  };
+
+  const handleSwapRequest = (items: string[]) => {
+    navigate('/chat', { state: { prefill: `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।` }});
+  };
+
+  const handleAutoSwap = async (targetPlan: MealPlanResponse, mealSlot: string, item: any, itemIndex: number) => {
+    const key = `${mealSlot}-${itemIndex}`;
+    setLoadingSwapKey(key);
+
+    try {
+      // 1. Get or set original item
+      let originalItem = originalItems[key];
+      if (!originalItem) {
+        originalItem = item;
+        setOriginalItems(prev => ({ ...prev, [key]: item }));
+      }
+
+      // 2. Fetch alternatives for the original item
+      const code = originalItem.food_code || originalItem.code || originalItem.name_en || originalItem.name_bn || '';
+      if (!code) {
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      const res = await foodsApi.alternatives(code);
+      const alts = Array.isArray(res) ? res : [];
+      if (alts.length === 0) {
+        alert('কোনো বিকল্প পাওয়া যায়নি (No alternatives found)');
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      // 3. Find the first alternative that has not been skipped
+      const skipped = skippedCodes[key] || [];
+      let nextAlt = alts.find((a: any) => !skipped.includes(a.code) && a.code !== originalItem.code);
+
+      let newSkipped = [...skipped];
+
+      if (!nextAlt) {
+        // We've cycled through all options. Reset skipped list and revert to original item!
+        newSkipped = [];
+        setSkippedCodes(prev => ({ ...prev, [key]: [] }));
+        nextAlt = originalItem; // Revert to original
+      } else {
+        // Record this suggestion as skipped/shown
+        newSkipped.push(nextAlt.code);
+        setSkippedCodes(prev => ({ ...prev, [key]: newSkipped }));
+      }
+
+      // 4. Update the meal plan
+      const pd = getPlanData(targetPlan);
+      const newPlanData = JSON.parse(JSON.stringify(pd));
+      const slotObj = newPlanData.meals.find((m: any) => m.slot === mealSlot);
+      if (!slotObj) {
+        setLoadingSwapKey(null);
+        return;
+      }
+
+      // Keep amount_g from original item
+      const amount = originalItem.amount_g || originalItem.amount || 100;
+
+      let replacementItem;
+      if (nextAlt === originalItem) {
+        // Revert to original
+        replacementItem = originalItem;
+      } else {
+        const scale = amount / 100.0;
+        replacementItem = {
+          code: nextAlt.code,
+          food_code: nextAlt.code,
+          name_bn: nextAlt.name_bn,
+          name_en: nextAlt.name_en,
+          amount_g: amount,
+          calories: Math.round((nextAlt.calories || 0) * scale),
+          protein_g: Math.round((nextAlt.protein || 0) * scale),
+          carbs_g: Math.round((nextAlt.carbs || 0) * scale),
+          fat_g: Math.round((nextAlt.fat || 0) * scale),
+          food_group: nextAlt.food_group,
+          emoji: originalItem.emoji || '🍽️',
+        };
+      }
+
+      // Swap the item
+      slotObj.items[itemIndex] = replacementItem;
+
+      // Recalculate calories
+      const totalCal = newPlanData.meals.reduce((sum: number, m: any) => {
+        return sum + m.items.reduce((s: number, i: any) => s + (i.calories || 0), 0);
+      }, 0);
+
+      // Perform request
+      const updated = await mealPlanApi.editPlan(targetPlan.plan_id, newPlanData, totalCal);
+      if (plan && plan.plan_id === targetPlan.plan_id) setPlan(updated);
+      if (tomorrowPlan && tomorrowPlan.plan_id === targetPlan.plan_id) setTomorrowPlan(updated);
+      setHistoryPlans(prev => prev.map(p => p.plan_id === targetPlan.plan_id ? updated : p));
+      
+      window.dispatchEvent(new Event('data:refresh'));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'বিকল্প খাবার খুঁজতে সমস্যা হয়েছে');
+    } finally {
+      setLoadingSwapKey(null);
     }
   };
 
@@ -779,16 +887,25 @@ export const MealPlan = () => {
                       </div>
                     </div>
                     {showToggle && !isFuturePlan(p.plan_date) && (
-                      <button
-                        onClick={() => toggleSlotForPlan(p, slot.slot)}
-                        className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-md transition-all ${
-                          isDone
-                            ? 'bg-green-500 text-white hover:bg-red-400'
-                            : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
-                        }`}
-                      >
-                        {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়ানি'}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleSwapRequest((slot.items || []).map((i) => i.name_bn || i.name_en || ''))}
+                          className="p-1.5 rounded-md bg-cream text-accent hover:bg-accent hover:text-white transition-all border border-transparent hover:border-accent/10"
+                          title="এই স্লটের খাবারের বিকল্প খুঁজুন"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => toggleSlotForPlan(p, slot.slot)}
+                          className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-md transition-all ${
+                            isDone
+                              ? 'bg-green-500 text-white hover:bg-red-400'
+                              : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
+                          }`}
+                        >
+                          {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়ানি'}
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -841,6 +958,26 @@ export const MealPlan = () => {
                                   title="কেন এই খাবার?"
                                 >
                                   <Info className="w-3 h-3" />
+                                </button>
+                              )}
+
+                              {/* Swap Item Button */}
+                              {!isEditing && (
+                                <button
+                                  onClick={() => handleAutoSwap(p, slot.slot, food, j)}
+                                  disabled={loadingSwapKey === `${slot.slot}-${j}`}
+                                  className={`p-1 rounded border transition-all ${
+                                    loadingSwapKey === `${slot.slot}-${j}`
+                                      ? 'bg-accent/5 border-transparent'
+                                      : 'bg-white hover:bg-accent/5 text-ink-muted hover:text-accent border-ink/5'
+                                  }`}
+                                  title="এই খাবারের বিকল্প খুঁজুন"
+                                >
+                                  {loadingSwapKey === `${slot.slot}-${j}` ? (
+                                    <Loader2 className="w-3 h-3 animate-spin text-accent" />
+                                  ) : (
+                                    <RefreshCw className="w-3 h-3" />
+                                  )}
                                 </button>
                               )}
 

@@ -21,6 +21,9 @@ import {
   Droplet,
   Utensils,
   Shield,
+  ChefHat,
+  ShoppingCart,
+  ListPlus
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -81,7 +84,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     { path: '/dashboard', label: isBn ? 'ড্যাশবোর্ড' : 'Dashboard', icon: Layout },
     { path: '/chat', label: isBn ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant', icon: MessageSquare },
     { path: '/meal-plan', label: isBn ? 'আজকের মিল প্ল্যান' : 'Meal Plan', icon: Utensils },
-    { path: '/micronutrients', label: isBn ? 'পুষ্টি উপাদান' : 'Micronutrients', icon: Droplet },
+    { path: '/meal-builder', label: isBn ? 'মিল বিল্ডার' : 'Meal Builder', icon: ChefHat },
+    { path: '/grocery', label: isBn ? 'গ্রোসারি তুলনা' : 'Grocery', icon: ShoppingCart },
     { path: '/health-log', label: isBn ? 'স্বাস্থ্য লগ' : 'Health Log', icon: Activity },
     { path: '/medicine', label: isBn ? 'ওষুধের রিমাইন্ডার' : 'Medicine', icon: Pill },
     { path: '/foods', label: isBn ? 'খাবারের তালিকা' : 'Foods', icon: Apple },
@@ -90,10 +94,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   const mobileNavItems = [
     { path: '/dashboard', label: isBn ? 'ড্যাশবোর্ড' : 'Dashboard', icon: Layout },
-    { path: '/meal-plan', label: isBn ? 'মিল প্ল্যান' : 'Meal Plan', icon: Utensils },
     { path: '/chat', label: isBn ? 'এআই চ্যাট' : 'AI Chat', icon: MessageSquare },
     { path: '/health-log', label: isBn ? 'স্বাস্থ্য লগ' : 'Health Log', icon: Activity },
-    { path: '/foods', label: isBn ? 'খাবার' : 'Foods', icon: Apple },
+    { path: '/grocery', label: isBn ? 'গ্রোসারি' : 'Grocery', icon: ShoppingCart },
   ];
 
   const handleLogout = () => {

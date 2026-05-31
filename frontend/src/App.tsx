@@ -15,6 +15,9 @@ import { Dashboard } from './pages/Dashboard';
 import { Micronutrients } from './pages/Micronutrients';
 import { Docs } from './pages/Docs';
 import { PersonalCooker } from './pages/PersonalCooker';
+import { MealTracking } from './pages/MealTracking';
+import { GroceryPage } from './pages/GroceryPage';
+import { MealBuilder } from './pages/MealBuilder';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
@@ -26,14 +29,14 @@ import { useLocation } from 'react-router-dom';
 
 const ConditionalNav = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker', '/meal-tracking', '/grocery', '/meal-builder'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Nav />;
 };
 
 const ConditionalFooter = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker', '/meal-tracking', '/grocery', '/meal-builder'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Footer />;
 };
@@ -82,6 +85,9 @@ function AppRoutes() {
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/health-log" element={<ProtectedRoute><HealthLog /></ProtectedRoute>} />
                 <Route path="/meal-plan" element={<ProtectedRoute><MealPlan /></ProtectedRoute>} />
+                <Route path="/meal-tracking" element={<ProtectedRoute><MealTracking /></ProtectedRoute>} />
+                <Route path="/meal-builder" element={<ProtectedRoute><MealBuilder /></ProtectedRoute>} />
+                <Route path="/grocery" element={<ProtectedRoute><GroceryPage /></ProtectedRoute>} />
                 <Route path="/medicine" element={<ProtectedRoute><MedicinePage /></ProtectedRoute>} />
                 <Route path="/foods" element={<ProtectedRoute><FoodsPage /></ProtectedRoute>} />
                 <Route path="/report" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
