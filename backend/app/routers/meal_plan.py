@@ -226,7 +226,9 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             "carbohydrate", "protein", "total fat", "dietary fiber", "moisture",
             "fat", "water",
             "available cho",  # CHO = carbohydrate
-            "chloride (cl)", "choline", "vitamin b12", "energy", "vitamin b", "chloride", "vitamin b12 (cobalamin)", "iodine (i)", "iodine"
+            "chloride (cl)", "choline", "vitamin b12", "energy", "vitamin b", "chloride", "vitamin b12 (cobalamin)", "iodine (i)", "iodine",
+            "food code", "food name", "scientific name", "food group", "tags",
+            "essential quantity minerals", "vitamins", "ash"
         ]:
             continue
             
