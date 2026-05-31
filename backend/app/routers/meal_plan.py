@@ -115,7 +115,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
                 amount_g = 100.0
                 
             food_inputs.append({
-                "code": "",
+                "code": item.get("code") or "",
                 "name_en": name,
                 "name_bn": name,
                 "amount_g": amount_g

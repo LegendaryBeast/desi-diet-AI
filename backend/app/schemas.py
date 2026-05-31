@@ -247,6 +247,7 @@ class MealTrackingRequest(BaseModel):
     input: str = Field(..., description="Natural language description of what was eaten")
     meal_slot: Optional[str] = Field(None, description="breakfast / lunch / dinner / snack")
     language: str = Field(default="en")
+    direct_code: Optional[str] = Field(None, description="Direct food code from plan")
     direct_calories: Optional[float] = Field(None, description="Direct calories if pre-calculated")
     direct_protein: Optional[float] = Field(None, description="Direct protein in grams")
     direct_carbs: Optional[float] = Field(None, description="Direct carbs in grams")

@@ -701,6 +701,7 @@ export const mealTrackingApi = {
     input: string;
     meal_slot?: string;
     language?: string;
+    direct_code?: string;
     direct_calories?: number;
     direct_protein?: number;
     direct_carbs?: number;

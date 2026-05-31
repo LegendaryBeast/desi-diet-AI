@@ -50,37 +50,76 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
     """Log a meal. Nutrition data comes exclusively from the Neo4j Graph-RAG database."""
 
     # ── Path A: Direct log from meal plan (already has verified Graph-RAG values) ──────────
+    # ── Path A: Direct log from meal plan (already has verified Graph-RAG values) ──────────
     if req.direct_calories is not None:
-        direct_carbs = req.direct_carbs or 0.0
-        direct_fat   = req.direct_fat   or 0.0
+        direct_carbs = req.direct_carbs
+        direct_fat   = req.direct_fat
+        direct_protein = req.direct_protein
+        direct_calories = req.direct_calories
 
-        # If macros are missing, scale them from the Graph-RAG database
-        if (req.direct_carbs is None or req.direct_fat is None) and (req.direct_name or req.input):
+        # If macros are missing, scale them from the Graph-RAG database (by code first, then name)
+        if (direct_protein is None or direct_carbs is None or direct_fat is None or direct_calories is None) and (req.direct_code or req.direct_name or req.input):
             try:
                 rag = _get_rag()
-                db_matches = rag.search_food(req.direct_name or req.input)
-                if db_matches:
-                    match  = db_matches[0]
-                    db_cal = float(match.get("calories") or 0.0)
-                    if db_cal > 0:
-                        scale = float(req.direct_calories) / db_cal
-                        if req.direct_carbs is None:
-                            direct_carbs = round(float(match.get("carbs") or 0.0) * scale, 1)
-                        if req.direct_fat is None:
-                            direct_fat = round(float(match.get("fat") or 0.0) * scale, 1)
+                db_food = None
+                
+                if req.direct_code:
+                    with rag.get_neo4j_driver().session() as session:
+                        q = """
+                        MATCH (f:Food)
+                        WHERE f.code = $code
+                        RETURN f.code AS code,
+                               f.name_en AS name_en,
+                               f.energy_kcal AS calories,
+                               f.protein_g AS protein,
+                               f.fat_g AS fat,
+                               f.carbohydrate_g AS carbs
+                        """
+                        res = session.run(q, code=req.direct_code).single()
+                        if res:
+                            db_food = dict(res)
+
+                if not db_food and (req.direct_name or req.input):
+                    db_matches = rag.search_food(req.direct_name or req.input)
+                    if db_matches:
+                        db_food = db_matches[0]
+                        
+                if db_food:
+                    db_cal  = float(db_food.get("calories") or db_food.get("energy_kcal") or 0.0)
+                    db_prot = float(db_food.get("protein") or db_food.get("protein_g") or 0.0)
+                    db_fat  = float(db_food.get("fat") or db_food.get("fat_g") or 0.0)
+                    db_carb = float(db_food.get("carbs") or db_food.get("carbohydrate_g") or 0.0)
+                    
+                    amount_g = req.direct_amount_g or 100.0
+                    scale = amount_g / 100.0
+                    
+                    if direct_calories is None:
+                        direct_calories = round(db_cal * scale, 1)
+                    if direct_protein is None:
+                        direct_protein = round(db_prot * scale, 1)
+                    if direct_carbs is None:
+                        direct_carbs = round(db_carb * scale, 1)
+                    if direct_fat is None:
+                        direct_fat = round(db_fat * scale, 1)
             except Exception:
-                logger.exception("Failed to scale direct plan macros via Graph-RAG")
+                logger.exception("Failed to scale direct plan macros via Graph-RAG by code/name")
+
+        direct_calories = direct_calories or 0.0
+        direct_protein  = direct_protein or 0.0
+        direct_carbs    = direct_carbs or 0.0
+        direct_fat      = direct_fat or 0.0
 
         parsed_items = [{
+            "code":      req.direct_code or "",
             "name":      req.direct_name or req.input,
             "amount_g":  req.direct_amount_g or 100.0,
-            "calories":  req.direct_calories,
-            "protein_g": req.direct_protein or 0.0,
+            "calories":  direct_calories,
+            "protein_g": direct_protein,
             "carbs_g":   direct_carbs,
             "fat_g":     direct_fat,
         }]
-        total_calories      = req.direct_calories
-        macros              = {"protein_g": req.direct_protein or 0.0, "carbs_g": direct_carbs, "fat_g": direct_fat}
+        total_calories      = direct_calories
+        macros              = {"protein_g": direct_protein, "carbs_g": direct_carbs, "fat_g": direct_fat}
         ai_feedback         = "পরিকল্পিত খাবারটি সফলভাবে আপনার দৈনন্দিন ট্র্যাকিংয়ে যুক্ত করা হয়েছে।"
         input_text_display  = f"📋 [Plan] {req.direct_name or req.input}"
 
@@ -241,6 +280,7 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
                 verified.append(db_food.get('name_bn') or db_food.get('name_en'))
 
                 parsed_items.append({
+                    "code":      db_food.get("code") or "",
                     "name":      food_name,
                     "amount_g":  portion_g,
                     "calories":  round(item_calories, 1),
