@@ -1,9 +1,13 @@
 #!/bin/bash
-# Exit immediately if a command exits with a non-zero status
 set -e
 
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERROR: DATABASE_URL environment variable is not set. Please configure it in Railway Variables."
+  exit 1
+fi
+
 echo "==> Running Prisma DB Push to synchronize database schema..."
-python -m prisma db push
+python -m prisma db push --accept-data-loss
 
 echo "==> Database sync completed successfully!"
 
