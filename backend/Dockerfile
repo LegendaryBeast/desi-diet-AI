@@ -24,9 +24,8 @@ COPY . .
 
 # Generate Prisma Client Python with standard binary query engines
 ENV PRISMA_CLI_QUERY_ENGINE_TYPE=binary
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN python -m prisma py fetch
-RUN python -m prisma generate
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" python -m prisma generate
 
 # Make startup script executable
 RUN chmod +x start.sh
