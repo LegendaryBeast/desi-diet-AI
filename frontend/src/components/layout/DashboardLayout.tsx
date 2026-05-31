@@ -12,18 +12,15 @@ import {
   X,
   ArrowLeft,
   ChevronRight,
-  Home,
+  ChevronLeft,
   Pill,
   Apple,
   BarChart2,
   MessageSquare,
   Crown,
-  Droplet,
   Utensils,
-  Shield,
   ChefHat,
   ShoppingCart,
-  ListPlus
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -48,13 +45,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { i18n } = useTranslation();
   const { profileData, logout } = useAuth();
   const { isPro, subscribe, unsubscribe } = useSubscription();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [strictMode, setStrictMode] = useState(() => localStorage.getItem('strictMode') === 'true');
 
-  const handleToggleStrict = (val: boolean) => {
-    setStrictMode(val);
-    localStorage.setItem('strictMode', val ? 'true' : 'false');
-    window.dispatchEvent(new Event('strictModeChanged'));
+  // Mobile overlay sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop collapsed/expanded state — persisted
+  const [collapsed, setCollapsed] = useState(() =>
+    localStorage.getItem('sidebarCollapsed') === 'true'
+  );
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('sidebarCollapsed', next ? 'true' : 'false');
+      return next;
+    });
   };
 
   const location = useLocation();
@@ -68,7 +72,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     ? (profile?.name_bn || profile?.name_en || 'অতিথি')
     : (profile?.name_en || profile?.name_bn || 'Guest');
 
-  // Calculate BMI from profile data if targets.bmi is missing
   const computedBmi = (() => {
     if (targets?.bmi) return targets.bmi.toFixed(1);
     const w = profile?.weight_kg;
@@ -78,7 +81,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   })();
 
   const calories = targets?.target_calories ?? '--';
-  const bmiCategory = targets?.bmi_category ?? (isBn ? '---' : '---');
+  const bmiCategory = targets?.bmi_category ?? '---';
 
   const navItems = [
     { path: '/dashboard', label: isBn ? 'ড্যাশবোর্ড' : 'Dashboard', icon: Layout },
@@ -103,13 +106,155 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     navigate('/auth');
   };
 
-  const renderSidebarContent = (closeSidebar: boolean) => (
-    <div className="p-5 pt-20 lg:pt-6 md:p-6 h-full flex flex-col overflow-y-auto hide-scrollbar select-none">
+  /* ─── Desktop Sidebar Content ─── */
+  const renderDesktopSidebar = () => (
+    <motion.aside
+      animate={{ width: collapsed ? 72 : 256 }}
+      transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+      className="hidden lg:flex lg:flex-col bg-white border-r border-ink/5 h-full shrink-0 overflow-hidden relative"
+    >
+      <div className="flex flex-col h-full overflow-hidden">
+
+        {/* Toggle button */}
+        <div className={`flex items-center border-b border-ink/5 shrink-0 ${collapsed ? 'justify-center py-4' : 'justify-between px-5 py-4'}`}>
+          {!collapsed && (
+            <span className="text-[0.5rem] uppercase tracking-[0.2em] text-ink-faint font-body font-bold whitespace-nowrap overflow-hidden">
+              Health Dashboard
+            </span>
+          )}
+          <button
+            onClick={toggleCollapsed}
+            className="w-7 h-7 rounded-lg bg-cream hover:bg-ink hover:text-cream flex items-center justify-center text-ink-muted transition-all border border-ink/5 shrink-0"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto hide-scrollbar">
+          <div className={`${collapsed ? 'px-2 pt-3' : 'px-4 pt-4'}`}>
+
+            {/* Profile Card */}
+            <Link
+              to="/profile"
+              className={`flex items-center gap-3 bg-cream/50 border border-ink/5 hover:border-accent/30 hover:bg-cream/80 transition-all group cursor-pointer mb-4 ${
+                collapsed ? 'p-2 rounded-2xl justify-center' : 'p-4 rounded-[1.5rem]'
+              }`}
+              title={collapsed ? displayName : undefined}
+            >
+              <div className="w-9 h-9 bg-ink rounded-xl flex items-center justify-center text-cream shadow-md transform rotate-3 flex-shrink-0 group-hover:rotate-6 transition-transform">
+                <User size={17} />
+              </div>
+              {!collapsed && (
+                <div className="min-w-0 overflow-hidden">
+                  <h3 className="font-bn font-bold text-sm leading-tight text-ink truncate group-hover:text-accent transition-colors">{displayName}</h3>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="w-1 h-1 rounded-full bg-accent animate-pulse shrink-0" />
+                    <span className="text-[0.5rem] uppercase tracking-widest text-ink-faint font-body font-bold truncate">{bmiCategory}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 mt-2.5">
+                    <div className="bg-white p-1.5 rounded-lg border border-ink/5 text-center">
+                      <div className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-body">BMI</div>
+                      <div className="font-bold text-xs text-ink">{computedBmi}</div>
+                    </div>
+                    <div className="bg-white p-1.5 rounded-lg border border-ink/5 text-center">
+                      <div className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-body">KCAL</div>
+                      <div className="font-bold text-xs text-accent">{calories}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Link>
+
+            {/* Subscription Status */}
+            <div className={`rounded-2xl border mb-4 ${isPro ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200' : 'bg-cream/50 border-ink/5'} ${collapsed ? 'p-2 flex justify-center' : 'p-3'}`}>
+              <div className={`flex items-center ${collapsed ? '' : 'justify-between'}`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isPro ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white' : 'bg-ink/10 text-ink-muted'}`}>
+                    <Crown size={12} />
+                  </div>
+                  {!collapsed && (
+                    <div>
+                      <div className="font-bn font-bold text-xs text-ink">{isPro ? 'Pro Plan' : 'Free Plan'}</div>
+                      <div className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-body font-bold">{isPro ? '৳500/month' : 'Limited'}</div>
+                    </div>
+                  )}
+                </div>
+                {!collapsed && (
+                  <button
+                    onClick={() => isPro ? unsubscribe() : subscribe()}
+                    className={`relative w-9 h-5 rounded-full transition-all duration-300 ${isPro ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-ink/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${isPro ? 'left-[18px]' : 'left-0.5'}`} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="space-y-0.5">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    title={collapsed ? item.label : undefined}
+                    className={`flex items-center rounded-xl transition-all group border border-transparent ${
+                      collapsed ? 'justify-center p-2.5' : 'gap-3 p-2.5'
+                    } ${
+                      isActive
+                        ? 'bg-ink text-cream shadow-md shadow-ink/5'
+                        : 'text-ink-muted hover:bg-cream hover:text-ink hover:border-ink/5'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                      isActive ? 'bg-accent text-cream' : 'bg-cream group-hover:bg-ink group-hover:text-cream'
+                    }`}>
+                      <item.icon size={15} />
+                    </div>
+                    {!collapsed && (
+                      <span className="font-bn text-sm font-bold flex-1 whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
+                    )}
+                    {!collapsed && isActive && <ChevronRight size={13} className="opacity-40 shrink-0" />}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className={`border-t border-ink/5 space-y-0.5 shrink-0 ${collapsed ? 'px-2 py-3' : 'px-4 py-3'}`}>
+          <button
+            onClick={() => i18n.changeLanguage(isBn ? 'en' : 'bn')}
+            title={collapsed ? (isBn ? 'Switch to English' : 'বাংলায় যান') : undefined}
+            className={`w-full flex items-center rounded-xl hover:bg-cream transition-colors text-ink-muted hover:text-ink font-bold text-sm p-2.5 ${collapsed ? 'justify-center' : 'gap-3'}`}
+          >
+            <Languages size={16} className="shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap overflow-hidden">{isBn ? 'Switch to English' : 'বাংলায় যান'}</span>}
+          </button>
+          <button
+            onClick={handleLogout}
+            title={collapsed ? (isBn ? 'লগ আউট' : 'Log Out') : undefined}
+            className={`w-full flex items-center rounded-xl hover:bg-red-50 text-red-500 transition-colors font-bold text-sm p-2.5 ${collapsed ? 'justify-center' : 'gap-3'}`}
+          >
+            <LogOut size={16} className="shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap overflow-hidden">{isBn ? 'লগ আউট' : 'Log Out'}</span>}
+          </button>
+        </div>
+      </div>
+    </motion.aside>
+  );
+
+  /* ─── Mobile Sidebar Content ─── */
+  const renderMobileSidebar = () => (
+    <div className="p-5 pt-20 md:p-6 h-full flex flex-col overflow-y-auto hide-scrollbar select-none">
       {/* Profile Card */}
       <Link
         to="/profile"
-        onClick={() => closeSidebar && setSidebarOpen(false)}
-        className="block bg-cream/50 p-4 md:p-5 rounded-[2rem] mb-5 border border-ink/5 hover:border-accent/30 hover:bg-cream/80 transition-all group cursor-pointer"
+        onClick={() => setSidebarOpen(false)}
+        className="block bg-cream/50 p-4 rounded-[2rem] mb-5 border border-ink/5 hover:border-accent/30 hover:bg-cream/80 transition-all group cursor-pointer"
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-ink rounded-xl flex items-center justify-center text-cream shadow-md transform rotate-3 flex-shrink-0 group-hover:rotate-6 transition-transform">
@@ -123,13 +268,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center group-hover:border-accent/10 transition-colors">
+          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center">
             <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">BMI</div>
             <div className="font-bold text-sm text-ink">{computedBmi}</div>
           </div>
-          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center group-hover:border-accent/10 transition-colors">
+          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center">
             <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">KCAL</div>
             <div className="font-bold text-sm text-accent">{calories}</div>
           </div>
@@ -137,40 +281,25 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </Link>
 
       {/* Subscription Status */}
-      <div className={`p-3.5 rounded-2xl border mb-5 ${
-        isPro
-          ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
-          : 'bg-cream/50 border-ink/5'
-      }`}>
+      <div className={`p-3.5 rounded-2xl border mb-5 ${isPro ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200' : 'bg-cream/50 border-ink/5'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center ${
-              isPro ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white' : 'bg-ink/10 text-ink-muted'
-            }`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isPro ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white' : 'bg-ink/10 text-ink-muted'}`}>
               <Crown size={12} />
             </div>
             <div>
-              <div className="font-bn font-bold text-xs text-ink">
-                {isPro ? 'Pro Plan' : 'Free Plan'}
-              </div>
-              <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body font-bold">
-                {isPro ? '৳500/month' : 'Limited'}
-              </div>
+              <div className="font-bn font-bold text-xs text-ink">{isPro ? 'Pro Plan' : 'Free Plan'}</div>
+              <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body font-bold">{isPro ? '৳500/month' : 'Limited'}</div>
             </div>
           </div>
           <button
             onClick={() => isPro ? unsubscribe() : subscribe()}
-            className={`relative w-9 h-5 rounded-full transition-all duration-300 ${
-              isPro ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-ink/15'
-            }`}
+            className={`relative w-9 h-5 rounded-full transition-all duration-300 ${isPro ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-ink/15'}`}
           >
-            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${
-              isPro ? 'left-[18px]' : 'left-0.5'
-            }`} />
+            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${isPro ? 'left-[18px]' : 'left-0.5'}`} />
           </button>
         </div>
       </div>
-
 
       {/* Navigation */}
       <nav className="flex-grow space-y-1">
@@ -181,16 +310,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <Link
               key={item.path}
               to={item.path}
-              onClick={() => closeSidebar && setSidebarOpen(false)}
+              onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group border border-transparent ${
                 isActive
                   ? 'bg-ink text-cream shadow-md shadow-ink/5'
                   : 'text-ink-muted hover:bg-cream hover:text-ink hover:border-ink/5'
               }`}
             >
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                isActive ? 'bg-accent text-cream' : 'bg-cream group-hover:bg-ink group-hover:text-cream'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-accent text-cream' : 'bg-cream group-hover:bg-ink group-hover:text-cream'}`}>
                 <item.icon size={16} />
               </div>
               <span className="font-bn text-sm font-bold flex-1">{item.label}</span>
@@ -221,12 +348,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   return (
     <div className="h-screen h-[100dvh] bg-cream flex overflow-hidden font-bn relative">
-      {/* Desktop Sidebar (Persistent) */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 bg-white border-r border-ink/5 h-full">
-        {renderSidebarContent(false)}
-      </aside>
 
-      {/* Sidebar Overlay for Mobile */}
+      {/* Desktop Sidebar (Collapsible) */}
+      {renderDesktopSidebar()}
+
+      {/* Mobile Overlay Sidebar */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
@@ -244,7 +370,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed inset-y-0 left-0 w-[260px] bg-white border-r border-ink/5 flex flex-col z-30 shadow-2xl lg:hidden"
             >
-              {renderSidebarContent(true)}
+              {renderMobileSidebar()}
             </motion.aside>
           </>
         )}
@@ -252,7 +378,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative bg-[#FDFCF9] overflow-hidden min-w-0">
-        {/* Cinematic Texture Background */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
 
         {/* Dynamic Header */}
@@ -261,11 +386,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 bg-cream rounded-xl text-ink-muted hover:bg-ink hover:text-cream transition-all flex shadow-sm interactive lg:hidden"
+                className="p-2 bg-cream rounded-xl text-ink-muted hover:bg-ink hover:text-cream transition-all flex shadow-sm lg:hidden"
               >
                 {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
               </button>
-              <Link to="/" className="p-2 bg-cream rounded-xl text-ink-muted hover:bg-ink hover:text-cream transition-all flex lg:hidden interactive">
+              <Link to="/" className="p-2 bg-cream rounded-xl text-ink-muted hover:bg-ink hover:text-cream transition-all flex lg:hidden">
                 <ArrowLeft size={16} />
               </Link>
             </div>
@@ -309,9 +434,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-                  isActive ? 'text-accent' : 'text-ink-muted hover:text-ink'
-                }`}
+                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${isActive ? 'text-accent' : 'text-ink-muted hover:text-ink'}`}
               >
                 <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-accent/5 scale-110' : ''}`}>
                   <item.icon className="w-5 h-5" />
