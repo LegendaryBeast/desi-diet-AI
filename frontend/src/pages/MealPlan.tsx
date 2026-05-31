@@ -27,8 +27,9 @@ import {
   Check,
   Crown,
   Lock,
+  ChefHat,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -99,10 +100,11 @@ interface PlanData {
 export const MealPlan = () => {
   const { profileData } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isPro } = useSubscription();
   const [showProModal, setShowProModal] = useState(false);
   const [proTrigger, setProTrigger] = useState<'regenerate' | 'tomorrow' | 'general'>('general');
-  const [tab, setTab] = useState<Tab>('today');
+  const [tab, setTab] = useState<Tab>((location.state as any)?.tab || 'today');
   const [plan, setPlan] = useState<MealPlanResponse | null>(null);
   const [tomorrowPlan, setTomorrowPlan] = useState<MealPlanResponse | null>(null);
   const [historyPlans, setHistoryPlans] = useState<MealPlanResponse[]>([]);
@@ -494,6 +496,13 @@ export const MealPlan = () => {
     else if (tab === 'tomorrow') fetchTomorrow();
     else fetchHistory();
   }, [tab, fetchDaily, fetchTomorrow, fetchHistory]);
+
+  useEffect(() => {
+    const stateTab = (location.state as any)?.tab;
+    if (stateTab) {
+      setTab(stateTab);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (tab === 'today' && plan) {
@@ -1172,10 +1181,15 @@ export const MealPlan = () => {
               { id: 'today' as Tab, label: 'আজকের', icon: Flame, locked: false },
               { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
               { id: 'history' as Tab, label: 'ইতিহাস', icon: History, locked: false },
-            ].map(({ id, label, icon: Icon, locked }) => (
+              { id: 'builder' as any, label: 'মিল বিল্ডার', icon: ChefHat, locked: false, isLink: true },
+            ].map(({ id, label, icon: Icon, locked, isLink }) => (
               <button
                 key={id}
                 onClick={() => {
+                  if (isLink) {
+                    navigate('/meal-builder');
+                    return;
+                  }
                   if (locked) {
                     setProTrigger('tomorrow');
                     setShowProModal(true);

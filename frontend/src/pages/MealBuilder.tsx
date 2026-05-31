@@ -1,9 +1,13 @@
 import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { ProModal } from '../components/ui/ProModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChefHat, Plus, Trash2, Search, Loader2, AlertCircle, X,
   Flame, Beef, Wheat, Droplets, ShieldCheck, ShieldAlert, Star,
   ArrowLeftRight, RefreshCw,
+  CalendarDays, History, Lock,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { mealBuilderApi, foodsApi, type MealBuilderItem, type MealBuilderAnalyzeResponse, type FoodSearchResponse } from '../lib/api';
@@ -20,6 +24,10 @@ interface MealItem extends MealBuilderItem {
 }
 
 export const MealBuilder = () => {
+  const navigate = useNavigate();
+  const { isPro } = useSubscription();
+  const [showProModal, setShowProModal] = useState(false);
+  const [proTrigger, setProTrigger] = useState<'regenerate' | 'tomorrow' | 'general'>('general');
   const [mealSlot, setMealSlot] = useState('lunch');
   const [items, setItems] = useState<MealItem[]>([]);
   const [searchQ, setSearchQ] = useState('');
@@ -99,7 +107,43 @@ export const MealBuilder = () => {
 
   return (
     <DashboardLayout title="মিল বিল্ডার" subtitle="Meal Builder — AI খাবার বিশ্লেষণ">
+      {/* Pro Upgrade Modal */}
+      <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger={proTrigger} />
+
       <div className="max-w-3xl mx-auto space-y-4 pb-10">
+        {/* Tab Selector */}
+        <div className="flex justify-center">
+          <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
+            {[
+              { id: 'today', label: 'আজকের', icon: Flame, locked: false },
+              { id: 'tomorrow', label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
+              { id: 'history', label: 'ইতিহাস', icon: History, locked: false },
+              { id: 'builder', label: 'মিল বিল্ডার', icon: ChefHat, locked: false },
+            ].map(({ id, label, icon: Icon, locked }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  if (locked) {
+                    setProTrigger('tomorrow');
+                    setShowProModal(true);
+                    return;
+                  }
+                  if (id !== 'builder') {
+                    navigate('/meal-plan', { state: { tab: id } });
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bn text-xs font-bold transition-all ${id === 'builder' ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
+                  } ${locked ? 'opacity-60' : ''}`}
+              >
+                {locked ? <Lock className="w-3 h-3" /> : <Icon className="w-3.5 h-3.5" />}
+                {label}
+                {locked && (
+                  <span className="text-[0.5rem] bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">Pro</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 font-bn text-xs">
