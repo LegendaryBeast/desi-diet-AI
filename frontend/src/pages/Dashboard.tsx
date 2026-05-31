@@ -155,7 +155,7 @@ export const Dashboard = () => {
             <div>
               <h2 className="text-3xl md:text-4xl font-extrabold mb-5 leading-tight text-white">আপনার ডায়েট প্ল্যান<br/>এখান থেকেই শুরু!</h2>
               <div className="inline-flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center border border-accent/40 group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-full bg-[#A7C924]/20 flex items-center justify-center border border-[#A7C924]/40 group-hover:scale-110 transition-transform">
                   <Play fill="#A7C924" color="#A7C924" size={18} />
                 </div>
                 <span className="text-white font-medium text-lg">এক্সপ্লোর করুন</span>
@@ -175,13 +175,13 @@ export const Dashboard = () => {
                    <div className="text-white/60 text-[10px]">মেম্বারস</div>
                  </div>
                </div>
-               <div className="flex items-center gap-2 text-sm font-extrabold bg-accent text-white px-5 py-2.5 rounded-full hover:bg-white hover:text-ink transition-colors">
+               <div className="flex items-center gap-2 text-sm font-extrabold bg-[#A7C924] text-ink px-5 py-2.5 rounded-full hover:bg-white hover:text-ink transition-colors">
                  শুরু করুন <ChevronRight size={18} />
                </div>
             </div>
           </div>
           {/* Decorative graphic */}
-          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-[#A7C924]/15 rounded-full blur-3xl pointer-events-none"></div>
         </Link>
 
         {/* QUICK ACTIONS ROW */}
