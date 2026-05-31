@@ -64,6 +64,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    if (location.pathname === '/dashboard') {
+      setCollapsed(true);
+      localStorage.setItem('sidebarCollapsed', 'true');
+    }
+  }, [location.pathname]);
+
   const profile = profileData?.profile;
   const targets = profileData?.targets;
   const isBn = i18n.language === 'bn';

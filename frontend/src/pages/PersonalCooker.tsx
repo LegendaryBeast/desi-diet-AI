@@ -221,56 +221,158 @@ export const PersonalCooker = () => {
     'How to cook a delicious fish curry with minimal oil?'
   ];
 
+  const profile = profileData?.profile;
+  const displayName = isBn
+    ? (profile?.name_bn || profile?.name_en || user?.email?.split('@')[0] || user?.phone || 'ব্যবহারকারী')
+    : (profile?.name_en || profile?.name_bn || user?.email?.split('@')[0] || user?.phone || 'User');
+
+  const hasUserMessages = messages.some((m) => m.role === 'user');
+
   return (
     <DashboardLayout
       title={isBn ? 'নিজের রান্নাঘর' : 'Personal Cooker'}
       subtitle={isBn ? 'রাঁধুনি AI — রান্না ও পুষ্টি সহায়িকা' : 'Radhuni AI — Personalized Cooking Guide'}
       noPadding={true}
+      headerExtra={
+        <div className="relative">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-ink rounded-xl md:rounded-2xl flex items-center justify-center text-cream shadow-lg transform -rotate-3">
+            <ChefHat size={20} className="md:w-6 md:h-6" />
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-4 md:h-4 bg-green-500 border-2 md:border-4 border-white rounded-full" />
+        </div>
+      }
       headerActions={
         <div className="flex items-center gap-2">
           <button
             onClick={clearChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl font-bn font-bold text-xs transition-colors interactive shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-cream text-ink-muted hover:bg-red-50 hover:text-red-500 rounded-xl transition-all font-bn font-bold text-xs shadow-sm interactive"
           >
-            <Trash2 size={13} />
-            {isBn ? 'চ্যাট মুছুন' : 'Clear Chat'}
+            <Trash2 size={14} />
+            <span className="hidden sm:inline">{isBn ? 'চ্যাট মুছুন' : 'Clear Chat'}</span>
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-cream border border-ink/10 rounded-xl font-bn font-bold text-xs text-ink transition-colors interactive shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-cream text-ink-muted hover:bg-ink hover:text-cream rounded-xl transition-all font-bn font-bold text-xs shadow-sm interactive"
           >
-            <ArrowLeft size={13} />
-            {isBn ? 'ড্যাশবোর্ড' : 'Dashboard'}
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">{isBn ? 'ড্যাশবোর্ড' : 'Dashboard'}</span>
           </button>
         </div>
       }
     >
-      <div className="flex-grow flex flex-col lg:flex-row gap-5 p-4 md:p-6 lg:p-8 h-full min-h-0 overflow-hidden font-bn">
-        {/* Left Column: Chat Window */}
-        <div className="flex-grow flex flex-col bg-white rounded-2xl border border-ink/5 shadow-sm overflow-hidden h-full min-w-0">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {historyLoading && messages.length === 0 && (
-              <div className="flex justify-center py-10">
-                <Loader2 className="w-6 h-6 animate-spin text-accent" />
-              </div>
-            )}
-            <AnimatePresence initial={false}>
-              {messages.map((msg, idx) => (
+      <div className="flex-1 flex flex-col relative max-w-4xl mx-auto w-full min-h-0">
+        {/* Soft Background Glows */}
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[400px] bg-accent/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none" />
+
+        {/* Conversation Stream */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-6 md:p-6 md:pb-8 space-y-4 md:space-y-5 scroll-smooth relative z-10">
+          <AnimatePresence initial={false}>
+            {historyLoading && messages.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="h-full flex flex-col items-center justify-center text-center py-10"
+              >
+                <Loader2 className="w-8 h-8 animate-spin text-accent mb-4" />
+                <p className="font-bn text-sm text-ink-muted">
+                  {isBn ? 'বার্তা ইতিহাস লোড হচ্ছে...' : 'Loading message history...'}
+                </p>
+              </motion.div>
+            ) : !hasUserMessages ? (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="h-full flex flex-col items-center justify-center text-center py-6 md:py-10"
+              >
+                {/* Brand Icon */}
+                <motion.div
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  className="w-12 h-12 md:w-16 md:h-16 bg-ink rounded-2xl flex items-center justify-center text-cream mb-4 md:mb-6 shadow-xl relative overflow-hidden group mx-auto"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ChefHat size={24} className="relative z-10" />
+                </motion.div>
+
+                <div className="space-y-1.5 md:space-y-2 mb-6 md:mb-8 px-4">
+                  <h4 className="text-ink-muted font-bn text-xs md:text-sm opacity-65">
+                    {isBn ? `${displayName}, আমি আপনার রন্ধন ও পুষ্টি সহায়িকা` : `${displayName}, I am your culinary & nutrition assistant`}
+                  </h4>
+                  <h3 className="font-display text-xl md:text-3xl font-black text-ink tracking-tight leading-tight">
+                    {isBn ? 'আজকে রান্নাঘরে কী সাহায্য করতে পারি?' : 'How can I help in the kitchen today?'}
+                  </h3>
+                  <p className="font-bn text-xs md:text-sm text-ink-faint max-w-xl mx-auto opacity-75 leading-relaxed mt-2">
+                    {isBn
+                      ? 'আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!'
+                      : 'I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile\'s conditions. Feel free to ask me about any ingredients or recipes!'}
+                  </p>
+                </div>
+
+                {/* Feature Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full px-4 max-w-3xl mx-auto mb-8">
+                  {featureCards.map((feat, i) => (
+                    <div
+                      key={i}
+                      className="p-4 bg-white border border-ink/5 rounded-2xl text-left hover:border-accent/20 hover:shadow-md hover:translate-y-[-1px] transition-all group shadow-sm flex items-center gap-3"
+                    >
+                      <div className={`w-9 h-9 ${feat.bg} rounded-xl flex items-center justify-center shrink-0`}>
+                        <feat.icon size={16} className={feat.color} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bn font-bold text-xs md:text-sm text-ink truncate">{feat.title}</div>
+                        <div className="font-bn text-[0.68rem] text-ink-muted leading-tight mt-0.5">{feat.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick Ask */}
+                <div className="w-full px-4 max-w-3xl mx-auto text-left space-y-2.5">
+                  <span className="text-[0.55rem] text-ink-faint font-bold uppercase tracking-wider flex items-center gap-1">
+                    <HelpCircle size={10} className="text-accent animate-pulse" />
+                    {isBn ? 'কুইক সাজেশনস (Quick Ask)' : 'Quick Suggestions'}
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {quickSuggestions.map((sug, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSuggestionClick(sug)}
+                        className="w-full text-left p-3.5 rounded-xl bg-white border border-ink/5 text-[11px] text-ink-muted hover:text-accent hover:border-accent/20 hover:bg-accent/5 transition-all flex items-center justify-between group shadow-sm"
+                      >
+                        <span className="truncate pr-1 font-bn font-medium">{sug}</span>
+                        <ChevronRight size={12} className="text-ink-faint shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              messages.map((msg, idx) => (
                 <motion.div
                   key={idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 md:gap-3`}
                 >
+                  {msg.role === 'assistant' && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-8 h-8 rounded-xl bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-md mb-0.5 transform -rotate-3 border border-white/10"
+                    >
+                      <ChefHat size={15} />
+                    </motion.div>
+                  )}
                   <div
-                    className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                    className={`relative p-3 px-4 md:p-4 md:px-5 rounded-2xl md:rounded-[1.5rem] font-bn leading-relaxed text-sm md:text-base max-w-[88%] md:max-w-[75%] shadow-sm transition-all duration-300 ${
                       msg.role === 'user'
-                        ? 'bg-ink text-cream rounded-br-none'
-                        : 'bg-cream/60 text-ink border border-ink/5 rounded-bl-none'
+                        ? 'bg-ink text-cream rounded-br-none shadow-ink/10'
+                        : 'bg-white border border-ink/5 text-ink rounded-tl-none ring-1 ring-ink/5'
                     }`}
                   >
                     {msg.role === 'assistant' && (
-                      <div className="flex items-center gap-1.5 mb-1.5 border-b border-ink/5 pb-1">
+                      <div className="flex items-center gap-1.5 mb-1.5 border-b border-ink/5 pb-1 select-none">
                         <ChefHat size={14} className="text-accent" />
                         <span className="text-[0.6rem] font-bold text-accent uppercase tracking-wider">
                           Radhuni AI
@@ -278,116 +380,91 @@ export const PersonalCooker = () => {
                       </div>
                     )}
                     <div
+                      className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed text-sm md:text-[0.95rem]"
                       dangerouslySetInnerHTML={{
                         __html: msg.content
-                          .replace(/\*\*(.*?)\*\*/g, '<strong class="text-accent">$1</strong>')
+                          .replace(/\*\*(.*?)\*\*/g, '<strong class="text-accent font-bold">$1</strong>')
                           .replace(/\n/g, '<br/>'),
                       }}
                     />
                   </div>
                 </motion.div>
-              ))}
-            </AnimatePresence>
+              ))
+            )}
+
+            {/* Thinking / Loading indicator */}
             {loading && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex justify-start"
+                initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex flex-col gap-1.5"
               >
-                <div className="bg-cream/60 px-4 py-3 rounded-2xl rounded-bl-none border border-ink/5 flex items-center gap-2">
-                  <Loader2 size={16} className="animate-spin text-accent" />
-                  <span className="text-xs text-ink-muted">
-                    {isBn ? 'রাঁধুনি AI ভাবছে...' : 'Radhuni AI is thinking...'}
-                  </span>
+                <div className="flex justify-start items-end gap-2 md:gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-ink flex-shrink-0 flex items-center justify-center text-cream shadow-md mb-0.5 transform -rotate-3">
+                    <ChefHat size={15} />
+                  </div>
+                  <div className="p-3.5 px-4 bg-white border border-ink/5 rounded-2xl rounded-tl-none shadow-md flex items-center gap-1 ring-1 ring-ink/5">
+                    {[0, 1, 2].map((dot) => (
+                      <motion.div
+                        key={dot}
+                        className="w-1.5 h-1.5 bg-accent/40 rounded-full"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                        transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.15, ease: 'easeInOut' }}
+                      />
+                    ))}
+                  </div>
                 </div>
+                <motion.div
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="ml-10 md:ml-12 flex items-center gap-1.5"
+                >
+                  <span className="text-[0.6rem] font-bn font-bold text-accent tracking-wider uppercase flex items-center gap-1">
+                    Radhuni AI
+                    <span className="animate-pulse">{isBn ? 'ভাবছে...' : 'thinking...'}</span>
+                  </span>
+                </motion.div>
               </motion.div>
             )}
-            <div ref={messagesEndRef} />
-          </div>
+          </AnimatePresence>
+          <div ref={messagesEndRef} className="h-4 md:h-6 shrink-0" />
+        </div>
 
-          {/* Input area */}
-          <div className="p-3 border-t border-ink/5 bg-white">
-            <div className="flex gap-2">
+        {/* Input Bar */}
+        <div className="p-3 md:p-4 bg-white/90 backdrop-blur-xl border-t border-ink/5 z-30 shrink-0 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.03)]">
+          <div className="max-w-4xl mx-auto flex items-center gap-2 md:gap-3 px-1">
+            <div className="flex-1 bg-white border border-ink/10 rounded-full flex items-center px-3.5 md:px-5 py-0.5 shadow-sm focus-within:border-accent/40 focus-within:ring-4 ring-accent/5 transition-all duration-300">
               <input
                 ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                disabled={loading}
                 placeholder={
                   isBn
-                    ? 'একটি রেসিপি বা খাবারের নিরাপত্তা জিজ্ঞাসা করুন...'
+                    ? 'একটি রেসিпи বা খাবারের নিরাপত্তা জিজ্ঞাসা করুন...'
                     : 'Ask for a recipe or food safety advice...'
                 }
-                className="flex-1 bg-cream/40 border border-ink/10 rounded-xl py-2.5 px-3.5 text-sm font-bn outline-none focus:border-accent/40 transition-all"
+                className="flex-1 bg-transparent py-2.5 md:py-3 font-bn text-xs md:text-sm focus:outline-none placeholder:text-ink/25 disabled:opacity-50"
               />
               <button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="px-4 py-2 bg-ink text-cream rounded-xl hover:bg-accent transition-all disabled:opacity-40 flex items-center gap-1.5 shrink-0"
+                className="ml-1.5 px-3 md:px-4 py-1.5 bg-accent text-white rounded-full font-bn font-bold text-xs md:text-[0.8rem] flex items-center gap-1.5 hover:bg-ink hover:scale-102 active:scale-98 disabled:opacity-20 disabled:scale-100 transition-all shadow shrink-0"
               >
-                {loading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
+                <span className="hidden md:inline">{isBn ? 'পাঠান' : 'Send'}</span>
+                <Send size={13} className={input.trim() ? 'animate-pulse' : ''} />
               </button>
             </div>
-            <p className="text-[0.55rem] text-ink-faint mt-1.5 text-center">
+          </div>
+          <div className="flex justify-center items-center mt-3 opacity-50">
+            <p className="text-[0.55rem] md:text-[0.6rem] uppercase tracking-[0.2em] text-ink-faint font-body font-black text-center">
               {isBn
                 ? 'রাঁধুনি AI জাতীয় খাদ্য নির্দেশিকা ২০২২ অনুসরণ করে। চিকিৎসা পরামর্শের বিকল্প নয়।'
                 : 'Radhuni AI follows Bangladesh National Dietary Guidelines 2022. Not a substitute for medical advice.'}
             </p>
-          </div>
-        </div>
-
-        {/* Right Column: NutriSaathi Info/Features Panel */}
-        <div className="w-full lg:w-80 bg-white p-5 rounded-2xl border border-ink/5 shadow-sm shrink-0 flex flex-col justify-between overflow-y-auto max-h-[400px] lg:max-h-none h-full gap-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-ink/5 pb-2.5">
-              <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center text-accent">
-                <ChefHat size={16} />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-ink">{isBn ? 'রাঁধুনি AI নির্দেশিকা' : 'Radhuni AI Guide'}</h3>
-                <p className="text-[0.55rem] text-ink-faint">{isBn ? 'আপনার পুষ্টি ও রন্ধন সহকারী' : 'Your diet & cooking expert'}</p>
-              </div>
-            </div>
-
-            {/* Feature list */}
-            <div className="space-y-3">
-              {featureCards.map((feat, i) => (
-                <div key={i} className="flex gap-2.5 p-2 hover:bg-cream/40 rounded-xl transition-all border border-transparent hover:border-ink/5 group">
-                  <div className={`w-7 h-7 rounded-lg ${feat.bg} flex items-center justify-center shrink-0`}>
-                    <feat.icon size={14} className={feat.color} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-[11px] text-ink group-hover:text-accent transition-colors">{feat.title}</h4>
-                    <p className="text-[9px] text-ink-muted leading-tight mt-0.5">{feat.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Suggestions */}
-          <div className="space-y-2 border-t border-ink/5 pt-3">
-            <span className="text-[0.55rem] text-ink-faint font-bold uppercase tracking-wider flex items-center gap-1">
-              <HelpCircle size={10} className="text-accent" />
-              {isBn ? 'কুইক সাজেশনস (Quick Ask)' : 'Quick Suggestions'}
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {quickSuggestions.map((sug, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSuggestionClick(sug)}
-                  className="w-full text-left p-2 rounded-xl bg-cream/40 border border-ink/5 text-[10px] text-ink-muted hover:text-accent hover:border-accent/20 hover:bg-accent/5 transition-all flex items-center justify-between group"
-                >
-                  <span className="truncate pr-1">{sug}</span>
-                  <ChevronRight size={10} className="text-ink-faint shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>
