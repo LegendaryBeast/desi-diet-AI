@@ -110,34 +110,38 @@ export const Dashboard = () => {
 
   return (
     <DashboardLayout title="ড্যাশবোর্ড" subtitle="Overview">
-      <div className="max-w-5xl w-full mx-auto space-y-6 font-bn pb-12 px-4">
-        {/* Header Greeting */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-ink/5 shadow-sm">
+      <div className="max-w-[1400px] w-full mx-auto space-y-6 font-bn pb-12 px-2 md:px-6">
+        
+        {/* Header Greeting & Quick Stats */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/60 backdrop-blur-xl p-5 md:p-6 rounded-[2rem] border border-ink/5 shadow-sm">
           <div className="flex items-center gap-4">
-            <Link to="/profile" className="w-14 h-14 bg-cream text-accent hover:bg-accent hover:text-white rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm border border-ink/5 group interactive shrink-0">
-              <User size={24} className="group-hover:scale-110 transition-transform" />
+            <Link to="/profile" className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 text-accent hover:scale-105 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-inner border border-accent/10 group shrink-0">
+              <User size={26} className="group-hover:scale-110 transition-transform" />
             </Link>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-ink leading-tight flex items-center gap-2">
+              <h1 className="text-xl md:text-3xl font-extrabold text-ink leading-tight flex items-center gap-2">
                 শুভ দিন, <span className="text-accent">{userName}</span>!
               </h1>
-              <p className="text-sm text-ink-muted leading-tight mt-1">আজকের লক্ষ্যমাত্রা ও স্বাস্থ্য একনজরে দেখে নিন</p>
+              <p className="text-sm text-ink-muted leading-tight mt-1 font-medium">আজকের লক্ষ্যমাত্রা ও স্বাস্থ্য একনজরে দেখে নিন</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
             {targets && (
               <>
-                <span className="text-xs font-bold px-3 py-1.5 bg-cream rounded-xl border border-ink/5 text-ink-muted">
-                  BMI: <span className="text-accent font-extrabold">{targets.bmi.toFixed(1)}</span> ({targets.bmi_category})
+                <span className="text-[11px] font-bold px-3 py-1.5 bg-white rounded-xl border border-ink/5 text-ink-muted shadow-sm flex items-center gap-1.5">
+                  BMI: <span className="text-accent font-extrabold text-sm">{targets.bmi.toFixed(1)}</span> ({targets.bmi_category})
                 </span>
-                <span className="text-xs font-bold px-3 py-1.5 bg-cream rounded-xl border border-ink/5 text-ink-muted">
-                  ওজন লক্ষ্য: <span className="text-forest font-extrabold">{targets.ideal_body_weight_kg}kg</span>
+                <span className="text-[11px] font-bold px-3 py-1.5 bg-white rounded-xl border border-ink/5 text-ink-muted shadow-sm flex items-center gap-1.5">
+                  ওজন লক্ষ্য: <span className="text-forest font-extrabold text-sm">{targets.ideal_body_weight_kg}kg</span>
+                </span>
+                <span className="text-[11px] font-bold px-3 py-1.5 bg-white rounded-xl border border-ink/5 text-ink-muted shadow-sm flex items-center gap-1.5">
+                  <Droplet className="w-3.5 h-3.5 text-blue-500" /> <span className="text-blue-600 font-extrabold text-sm">{targets.water_l}L</span>
                 </span>
               </>
             )}
             <Link
               to="/profile"
-              className="text-xs font-bold px-3 py-1.5 bg-ink text-cream hover:bg-accent hover:text-white transition-all rounded-xl shadow-sm flex items-center gap-1.5 interactive"
+              className="text-[11px] font-bold px-4 py-2 bg-ink text-cream hover:bg-accent hover:text-white transition-all rounded-xl shadow-md flex items-center gap-1.5 ml-auto md:ml-0"
             >
               <span>প্রোফাইল আপডেট</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -145,303 +149,254 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Highlight Section: Calorie & Meal Stats (Main Feature) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Bento Grid Layout - 3 Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Card 1: Calorie progress (Large Circle) */}
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-base text-ink flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-accent" /> ক্যালোরি লক্ষ্যমাত্রা
+          {/* Left Column: Calories & Macros (lg:col-span-5) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-ink/5 shadow-sm hover:shadow-md transition-all h-full flex flex-col">
+              <div className="flex items-center justify-between mb-6 border-b border-ink/5 pb-3">
+                <h3 className="font-extrabold text-lg text-ink flex items-center gap-2.5">
+                  <Flame className="w-6 h-6 text-accent" /> ক্যালোরি লক্ষ্যমাত্রা
                 </h3>
-                <span className="text-xs text-accent font-bold bg-accent/5 px-2.5 py-1 rounded-full">আজকের ট্র্যাকিং</span>
+                <span className="text-[10px] text-accent font-bold bg-accent/10 px-2.5 py-1 rounded-full uppercase tracking-wider">আজকের ট্র্যাকিং</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-8 py-4">
-                <div className="relative w-32 h-32 flex items-center justify-center flex-shrink-0">
+              {/* Circular Gauge and Overview */}
+              <div className="flex items-center gap-6 mb-8">
+                <div className="relative w-36 h-36 flex items-center justify-center flex-shrink-0">
                   <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="50%" cy="50%" r="40%" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-cream" />
+                    <circle cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-cream" />
                     <circle
-                      cx="50%" cy="50%" r="40%"
-                      stroke="currentColor" strokeWidth="8" fill="transparent"
-                      strokeDasharray={`${2 * Math.PI * 0.40 * 128}`}
-                      strokeDashoffset={`${2 * Math.PI * 0.40 * 128 * (1 - caloriePct / 100)}`}
-                      className="text-accent transition-all duration-500"
+                      cx="50%" cy="50%" r="42%"
+                      stroke="currentColor" strokeWidth="10" fill="transparent"
+                      strokeDasharray={`${2 * Math.PI * 0.42 * 144}`}
+                      strokeDashoffset={`${2 * Math.PI * 0.42 * 144 * (1 - caloriePct / 100)}`}
+                      className="text-accent transition-all duration-1000 ease-out"
+                      strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="font-bold text-2xl text-ink">{caloriePct}%</span>
-                    <span className="text-[10px] text-ink-muted uppercase">গৃহীত</span>
+                    <span className="font-extrabold text-4xl text-ink leading-none">{caloriePct}%</span>
+                    <span className="text-[11px] text-ink-faint uppercase font-bold mt-1">গৃহীত</span>
                   </div>
                 </div>
-                <div className="space-y-3 text-center sm:text-left">
-                  <div className="text-lg text-ink-muted">
-                    গৃহীত ক্যালোরি: <span className="text-accent font-extrabold text-2xl">{consumedCal}</span> / <span className="font-bold">{calorieTarget}</span> kcal
+                
+                <div className="space-y-3 flex-1">
+                  <div className="text-sm text-ink-muted">
+                    <p className="text-[11px] uppercase tracking-wider font-bold mb-0.5">গৃহীত ক্যালোরি</p>
+                    <span className="text-accent font-extrabold text-2xl">{consumedCal}</span> / <span className="font-bold text-lg">{calorieTarget}</span> kcal
                   </div>
-                  <div className="text-sm text-ink-muted flex items-center justify-center sm:justify-start gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-forest" />
-                    <span className="font-bold text-forest">{completedCount} টি খাবার</span> সম্পন্ন হয়েছে (মোট {totalSlots} টির মধ্যে)
-                  </div>
-                  <div className="w-48 bg-cream h-2 rounded-full overflow-hidden mx-auto sm:mx-0">
-                    <div className="bg-accent h-full rounded-full transition-all duration-500" style={{ width: `${caloriePct}%` }} />
+                  <div className="text-[11px] text-ink-muted flex items-center gap-1.5 bg-forest/5 text-forest px-3 py-1.5 rounded-xl border border-forest/10 font-bold">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {completedCount} টি খাবার সম্পন্ন (মোট {totalSlots})
                   </div>
                 </div>
               </div>
+
+              {/* Macro Progress Bars */}
+              {targets && (
+                <div className="mt-auto space-y-4">
+                  <h4 className="text-[11px] uppercase font-extrabold text-ink-faint tracking-wider">দৈনন্দিন পুষ্টি লক্ষ্যমাত্রা</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { label: 'শর্করা (CARBS)', val: `${targets.carbs_g}g`, color: 'bg-accent' },
+                      { label: 'প্রোটিন (PROTEIN)', val: `${targets.protein_g}g`, color: 'bg-forest' },
+                      { label: 'চর্বি (FAT)', val: `${targets.fat_g}g`, color: 'bg-amber-500' },
+                      { label: 'ফাইবার (FIBER)', val: `${targets.fiber_g}g`, color: 'bg-purple-500' }
+                    ].map((t, idx) => (
+                      <div key={idx} className="bg-cream/30 p-3 rounded-2xl border border-ink/5">
+                        <div className="flex justify-between items-end mb-2">
+                          <span className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">{t.label}</span>
+                          <span className="text-sm font-extrabold text-ink leading-none">{t.val}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-ink/5 rounded-full overflow-hidden">
+                          {/* We simulate filling these bars up a bit for visual aesthetic, ideally real data is used */}
+                          <div className={`h-full ${t.color} rounded-full`} style={{ width: '60%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Link to="/meal-plan" className="mt-6 pt-4 border-t border-ink/5 flex items-center justify-between text-[11px] text-accent hover:text-accent/80 font-extrabold uppercase tracking-wider">
+                <span>মিল প্ল্যান এবং খাবার সমূহ দেখুন</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
-            <Link to="/meal-plan" className="mt-4 pt-3 border-t border-ink/5 flex items-center justify-between text-sm text-accent hover:text-accent/80 font-bold">
-              <span>মিল প্ল্যান এবং খাবার সমূহ দেখুন</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
           </div>
 
-          {/* Card 2: Meal slots preview */}
-          <div className="bg-white p-6 rounded-3xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-base text-ink flex items-center gap-2">
+          {/* Middle Column: Meals & Meds (lg:col-span-4) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Meal Routine Card */}
+            <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm hover:shadow-md transition-all flex flex-col h-[50%] min-h-[300px]">
+              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-3">
+                <h3 className="font-extrabold text-lg text-ink flex items-center gap-2">
                   <Utensils className="w-5 h-5 text-forest" /> খাবার রুটিন
                 </h3>
-                <span className="text-xs text-ink-faint">আজ</span>
+                <span className="text-[10px] text-ink-faint font-bold">আজ</span>
               </div>
 
-              {mealPlan && mealPlan.plan_data ? (
-                <div className="space-y-3">
-                  {((mealPlan.plan_data as any).meals || []).slice(0, 4).map((m: any, idx: number) => {
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
+                {mealPlan && mealPlan.plan_data ? (
+                  ((mealPlan.plan_data as any).meals || []).map((m: any, idx: number) => {
                     const isDone = (mealPlan.completed_slots || []).includes(m.slot);
                     return (
-                      <div key={idx} className={`flex items-center justify-between p-3 rounded-xl text-sm transition-all ${isDone ? 'bg-forest/5 border border-forest/10 text-forest' : 'bg-cream/40 border border-transparent'}`}>
-                        <span className="font-bold text-ink-muted truncate mr-2">{m.slot_bn || m.slot}</span>
-                        <span className="font-mono font-bold text-ink-muted shrink-0 bg-white/80 px-2 py-0.5 rounded shadow-xs">
+                      <div key={idx} className={`flex items-center justify-between p-3.5 rounded-2xl transition-all border ${isDone ? 'bg-forest/5 border-forest/10 text-forest' : 'bg-cream/40 border-ink/5 text-ink-muted'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${isDone ? 'bg-forest' : 'bg-ink/20'}`} />
+                          <span className="font-bold text-sm">{m.slot_bn || m.slot}</span>
+                        </div>
+                        <span className="font-mono font-bold text-xs shrink-0">
                           {(m.items || []).reduce((sum: number, item: any) => sum + (item.calories || 0), 0)} kcal
                         </span>
                       </div>
                     );
-                  })}
-                </div>
-              ) : (
-                <div className="py-8 text-center text-sm text-ink-faint">
-                  আজকের জন্য কোনো ডায়েট প্ল্যান প্রস্তুত করা হয়নি।
-                </div>
-              )}
+                  })
+                ) : (
+                  <div className="h-full flex items-center justify-center text-sm font-bold text-ink-faint text-center p-4">
+                    আজকের জন্য কোনো ডায়েট প্ল্যান প্রস্তুত করা হয়নি।
+                  </div>
+                )}
+              </div>
+              
+              <Link to="/meal-plan" className="mt-4 pt-4 border-t border-ink/5 flex items-center justify-between text-[11px] text-accent hover:text-accent/80 font-extrabold uppercase tracking-wider">
+                <span>ডায়েট প্ল্যান কাস্টমাইজ করুন</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
-            <Link to="/meal-plan" className="mt-4 pt-3 border-t border-ink/5 flex items-center justify-between text-sm text-accent hover:text-accent/80 font-bold">
-              <span>ডায়েট প্ল্যান কাস্টমাইজ করুন</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
 
-        {/* Secondary Info & Logs Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 3: Pusti Report & Clinical AI Assessment */}
-          <div className="bg-white p-6 rounded-3xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-base text-ink flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-accent" /> পুষ্টি রিপোর্ট ও মূল্যায়ন
+            {/* Medicine Reminder Card */}
+            <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm hover:shadow-md transition-all flex flex-col h-[calc(50%-1.5rem)] min-h-[250px]">
+              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-3">
+                <h3 className="font-extrabold text-lg text-ink flex items-center gap-2">
+                  <Pill className="w-5 h-5 text-amber-500" /> ওষুধ রিমাইন্ডার
+                </h3>
+                <span className="text-[9px] text-amber-600 bg-amber-50 px-2 py-1 rounded-full font-extrabold uppercase tracking-wider">আজকের তালিকা</span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                {medicines.length > 0 ? (
+                  medicines.slice(0, 4).map((med, idx) => (
+                    <div key={idx} className="flex flex-col justify-center bg-cream/40 p-3.5 rounded-2xl border border-ink/5 gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-sm text-ink truncate pr-2">{med.name} <span className="text-ink-muted text-[10px]">({med.dose})</span></p>
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider ${med.with_food ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {med.with_food ? 'খাবারের পর' : 'খালি পেটে'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-ink-faint flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-accent" /> {med.times[0]}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="h-full flex items-center justify-center text-sm font-bold text-ink-faint text-center p-4">
+                    কোনো ওষুধের রিমাইন্ডার যোগ করা নেই।
+                  </div>
+                )}
+              </div>
+
+              <Link to="/medicine" className="mt-4 pt-4 border-t border-ink/5 flex items-center justify-between text-[11px] text-accent hover:text-accent/80 font-extrabold uppercase tracking-wider">
+                <span>রিমাইন্ডার তালিকা ম্যানেজ করুন</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Column: Report & AI Tools (lg:col-span-3) */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Pusti Report Mini Card */}
+            <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-3">
+                <h3 className="font-extrabold text-lg text-ink flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-accent" /> পুষ্টি রিপোর্ট
                 </h3>
                 {report && (
-                  <span className="text-xs text-forest font-bold bg-forest/5 px-2.5 py-1 rounded-full">
-                    অনুমোদন হার: {report.adherence_pct}%
+                  <span className="text-[10px] text-forest font-extrabold bg-forest/10 px-2 py-1 rounded-full uppercase">
+                    অনুমোদন: {report.adherence_pct}%
                   </span>
                 )}
               </div>
 
               {report ? (
-                <div className="space-y-4 py-1">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-cream/40 p-3 rounded-xl border border-ink/5 text-center">
-                      <span className="text-xs text-ink-faint block mb-1">গড় দৈনিক ক্যালোরি</span>
-                      <span className="font-bold text-ink text-base block font-mono">
-                        {Math.round(report.avg_daily_calories)} kcal
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <div className="flex-1 bg-cream/50 p-3 rounded-2xl border border-ink/5 text-center">
+                      <span className="text-[9px] text-ink-faint block mb-0.5 uppercase font-bold tracking-wider">গড় ক্যালোরি</span>
+                      <span className="font-extrabold text-ink text-base block font-mono">
+                        {Math.round(report.avg_daily_calories)}
                       </span>
                     </div>
-                    <div className="bg-cream/40 p-3 rounded-xl border border-ink/5 text-center">
-                      <span className="text-xs text-ink-faint block mb-1">বিশ্লেষিত সময়কাল</span>
-                      <span className="font-bold text-ink text-base block font-mono">
-                        {report.days_with_data} / {report.period_days} দিন
+                    <div className="flex-1 bg-cream/50 p-3 rounded-2xl border border-ink/5 text-center">
+                      <span className="text-[9px] text-ink-faint block mb-0.5 uppercase font-bold tracking-wider">বিশ্লেষিত দিন</span>
+                      <span className="font-extrabold text-ink text-base block font-mono">
+                        {report.days_with_data}/{report.period_days}
                       </span>
                     </div>
                   </div>
 
-                  {report.ai_verdict ? (
-                    <div className="p-3 bg-accent/5 rounded-xl border border-accent/10">
-                      <span className="text-[10px] font-bold text-accent uppercase tracking-wider block mb-1">
-                        এআই পুষ্টিবিদ মতামত
+                  {report.ai_verdict && (
+                    <div className="p-3 bg-accent/5 rounded-2xl border border-accent/10">
+                      <span className="text-[9px] font-extrabold text-accent uppercase tracking-wider block mb-1">
+                        এআই মতামত
                       </span>
-                      <p className="text-xs text-ink-muted leading-relaxed line-clamp-2 italic">
+                      <p className="text-[11px] text-ink-muted font-medium leading-relaxed line-clamp-3 italic">
                         "{report.ai_verdict}"
                       </p>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-cream/30 rounded-xl border border-ink/5 text-center text-xs text-ink-muted">
-                      পর্যাপ্ত ডায়েট ডেটা যুক্ত হলে এখানে এআই মূল্যায়ন দেখতে পাবেন।
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="py-8 text-center text-sm text-ink-faint">
-                  পুষ্টি রিপোর্টের কোনো সংক্ষিপ্ত বিবরণী পাওয়া যায়নি।
+                <div className="py-6 text-center text-xs font-bold text-ink-faint">
+                  পুষ্টি রিপোর্টের ডেটা পাওয়া যায়নি।
                 </div>
               )}
-            </div>
-            <Link to="/report" className="mt-4 pt-3 border-t border-ink/5 flex items-center justify-between text-sm text-accent hover:text-accent/80 font-bold">
-              <span>বিস্তারিত পুষ্টি রিপোর্ট দেখুন</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Card 4: Medicine Reminders */}
-          <div className="bg-white p-6 rounded-3xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-base text-ink flex items-center gap-2">
-                  <Pill className="w-5 h-5 text-amber-500" /> ওষুধ রিমাইন্ডার
-                </h3>
-                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold">আজকের তালিকা</span>
-              </div>
-
-              {medicines.length > 0 ? (
-                <div className="space-y-2">
-                  {medicines.slice(0, 3).map((med, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-cream/40 p-3 rounded-xl text-sm gap-2">
-                      <div className="min-w-0">
-                        <p className="font-bold text-ink truncate">{med.name} ({med.dose})</p>
-                        <p className="text-xs text-ink-faint mt-1 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-accent" /> {med.times[0]}
-                        </p>
-                      </div>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg shrink-0 ${med.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
-                        {med.with_food ? 'খাবারের পর' : 'খালি পেটে'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-8 text-center text-sm text-ink-faint">
-                  কোনো ওষুধের রিমাইন্ডার যোগ করা নেই।
-                </div>
-              )}
-            </div>
-            <Link to="/medicine" className="mt-4 pt-3 border-t border-ink/5 flex items-center justify-between text-sm text-accent hover:text-accent/80 font-bold">
-              <span>রিমাইন্ডার তালিকা ম্যানেজ করুন</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Quick Tools & Helper Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {/* Card 5: Safe Foods */}
-          <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-3 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-sm text-ink flex items-center gap-1.5">
-                  <Apple className="w-4.5 h-4.5 text-forest" /> সেফ ফুড ডাটাবেজ
-                </h3>
-              </div>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                আপনার শরীর ও স্বাস্থ্যের জন্য নিরাপদ দেশি খাবার সমূহের তালিকা দেখুন।
-              </p>
-              <div className="flex items-center gap-1.5 bg-cream/40 p-2 rounded-lg text-xs text-ink-faint mt-3">
-                <Search className="w-3.5 h-3.5 text-accent shrink-0" />
-                <span className="truncate">রুই মাছ, লাল চালের ভাত</span>
-              </div>
-            </div>
-            <Link to="/foods" className="mt-4 pt-2 border-t border-ink/5 flex items-center justify-between text-xs text-accent hover:text-accent/80 font-bold">
-              <span>নিরাপদ খাবার খুঁজুন</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* Card 6: AI Companion */}
-          <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-3 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-sm text-ink flex items-center gap-1.5">
-                  <MessageSquare className="w-4.5 h-4.5 text-accent" /> এআই পুষ্টিবিদ
-                </h3>
-                <span className="text-[10px] text-accent font-bold bg-accent/5 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                  <Sparkles className="w-2.5 h-2.5" /> AI
-                </span>
-              </div>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                ডায়েট বা দেশি রেসিপি নিয়ে যেকোনো প্রশ্নের সরাসরি উত্তর পান।
-              </p>
-              <div className="bg-cream/40 p-2 rounded-lg text-xs text-ink-faint italic truncate mt-3">
-                "ডায়াবেটিসে সকালে কী খাব?"
-              </div>
-            </div>
-            <Link to="/chat" className="mt-4 pt-2 border-t border-ink/5 flex items-center justify-between text-xs text-accent hover:text-accent/80 font-bold">
-              <span>AI পুষ্টিবিদ চ্যাট</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* Card 7: Personal Cooker */}
-          <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-3 border-b border-ink/5 pb-2">
-                <h3 className="font-bold text-sm text-ink flex items-center gap-1.5">
-                  <ChefHat className="w-4.5 h-4.5 text-forest" /> নিজের রান্নাঘর
-                </h3>
-              </div>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                আপনার কাছে থাকা উপকরণ দিয়ে নিরাপদ ও কাস্টম রেসিপি তৈরি করুন।
-              </p>
-              <div className="bg-cream/40 p-2 rounded-lg text-xs text-ink-faint italic truncate mt-3">
-                "ডিম, আলু ও টমেটো দিয়ে রেসিপি"
-              </div>
-            </div>
-            <Link to="/personal-cooker" className="mt-4 pt-2 border-t border-ink/5 flex items-center justify-between text-xs text-forest hover:text-forest/80 font-bold">
-              <span>রেসিপি জেনারেটর</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Nutrition Target Summary Section (Expanded & Clean) */}
-        {targets && (
-          <div className="bg-white p-6 rounded-3xl border border-ink/5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 border-b border-ink/5 pb-3">
-              <BarChart2 className="w-5 h-5 text-accent" />
-              <h2 className="font-bold text-base text-ink">আপনার দৈনন্দিন পুষ্টি লক্ষ্যমাত্রা (Daily Targets)</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              {[
-                { label: 'শর্করা (Carbs)', val: `${targets.carbs_g}g`, color: 'bg-accent/10 border-accent/15 text-accent', barColor: 'bg-accent' },
-                { label: 'প্রোটিন (Protein)', val: `${targets.protein_g}g`, color: 'bg-forest/10 border-forest/15 text-forest', barColor: 'bg-forest' },
-                { label: 'চর্বি (Fat)', val: `${targets.fat_g}g`, color: 'bg-amber-500/10 border-amber-500/15 text-amber-600', barColor: 'bg-amber-500' },
-                { label: 'ফাইবার (Fiber)', val: `${targets.fiber_g}g`, color: 'bg-purple-500/10 border-purple-500/15 text-purple-600', barColor: 'bg-purple-500' }
-              ].map((t, idx) => (
-                <div key={idx} className="bg-cream/20 p-4 rounded-2xl border border-ink/5 flex flex-col justify-between shadow-xs">
-                  <span className="text-xs text-ink-faint uppercase font-bold tracking-wider">{t.label}</span>
-                  <div className="flex items-end justify-between mt-2 mb-1">
-                    <span className="text-xl font-bold text-ink">{t.val}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${t.color}`}>টার্গেট</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-cream mt-2 rounded-full overflow-hidden">
-                    <div className={`h-full ${t.barColor} w-full`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-ink/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3 text-xs md:text-sm text-ink-muted">
-                <span className="flex items-center gap-1"><Droplet className="w-4 h-4 text-blue-500" /> দৈনিক পানি পান: <b className="text-ink">{targets.water_l}L</b></span>
-                <span className="w-1.5 h-1.5 bg-ink/15 rounded-full" />
-                <span className="flex items-center gap-1"><Scale className="w-4 h-4 text-forest" /> টার্গেট ক্যালোরি: <b className="text-ink">{targets.target_calories} kcal</b></span>
-              </div>
-              <Link to="/report" className="text-sm text-accent hover:text-accent/80 font-bold flex items-center gap-1 self-start sm:self-auto">
+              <Link to="/report" className="mt-4 pt-4 border-t border-ink/5 flex items-center justify-between text-[11px] text-accent hover:text-accent/80 font-extrabold uppercase tracking-wider">
                 <span>বিস্তারিত রিপোর্ট দেখুন</span>
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
+
+            {/* Quick AI Tools Bento Box */}
+            <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center gap-2 mb-4 border-b border-ink/5 pb-3">
+                <Sparkles className="w-5 h-5 text-accent" />
+                <h3 className="font-extrabold text-lg text-ink">সহায়ক এআই টুলস</h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <Link to="/foods" className="bg-cream/40 hover:bg-forest/5 p-4 rounded-2xl border border-ink/5 hover:border-forest/20 transition-all flex flex-col items-center justify-center text-center gap-2 group">
+                  <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-forest group-hover:scale-110 transition-transform">
+                    <Apple className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-ink-muted group-hover:text-forest transition-colors">সেফ ফুড</span>
+                </Link>
+                
+                <Link to="/chat" className="bg-cream/40 hover:bg-accent/5 p-4 rounded-2xl border border-ink/5 hover:border-accent/20 transition-all flex flex-col items-center justify-center text-center gap-2 group">
+                  <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-ink-muted group-hover:text-accent transition-colors">AI পুষ্টিবিদ</span>
+                </Link>
+
+                <Link to="/personal-cooker" className="col-span-2 bg-cream/40 hover:bg-amber-500/5 p-4 rounded-2xl border border-ink/5 hover:border-amber-500/20 transition-all flex flex-col items-center justify-center text-center gap-2 group">
+                  <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                    <ChefHat className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-ink-muted group-hover:text-amber-600 transition-colors">নিজের রান্নাঘর (Radhuni AI)</span>
+                </Link>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-ink/5 flex items-center justify-between text-[11px] text-ink-faint">
+                <span className="font-extrabold uppercase tracking-wider">সব সার্ভিস দেখুন</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
           </div>
-        )}
+          
+        </div>
       </div>
     </DashboardLayout>
   );
