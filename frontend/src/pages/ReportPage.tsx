@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -15,12 +15,13 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { reportsApi, type HealthSummaryReport } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
-type Period = 3 | 7 | 10;
+type Period = 3 | 7 | 10 | 30;
 
 const PERIOD_LABELS: Record<Period, string> = {
   3: 'শেষ ৩ দিন',
   7: 'শেষ ৭ দিন',
   10: 'শেষ ১০ দিন',
+  30: 'শেষ ৩০ দিন',
 };
 
 const RADIAN = Math.PI / 180;
@@ -41,11 +42,9 @@ export const ReportPage = () => {
   const userName = profileData?.profile?.name_bn || profileData?.profile?.name_en || 'সম্মানিত সদস্য';
 
   const [period, setPeriod] = useState<Period>(7);
-  const [weight, setWeight] = useState('');
   const [report, setReport] = useState<HealthSummaryReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generated, setGenerated] = useState(false);
 
   // Email report state
   const [email, setEmail] = useState('');
@@ -53,25 +52,23 @@ export const ReportPage = () => {
   const [emailSending, setEmailSending] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  const handleGenerate = useCallback(async () => {
-    const wKg = parseFloat(weight);
-    if (!weight || isNaN(wKg) || wKg < 20 || wKg > 300) {
-      setError('অনুগ্রহ করে সঠিক ওজন দিন (২০–৩০০ কেজি)');
-      return;
-    }
+  const fetchReport = useCallback(async (selectedPeriod: Period) => {
     setLoading(true);
     setError(null);
     setEmailSent(false);
     try {
-      const data = await reportsApi.healthSummary(period, wKg);
+      const data = await reportsApi.healthSummary(selectedPeriod);
       setReport(data);
-      setGenerated(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'রিপোর্ট তৈরিতে সমস্যা হয়েছে');
     } finally {
       setLoading(false);
     }
-  }, [period, weight]);
+  }, []);
+
+  useEffect(() => {
+    fetchReport(period);
+  }, [period, fetchReport]);
 
   const handleSendEmail = async () => {
     if (!email.includes('@')) {
@@ -471,84 +468,68 @@ export const ReportPage = () => {
       title="স্বাস্থ্য রিপোর্ট"
       subtitle="Health Report"
       headerActions={
-        generated ? (
-          <button onClick={() => { setGenerated(false); setReport(null); }}
-            className="p-1.5 bg-cream rounded-lg text-ink-muted hover:bg-accent hover:text-white transition-all"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        ) : undefined
+        <button onClick={() => fetchReport(period)}
+          className="p-1.5 bg-cream rounded-lg text-ink-muted hover:bg-accent hover:text-white transition-all"
+          title="রিফ্রেশ করুন"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       }
     >
       <div className="max-w-6xl w-full mx-auto pb-6 space-y-4">
 
-        {/* ── Weight Input + Period Selector ── */}
-        {!generated && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl border border-ink/5 shadow-sm p-4 space-y-3 max-w-2xl mx-auto"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                <Activity className="w-4 h-4 text-accent" />
-              </div>
-              <div>
-                <h2 className="font-display font-black text-sm text-ink leading-none">স্বাস্থ্য রিপোর্ট তৈরি করুন</h2>
-                <p className="text-[0.62rem] text-ink-faint font-bn mt-1">আপনার পুষ্টি ও ক্যালোরি গ্রহণের বিস্তারিত বিশ্লেষণ</p>
-              </div>
+        {/* ── Period Selector Card ── */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl border border-ink/5 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+              <Activity className="w-4 h-4 text-accent" />
             </div>
+            <div>
+              <h2 className="font-display font-black text-sm text-ink leading-none">স্বাস্থ্য রিপোর্ট</h2>
+              <p className="text-[0.62rem] text-ink-faint font-bn mt-1">আপনার পুষ্টি ও ক্যালোরি গ্রহণের বিস্তারিত বিশ্লেষণ</p>
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Period tabs */}
-              <div>
-                <p className="text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1.5 font-body">রিপোর্টের সময়কাল</p>
-                <div className="flex gap-1.5">
-                  {([3, 7, 10] as Period[]).map(p => (
-                    <button key={p} onClick={() => setPeriod(p)}
-                      className={`flex-1 py-1.5 rounded-lg font-display font-bold text-xs transition-all ${
-                        period === p ? 'bg-ink text-cream shadow-sm' : 'bg-cream text-ink hover:bg-ink/5'
-                      }`}
-                    >
-                      {PERIOD_LABELS[p]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Weight input */}
-              <div>
-                <label className="block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1.5 font-body">
-                  আজকের ওজন (কেজি) <span className="text-accent">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Scale className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
-                    <input
-                      type="number"
-                      value={weight}
-                      onChange={e => setWeight(e.target.value)}
-                      placeholder="যেমন: ৬৮.৫"
-                      min={20} max={300} step={0.1}
-                      className="w-full pl-8 pr-2.5 py-1.5 bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg font-display font-bold text-xs outline-none transition-all"
+          <div className="flex items-center gap-3">
+            <span className="text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint font-body whitespace-nowrap">রিপোর্টের সময়কাল</span>
+            <div className="flex gap-1 bg-cream/40 p-1 rounded-lg border border-ink/5 relative">
+              {([3, 7, 10, 30] as Period[]).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  disabled={loading}
+                  className={`relative px-3 py-1.5 rounded-md font-display font-bold text-[0.68rem] transition-all duration-200 z-10 ${
+                    period === p ? 'text-cream font-extrabold' : 'text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {period === p && (
+                    <motion.div
+                      layoutId="activePeriodTab"
+                      className="absolute inset-0 bg-accent rounded-md -z-10"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
-                  </div>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading || !weight}
-                    className="px-3.5 py-1.5 bg-accent text-white rounded-lg font-display font-bold text-xs flex items-center gap-1 hover:opacity-90 transition-all disabled:opacity-50 shrink-0"
-                  >
-                    {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronRight className="w-3 h-3" />}
-                    রিপোর্ট তৈরি করুন
-                  </button>
-                </div>
-              </div>
+                  )}
+                  {PERIOD_LABELS[p]}
+                </button>
+              ))}
             </div>
+          </div>
+        </motion.div>
 
-            {error && (
-              <p className="text-xs text-red-500 font-bn flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {error}
-              </p>
-            )}
-          </motion.div>
+        {/* ── Error State ── */}
+        {error && !loading && (
+          <div className="bg-red-50/50 border border-red-200/60 p-4 rounded-xl flex items-start gap-3 max-w-2xl mx-auto">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="font-bn font-bold text-xs text-red-800">রিপোর্ট লোড করা যায়নি</h3>
+              <p className="font-bn text-xs text-red-600/90">{error}</p>
+              <button onClick={() => fetchReport(period)} className="mt-2 text-xs font-bold text-red-700 hover:text-red-950 underline flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> পুনরায় চেষ্টা করুন
+              </button>
+            </div>
+          </div>
         )}
 
         {/* ── Loading ── */}
@@ -978,12 +959,12 @@ export const ReportPage = () => {
 
               </div>
 
-              {/* Regenerate button */}
+              {/* Refresh button */}
               <div className="flex justify-center pt-2">
-                <button onClick={() => { setGenerated(false); setReport(null); }}
+                <button onClick={() => fetchReport(period)}
                   className="flex items-center gap-1.5 px-5 py-2.5 border border-ink/10 rounded-xl font-bn text-xs text-ink-muted hover:border-accent/30 hover:text-accent hover:bg-cream transition-all shadow-sm"
                 >
-                  <RefreshCw className="w-3 h-3" /> নতুন রিপোর্ট তৈরি করুন
+                  <RefreshCw className="w-3 h-3" /> রিপোর্ট রিফ্রেশ করুন
                 </button>
               </div>
 

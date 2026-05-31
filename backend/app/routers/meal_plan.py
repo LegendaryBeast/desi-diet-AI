@@ -13,7 +13,7 @@ from typing import List, Dict, Any
 router = APIRouter()
 
 
-async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_slots: List[str]) -> List[dict]:
+async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_slots: List[str], target_date: datetime) -> List[dict]:
     # 1. Fetch user profile
     profile = await prisma.profile.find_unique(where={"userId": user_id})
     if not profile:
@@ -87,32 +87,37 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         else:
             return "mg", db_val_mg
 
-    # 4. Extract all food items in the plan (use ALL meals so users see plan nutrients
-    # immediately, not just after marking slots eaten)
+    # 4. Fetch actual logged foods for this date from the database (MealTracking log)
+    start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+    
+    logs = await prisma.mealtracking.find_many(
+        where={
+            "userId": user_id,
+            "loggedAt": {
+                "gte": start_of_day,
+                "lt": end_of_day
+            }
+        }
+    )
+
     food_inputs = []
-    for meal in plan_data.get("meals", []):
-        for item in meal.get("items", []):
-            code = item.get("code") or item.get("food_code") or ""
-            name_en = item.get("name_en") or ""
-            name_bn = item.get("name_bn") or ""
+    for log in logs:
+        items = safe_list(from_json_string(log.parsedItems)) if log.parsedItems else []
+        for item in items:
+            name = item.get("name") or ""
             amount_g = item.get("amount_g")
             if amount_g is None:
-                amount_g = item.get("amount")
-            if amount_g is None:
                 amount_g = 100.0
-            
-            # Parse amount_g to float
             try:
                 amount_g = float(amount_g)
             except Exception:
-                import re
-                match = re.search(r"\d+(?:\.\d+)?", str(amount_g))
-                amount_g = float(match.group()) if match else 100.0
+                amount_g = 100.0
                 
             food_inputs.append({
-                "code": code,
-                "name_en": name_en,
-                "name_bn": name_bn,
+                "code": "",
+                "name_en": name,
+                "name_bn": name,
                 "amount_g": amount_g
             })
 
@@ -252,7 +257,7 @@ async def _plan_to_response(plan) -> MealPlanResponse:
     plan_data = _ensure_item_emojis(plan_data)
     completed_slots = safe_list(from_json_string(plan.completedSlots)) if plan.completedSlots else []
     try:
-        plan_data["micronutrient_targets"] = await _get_micronutrient_details(plan_data, plan.userId, completed_slots)
+        plan_data["micronutrient_targets"] = await _get_micronutrient_details(plan_data, plan.userId, completed_slots, plan.planDate)
     except Exception as e:
         print(f"Error calculating micronutrient targets: {e}")
         plan_data["micronutrient_targets"] = []
