@@ -608,28 +608,30 @@ export default function MealsScreen() {
                     )}
 
                     {/* Checkbox Button */}
-                    <TouchableOpacity
-                      style={[styles.webFoodCheckBtn, isFoodItemLogged(meal.slot, item) && styles.webFoodCheckBtnActive]}
-                      onPress={() => {
-                        haptics.light();
-                        const isLogged = isFoodItemLogged(meal.slot, item);
-                        if (isLogged) {
-                          const logId = getFoodItemLogId(meal.slot, item);
-                          if (logId) {
-                            deleteLogMutation.mutate(logId);
-                            // Auto-unmark slot complete in plan DB
-                            if (isCompleted && planId) {
-                              markMutation.mutate({ planId, slot: meal.slot, completed: false, items: [] });
+                    {allowActions && (
+                      <TouchableOpacity
+                        style={[styles.webFoodCheckBtn, isFoodItemLogged(meal.slot, item) && styles.webFoodCheckBtnActive]}
+                        onPress={() => {
+                          haptics.light();
+                          const isLogged = isFoodItemLogged(meal.slot, item);
+                          if (isLogged) {
+                            const logId = getFoodItemLogId(meal.slot, item);
+                            if (logId) {
+                              deleteLogMutation.mutate(logId);
+                              // Auto-unmark slot complete in plan DB
+                              if (isCompleted && planId) {
+                                markMutation.mutate({ planId, slot: meal.slot, completed: false, items: [] });
+                              }
                             }
+                          } else {
+                            logFoodItemMutation.mutate({ slot: meal.slot, food: item });
                           }
-                        } else {
-                          logFoodItemMutation.mutate({ slot: meal.slot, food: item });
-                        }
-                      }}
-                      disabled={deleteLogMutation.isPending || logFoodItemMutation.isPending}
-                    >
-                      <Check size={10} color={isFoodItemLogged(meal.slot, item) ? colors.white : 'rgba(0,0,0,0.15)'} strokeWidth={4.5} />
-                    </TouchableOpacity>
+                        }}
+                        disabled={deleteLogMutation.isPending || logFoodItemMutation.isPending}
+                      >
+                        <Check size={10} color={isFoodItemLogged(meal.slot, item) ? colors.white : 'rgba(0,0,0,0.15)'} strokeWidth={4.5} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 

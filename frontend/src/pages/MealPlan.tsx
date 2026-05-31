@@ -993,7 +993,7 @@ export const MealPlan = () => {
                               )}
 
                               {/* Log Button */}
-                              {!isEditing && (
+                              {!isEditing && isToday && (
                                 <button
                                   onClick={() => logFoodItem(slot.slot, j, food)}
                                   disabled={loggingFoods[`${slot.slot}-${j}`]}
