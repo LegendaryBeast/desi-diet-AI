@@ -17,6 +17,7 @@ import {
   Search,
   Sparkles,
   ChefHat,
+  User,
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -108,23 +109,37 @@ export const Dashboard = () => {
     <DashboardLayout title="ড্যাশবোর্ড" subtitle="Overview">
       <div className="max-w-3xl w-full mx-auto space-y-4 font-bn">
         {/* Header Greeting */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-ink/5 shadow-sm">
-          <div>
-            <h1 className="text-base font-bold text-ink leading-tight">
-              শুভ দিন, <span className="text-accent">{userName}</span>!
-            </h1>
-            <p className="text-[0.68rem] text-ink-muted leading-tight">আজকের লক্ষ্যমাত্রা ও স্বাস্থ্য একনজরে</p>
-          </div>
-          {targets && (
-            <div className="flex flex-wrap gap-1.5">
-              <span className="text-[0.62rem] font-bold px-2 py-0.5 bg-cream rounded border border-ink/5">
-                BMI: <span className="text-accent">{targets.bmi.toFixed(1)}</span> ({targets.bmi_category})
-              </span>
-              <span className="text-[0.62rem] font-bold px-2 py-0.5 bg-cream rounded border border-ink/5">
-                ওজন লক্ষ্য: <span className="text-forest">{targets.ideal_body_weight_kg}kg</span>
-              </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-4 py-3 rounded-2xl border border-ink/5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <Link to="/profile" className="w-9 h-9 bg-cream text-accent hover:bg-accent hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm border border-ink/5 group interactive">
+              <User size={16} className="group-hover:scale-110 transition-transform" />
+            </Link>
+            <div>
+              <h1 className="text-sm md:text-base font-bold text-ink leading-tight flex items-center gap-1.5">
+                শুভ দিন, <span className="text-accent">{userName}</span>!
+              </h1>
+              <p className="text-[0.68rem] text-ink-muted leading-tight">আজকের লক্ষ্যমাত্রা ও স্বাস্থ্য একনজরে</p>
             </div>
-          )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {targets && (
+              <>
+                <span className="text-[0.62rem] font-bold px-2.5 py-1 bg-cream rounded-xl border border-ink/5 text-ink-muted">
+                  BMI: <span className="text-accent">{targets.bmi.toFixed(1)}</span> ({targets.bmi_category})
+                </span>
+                <span className="text-[0.62rem] font-bold px-2.5 py-1 bg-cream rounded-xl border border-ink/5 text-ink-muted">
+                  ওজন লক্ষ্য: <span className="text-forest">{targets.ideal_body_weight_kg}kg</span>
+                </span>
+              </>
+            )}
+            <Link
+              to="/profile"
+              className="text-[0.62rem] font-bold px-2.5 py-1 bg-ink text-cream hover:bg-accent hover:text-white transition-all rounded-xl shadow-sm flex items-center gap-1 interactive"
+            >
+              <span>প্রোফাইল আপডেট</span>
+              <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
 
         {/* Feature Grid */}

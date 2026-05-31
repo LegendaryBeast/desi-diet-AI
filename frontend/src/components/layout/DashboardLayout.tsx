@@ -90,6 +90,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     { path: '/medicine', label: isBn ? 'ওষুধের রিমাইন্ডার' : 'Medicine', icon: Pill },
     { path: '/foods', label: isBn ? 'খাবারের তালিকা' : 'Foods', icon: Apple },
     { path: '/report', label: isBn ? 'পুষ্টি রিপোর্ট' : 'Report', icon: BarChart2 },
+    { path: '/profile', label: isBn ? 'আমার প্রোফাইল' : 'My Profile', icon: User },
   ];
 
   const mobileNavItems = [
@@ -107,13 +108,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const renderSidebarContent = (closeSidebar: boolean) => (
     <div className="p-5 pt-20 lg:pt-6 md:p-6 h-full flex flex-col overflow-y-auto hide-scrollbar select-none">
       {/* Profile Card */}
-      <div className="bg-cream/50 p-4 md:p-5 rounded-[2rem] mb-5 border border-ink/5">
+      <Link
+        to="/profile"
+        onClick={() => closeSidebar && setSidebarOpen(false)}
+        className="block bg-cream/50 p-4 md:p-5 rounded-[2rem] mb-5 border border-ink/5 hover:border-accent/30 hover:bg-cream/80 transition-all group cursor-pointer"
+      >
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-ink rounded-xl flex items-center justify-center text-cream shadow-md transform rotate-3 flex-shrink-0">
+          <div className="w-10 h-10 bg-ink rounded-xl flex items-center justify-center text-cream shadow-md transform rotate-3 flex-shrink-0 group-hover:rotate-6 transition-transform">
             <User size={20} />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bn font-bold text-base leading-tight text-ink truncate">{displayName}</h3>
+            <h3 className="font-bn font-bold text-base leading-tight text-ink truncate group-hover:text-accent transition-colors">{displayName}</h3>
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-1 rounded-full bg-accent animate-pulse" />
               <span className="text-[0.55rem] uppercase tracking-widest text-ink-faint font-body font-bold truncate">{bmiCategory}</span>
@@ -122,16 +127,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center">
+          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center group-hover:border-accent/10 transition-colors">
             <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">BMI</div>
             <div className="font-bold text-sm text-ink">{computedBmi}</div>
           </div>
-          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center">
+          <div className="bg-white p-2 rounded-xl border border-ink/5 text-center group-hover:border-accent/10 transition-colors">
             <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">KCAL</div>
             <div className="font-bold text-sm text-accent">{calories}</div>
           </div>
         </div>
-      </div>
+      </Link>
 
       {/* Subscription Status */}
       <div className={`p-3.5 rounded-2xl border mb-5 ${
