@@ -222,6 +222,9 @@ export const Micronutrients: React.FC = () => {
   const metCount = activeMicronutrients.filter(n => n.percentage >= 100).length;
   const totalCount = activeMicronutrients.length;
   const metPercentage = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : 0;
+  const averagePercentage = totalCount > 0
+    ? Math.round(activeMicronutrients.reduce((acc, n) => acc + Math.min(100, n.percentage), 0) / totalCount)
+    : 0;
 
   return (
     <DashboardLayout
@@ -269,15 +272,15 @@ export const Micronutrients: React.FC = () => {
                     cx="50%" cy="50%" r="42%"
                     stroke="currentColor" strokeWidth="8" fill="transparent"
                     strokeDasharray={`${2 * Math.PI * 0.42 * 128}`}
-                    strokeDashoffset={`${2 * Math.PI * 0.42 * 128 * (1 - metPercentage / 100)}`}
+                    strokeDashoffset={`${2 * Math.PI * 0.42 * 128 * (1 - averagePercentage / 100)}`}
                     className="text-accent transition-all duration-1000"
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="font-body text-3xl font-bold text-ink leading-none">{metPercentage}%</span>
+                  <span className="font-body text-3xl font-bold text-ink leading-none">{averagePercentage}%</span>
                   <span className="font-bn text-[0.55rem] text-ink-faint mt-1.5 font-bold uppercase tracking-wider">
-                    {isBn ? 'লক্ষ্য অর্জিত' : 'Targets Met'}
+                    {isBn ? 'গড় গ্রহণ হার' : 'Avg Intake Rate'}
                   </span>
                 </div>
               </div>
@@ -294,6 +297,9 @@ export const Micronutrients: React.FC = () => {
                   }
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-1">
+                  <span className="font-bn text-[0.6rem] font-bold px-3 py-1 bg-accent/5 text-accent border border-accent/10 rounded-full">
+                    {isBn ? `লক্ষ্য পূরণ: ${metCount}/${totalCount}` : `Targets Met: ${metCount}/${totalCount}`}
+                  </span>
                   <span className="font-bn text-[0.6rem] font-bold px-3 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full">
                     ভিটামিন: {vitamins.filter(n => n.percentage >= 100).length}/{vitamins.length}
                   </span>
