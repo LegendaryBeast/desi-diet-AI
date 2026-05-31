@@ -77,7 +77,7 @@ export const PersonalCooker = () => {
     const loadHistory = async () => {
       setHistoryLoading(true);
       try {
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('desidiet_access_token');
         const res = await fetch(
           `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/personal-cooker/history?session_id=${sessionId}`,
           { headers: token ? { Authorization: `Bearer ${token}` } : {} }
@@ -114,7 +114,7 @@ export const PersonalCooker = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('desidiet_access_token');
       const res = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/personal-cooker/chat`,
         {
@@ -161,7 +161,7 @@ export const PersonalCooker = () => {
 
   const clearChat = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('desidiet_access_token');
       await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/personal-cooker/history?session_id=${sessionId}`,
         {
