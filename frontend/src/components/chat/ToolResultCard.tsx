@@ -415,7 +415,7 @@ const PersonalCookerCard = ({ data, isBn }: { data: Record<string, unknown>; isB
           <ChefHat size={14} />
         </div>
         <span className="text-[0.72rem] font-bold text-ink font-bn">
-          {isBn ? 'নুট্রিসাথীর পরামর্শ' : 'NutriSaathi Advice'}
+          {isBn ? 'রাঁধুনি AI এর পরামর্শ' : 'Radhuni AI Advice'}
         </span>
         {condition && condition !== 'None' && (
           <span className="text-[0.55rem] font-bold px-1.5 py-0.5 bg-green-50 text-green-700 rounded-full">

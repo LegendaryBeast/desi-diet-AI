@@ -91,8 +91,8 @@ export const PersonalCooker = () => {
               {
                 role: 'assistant',
                 content: isBn
-                  ? `👋 আমি নুট্রিসাথী — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!`
-                  : `👋 I am NutriSaathi — your personal cooking assistant. I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile's conditions. Feel free to ask me about any ingredients or recipes!`,
+                  ? `👋 আমি রাঁধুনি AI — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!`
+                  : `👋 I am Radhuni AI — your personal cooking assistant. I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile's conditions. Feel free to ask me about any ingredients or recipes!`,
               },
             ]);
           }
@@ -174,8 +174,8 @@ export const PersonalCooker = () => {
       {
         role: 'assistant',
         content: isBn
-          ? `👋 আমি নুট্রিসাথী — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!`
-          : `👋 I am NutriSaathi — your personal cooking assistant. I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile's conditions. Feel free to ask me about any ingredients or recipes!`,
+          ? `👋 আমি রাঁধুনি AI — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!`
+          : `👋 I am Radhuni AI — your personal cooking assistant. I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile's conditions. Feel free to ask me about any ingredients or recipes!`,
       },
     ]);
   };
@@ -224,7 +224,7 @@ export const PersonalCooker = () => {
   return (
     <DashboardLayout
       title={isBn ? 'নিজের রান্নাঘর' : 'Personal Cooker'}
-      subtitle={isBn ? 'নুট্রিসাথী — রান্না ও পুষ্টি সহায়িকা' : 'NutriSaathi — Personalized Cooking Guide'}
+      subtitle={isBn ? 'রাঁধুনি AI — রান্না ও পুষ্টি সহায়িকা' : 'Radhuni AI — Personalized Cooking Guide'}
       noPadding={true}
       headerActions={
         <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export const PersonalCooker = () => {
                       <div className="flex items-center gap-1.5 mb-1.5 border-b border-ink/5 pb-1">
                         <ChefHat size={14} className="text-accent" />
                         <span className="text-[0.6rem] font-bold text-accent uppercase tracking-wider">
-                          NutriSaathi
+                          Radhuni AI
                         </span>
                       </div>
                     )}
@@ -297,7 +297,7 @@ export const PersonalCooker = () => {
                 <div className="bg-cream/60 px-4 py-3 rounded-2xl rounded-bl-none border border-ink/5 flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin text-accent" />
                   <span className="text-xs text-ink-muted">
-                    {isBn ? 'নুট্রিসাথী ভাবছে...' : 'NutriSaathi is thinking...'}
+                    {isBn ? 'রাঁধুনি AI ভাবছে...' : 'Radhuni AI is thinking...'}
                   </span>
                 </div>
               </motion.div>
@@ -335,8 +335,8 @@ export const PersonalCooker = () => {
             </div>
             <p className="text-[0.55rem] text-ink-faint mt-1.5 text-center">
               {isBn
-                ? 'নুট্রিসাথী জাতীয় খাদ্য নির্দেশিকা ২০২২ অনুসরণ করে। চিকিৎসা পরামর্শের বিকল্প নয়।'
-                : 'NutriSaathi follows Bangladesh National Dietary Guidelines 2022. Not a substitute for medical advice.'}
+                ? 'রাঁধুনি AI জাতীয় খাদ্য নির্দেশিকা ২০২২ অনুসরণ করে। চিকিৎসা পরামর্শের বিকল্প নয়।'
+                : 'Radhuni AI follows Bangladesh National Dietary Guidelines 2022. Not a substitute for medical advice.'}
             </p>
           </div>
         </div>
@@ -349,7 +349,7 @@ export const PersonalCooker = () => {
                 <ChefHat size={16} />
               </div>
               <div>
-                <h3 className="font-bold text-xs text-ink">{isBn ? 'নুট্রিসাথী নির্দেশিকা' : 'NutriSaathi Guide'}</h3>
+                <h3 className="font-bold text-xs text-ink">{isBn ? 'রাঁধুনি AI নির্দেশিকা' : 'Radhuni AI Guide'}</h3>
                 <p className="text-[0.55rem] text-ink-faint">{isBn ? 'আপনার পুষ্টি ও রন্ধন সহকারী' : 'Your diet & cooking expert'}</p>
               </div>
             </div>
