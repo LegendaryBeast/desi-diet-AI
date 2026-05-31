@@ -9,6 +9,10 @@ import {
   HeartPulse,
   ArrowLeft,
   Sparkles,
+  Shield,
+  BookOpen,
+  ChevronRight,
+  HelpCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -38,15 +42,16 @@ export const PersonalCooker = () => {
   const navigate = useNavigate();
   const { user, profileData } = useAuth();
 
-  const [condition, setCondition] = useState('None');
-  const [availableConditions, setAvailableConditions] = useState<string[]>(['None']);
+  const [profileConditions, setProfileConditions] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const sessionId = `pc_${user?.id || 'guest'}_${new Date().toISOString().slice(0, 10)}`;
+  const conditionStr = profileConditions.join(', ') || 'None';
 
   // Auto-fetch conditions from profile
   useEffect(() => {
@@ -56,14 +61,7 @@ export const PersonalCooker = () => {
       const canonicalName = DISEASE_MAPPING[c] || c;
       matched.add(canonicalName);
     }
-    const arr = Array.from(matched);
-    if (arr.length > 0) {
-      setAvailableConditions([...arr, 'None']);
-      setCondition(arr[0]);
-    } else {
-      setAvailableConditions(['None']);
-      setCondition('None');
-    }
+    setProfileConditions(Array.from(matched));
   }, [profileData]);
 
   const scrollToBottom = useCallback(() => {
@@ -93,8 +91,8 @@ export const PersonalCooker = () => {
               {
                 role: 'assistant',
                 content: isBn
-                  ? `👋 আমি নুট্রিসাথী — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি বিভিন্ন রোগের জন্য উপযুক্ত রেসিপি, রান্নার পদ্ধতি এবং খাবারের নিরাপত্তা পরামর্শ দিতে পারি।\n\nআজকের জন্য আপনার শরীরিক অবস্থা: **${condition}**`
-                  : `👋 I am NutriSaathi — your personal cooking assistant. I can suggest recipes, cooking methods, and food safety advice tailored to your health condition.\n\nToday's condition: **${condition}**`,
+                  ? `👋 আমি নুট্রিসাথী — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!`
+                  : `👋 I am NutriSaathi — your personal cooking assistant. I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile's conditions. Feel free to ask me about any ingredients or recipes!`,
               },
             ]);
           }
@@ -106,7 +104,7 @@ export const PersonalCooker = () => {
       }
     };
     loadHistory();
-  }, [sessionId, isBn, condition]);
+  }, [sessionId, isBn]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -127,7 +125,7 @@ export const PersonalCooker = () => {
           },
           body: JSON.stringify({
             message: userMsg,
-            condition,
+            condition: conditionStr,
             session_id: sessionId,
           }),
         }
@@ -176,62 +174,80 @@ export const PersonalCooker = () => {
       {
         role: 'assistant',
         content: isBn
-          ? `👋 আমি নুট্রিসাথী — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি বিভিন্ন রোগের জন্য উপযুক্ত রেসিপি, রান্নার পদ্ধতি এবং খাবারের নিরাপত্তা পরামর্শ দিতে পারি।\n\nআজকের জন্য আপনার শরীরিক অবস্থা: **${condition}**`
-          : `👋 I am NutriSaathi — your personal cooking assistant. I can suggest recipes, cooking methods, and food safety advice tailored to your health condition.\n\nToday's condition: **${condition}**`,
+          ? `👋 আমি নুট্রিসাথী — আপনার ব্যক্তিগত রান্নাঘর সহায়ক। আমি আপনার প্রোফাইলের স্বাস্থ্য লক্ষ্য ও অবস্থা অনুযায়ী নিরাপদ ও স্বাস্থ্যকর রেসিপি, রান্নার পদ্ধতি এবং খাবারের পুষ্টি নিরাপত্তা পরামর্শ দিতে পারি। আপনি আমাকে যেকোনো উপাদান বা রান্না নিয়ে প্রশ্ন করতে পারেন!`
+          : `👋 I am NutriSaathi — your personal cooking assistant. I can suggest safe and healthy recipes, cooking methods, and food safety advice tailored to your profile's conditions. Feel free to ask me about any ingredients or recipes!`,
       },
     ]);
   };
 
+  const handleSuggestionClick = (suggestionText: string) => {
+    setInput(suggestionText);
+    inputRef.current?.focus();
+  };
+
+  const featureCards = [
+    {
+      title: isBn ? 'স্মার্ট রেসিপি জেনারেটর' : 'Smart Recipes',
+      desc: isBn ? 'আপনার প্রিয় দেশী যেকোনো উপাদান দিয়ে সুস্বাদু ও পুষ্টিকর রেসিপি তৈরি করুন।' : 'Generate tasty and nutritious recipes using your favorite local ingredients.',
+      icon: ChefHat,
+      color: 'text-amber-500',
+      bg: 'bg-amber-50',
+    },
+    {
+      title: isBn ? 'খাদ্য নিরাপত্তা যাচাই' : 'Food Safety Verdict',
+      desc: isBn ? 'কোনো নির্দিষ্ট খাবার বা উপাদান আপনার শরীরের জন্য নিরাপদ কিনা তা চটজলদি জেনে নিন।' : 'Check if a specific food or ingredient is safe and suitable for your body.',
+      icon: Shield,
+      color: 'text-blue-500',
+      bg: 'bg-blue-50',
+    },
+    {
+      title: isBn ? 'তেল-মসলা নিয়ন্ত্রণ' : 'Healthy Cooking Tips',
+      desc: isBn ? 'তেল-মসলা নিয়ন্ত্রণ করে কীভাবে স্বাস্থ্যকর উপায়ে সুস্বাদু রান্না করা যায় তা শিখুন।' : 'Learn to control oil & spices to cook healthy meals without losing taste.',
+      icon: Sparkles,
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-50',
+    },
+  ];
+
+  const quickSuggestions = isBn ? [
+    'গ্যাস্ট্রিকের সমস্যায় বিকেলের নাস্তার জন্য একটি সহজ রেসিপি দিন',
+    'উচ্চ রক্তচাপ থাকলে খাবারে লবণের ব্যবহার কমানোর উপায় কী?',
+    'লাল চালের ভাত দিয়ে একটি স্বাস্থ্যকর খিচুড়ি রান্নার পদ্ধতি বলুন',
+    'কম তেলে সুস্বাদু মাছের ঝোল রান্নার প্রণালী শিখিয়ে দিন'
+  ] : [
+    'Give me a safe evening snack recipe for gastric problem',
+    'What are the low-sodium alternatives for cooking with hypertension?',
+    'Tell me a healthy khichuri recipe using red rice',
+    'How to cook a delicious fish curry with minimal oil?'
+  ];
+
   return (
     <DashboardLayout
       title={isBn ? 'নিজের রান্নাঘর' : 'Personal Cooker'}
-      subtitle={isBn ? 'নুট্রিসাথী — আপনার স্বাস্থ্য অনুযায়ী রান্না ও পুষ্টি সহায়ক' : 'NutriSaathi — condition-aware cooking & nutrition guide'}
+      subtitle={isBn ? 'নুট্রিসাথী — রান্না ও পুষ্টি সহায়িকা' : 'NutriSaathi — Personalized Cooking Guide'}
+      noPadding={true}
       headerActions={
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-cream border border-ink/10 rounded-xl font-bn font-bold text-xs text-ink transition-colors"
-        >
-          <ArrowLeft size={14} />
-          {isBn ? 'ড্যাশবোর্ড' : 'Dashboard'}
-        </button>
-      }
-    >
-      <div className="max-w-3xl w-full mx-auto h-[calc(100vh-140px)] flex flex-col font-bn">
-        {/* Condition selector */}
-        <div className="bg-white p-3 rounded-xl border border-ink/5 shadow-sm mb-3 flex items-center gap-3">
-          <HeartPulse size={18} className="text-accent shrink-0" />
-          <div className="flex-1 min-w-0">
-            <label className="text-[0.62rem] text-ink-faint uppercase tracking-wider font-bold block mb-1">
-              {isBn ? 'প্রোফাইল থেকে:' : 'From profile:'}
-            </label>
-            <div className="flex gap-1.5 flex-wrap">
-              {availableConditions.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCondition(c)}
-                  className={`px-2.5 py-1 rounded-full text-[0.65rem] font-bold border transition-all ${condition === c ? 'bg-ink text-cream border-ink' : 'border-ink/10 text-ink-muted hover:border-ink/30'}`}
-                >
-                  {c}
-                </button>
-              ))}
-              {availableConditions.length === 1 && availableConditions[0] === 'None' && (
-                <button onClick={() => navigate('/profile')} className="px-2 py-1 rounded-full text-[0.6rem] font-bold bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all">
-                  {isBn ? '+ যোগ করুন' : '+ Add Info'}
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
           <button
             onClick={clearChat}
-            className="p-2 text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0"
-            title={isBn ? 'চ্যাট মুছুন' : 'Clear chat'}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl font-bn font-bold text-xs transition-colors interactive shadow-sm"
           >
-            <Trash2 size={16} />
+            <Trash2 size={13} />
+            {isBn ? 'চ্যাট মুছুন' : 'Clear Chat'}
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-cream border border-ink/10 rounded-xl font-bn font-bold text-xs text-ink transition-colors interactive shadow-sm"
+          >
+            <ArrowLeft size={13} />
+            {isBn ? 'ড্যাশবোর্ড' : 'Dashboard'}
           </button>
         </div>
-
-        {/* Chat area */}
-        <div className="flex-1 bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden flex flex-col">
+      }
+    >
+      <div className="flex-grow flex flex-col lg:flex-row gap-5 p-4 md:p-6 lg:p-8 h-full min-h-0 overflow-hidden font-bn">
+        {/* Left Column: Chat Window */}
+        <div className="flex-grow flex flex-col bg-white rounded-2xl border border-ink/5 shadow-sm overflow-hidden h-full min-w-0">
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {historyLoading && messages.length === 0 && (
               <div className="flex justify-center py-10">
@@ -254,7 +270,7 @@ export const PersonalCooker = () => {
                     }`}
                   >
                     {msg.role === 'assistant' && (
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-1.5 border-b border-ink/5 pb-1">
                         <ChefHat size={14} className="text-accent" />
                         <span className="text-[0.6rem] font-bold text-accent uppercase tracking-wider">
                           NutriSaathi
@@ -293,6 +309,7 @@ export const PersonalCooker = () => {
           <div className="p-3 border-t border-ink/5 bg-white">
             <div className="flex gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -323,7 +340,58 @@ export const PersonalCooker = () => {
             </p>
           </div>
         </div>
+
+        {/* Right Column: NutriSaathi Info/Features Panel */}
+        <div className="w-full lg:w-80 bg-white p-5 rounded-2xl border border-ink/5 shadow-sm shrink-0 flex flex-col justify-between overflow-y-auto max-h-[400px] lg:max-h-none h-full gap-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-ink/5 pb-2.5">
+              <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center text-accent">
+                <ChefHat size={16} />
+              </div>
+              <div>
+                <h3 className="font-bold text-xs text-ink">{isBn ? 'নুট্রিসাথী নির্দেশিকা' : 'NutriSaathi Guide'}</h3>
+                <p className="text-[0.55rem] text-ink-faint">{isBn ? 'আপনার পুষ্টি ও রন্ধন সহকারী' : 'Your diet & cooking expert'}</p>
+              </div>
+            </div>
+
+            {/* Feature list */}
+            <div className="space-y-3">
+              {featureCards.map((feat, i) => (
+                <div key={i} className="flex gap-2.5 p-2 hover:bg-cream/40 rounded-xl transition-all border border-transparent hover:border-ink/5 group">
+                  <div className={`w-7 h-7 rounded-lg ${feat.bg} flex items-center justify-center shrink-0`}>
+                    <feat.icon size={14} className={feat.color} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[11px] text-ink group-hover:text-accent transition-colors">{feat.title}</h4>
+                    <p className="text-[9px] text-ink-muted leading-tight mt-0.5">{feat.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Suggestions */}
+          <div className="space-y-2 border-t border-ink/5 pt-3">
+            <span className="text-[0.55rem] text-ink-faint font-bold uppercase tracking-wider flex items-center gap-1">
+              <HelpCircle size={10} className="text-accent" />
+              {isBn ? 'কুইক সাজেশনস (Quick Ask)' : 'Quick Suggestions'}
+            </span>
+            <div className="flex flex-col gap-1.5">
+              {quickSuggestions.map((sug, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSuggestionClick(sug)}
+                  className="w-full text-left p-2 rounded-xl bg-cream/40 border border-ink/5 text-[10px] text-ink-muted hover:text-accent hover:border-accent/20 hover:bg-accent/5 transition-all flex items-center justify-between group"
+                >
+                  <span className="truncate pr-1">{sug}</span>
+                  <ChevronRight size={10} className="text-ink-faint shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
 };
+

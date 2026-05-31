@@ -158,7 +158,8 @@ class PersonalCookerService:
         try:
             filter_dict = {}
             if condition and condition != "None":
-                filter_dict = {"condition": {"$eq": condition}}
+                conds = [c.strip() for c in condition.split(",")]
+                filter_dict = {"condition": {"$in": conds + [condition]}}
 
             response = index.query(
                 vector=query_embedding,
