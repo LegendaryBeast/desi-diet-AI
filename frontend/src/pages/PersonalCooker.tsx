@@ -29,6 +29,11 @@ const DISEASE_MAPPING: Record<string, string> = {
   'Hypothyroidism': 'Hypothyroidism', 'Thyroid Disorders': 'Hypothyroidism',
   'Kidney Stones': 'Kidney Stones', 'Liver Disease': 'Liver Disease',
   'Tuberculosis': 'Tuberculosis', 'Tuberculosis (TB)': 'Tuberculosis',
+  // Gastric / GI conditions
+  'Gastric': 'Gastric', 'Gastritis': 'Gastric', 'GERD': 'Gastric',
+  'Acid Reflux': 'Gastric', 'Peptic Ulcer': 'Gastric', 'Gastric Ulcer': 'Gastric',
+  'IBS': 'Gastric', 'Irritable Bowel Syndrome': 'Gastric',
+  'Gastric Problem': 'Gastric', 'Gas': 'Gastric', 'Acidity': 'Gastric',
 };
 
 export const PersonalCooker = () => {
@@ -219,13 +224,6 @@ export const PersonalCooker = () => {
               )}
             </div>
           </div>
-          <button
-            onClick={clearChat}
-            className="p-2 text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0"
-            title={isBn ? 'চ্যাট মুছুন' : 'Clear chat'}
-          >
-            <Trash2 size={16} />
-          </button>
         </div>
 
         {/* Chat area */}

@@ -354,8 +354,8 @@ class PersonalCookerService:
             return sorted([
                 "Anemia", "Asthma", "Bronchitis", "Burns", "Cancer",
                 "Chronic Kidney Disease", "Coronary Heart Disease", "Diabetes",
-                "Diarrhoea", "Hypertension", "Hypothyroidism", "Kidney Stones",
-                "Liver Disease", "Obesity", "Tuberculosis",
+                "Diarrhoea", "Gastric", "Hypertension", "Hypothyroidism",
+                "Kidney Stones", "Liver Disease", "Obesity", "Tuberculosis",
             ])
 
         conditions = set()
