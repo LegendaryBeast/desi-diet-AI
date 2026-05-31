@@ -89,7 +89,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     { path: '/medicine', label: isBn ? 'ওষুধের রিমাইন্ডার' : 'Medicine', icon: Pill },
     { path: '/foods', label: isBn ? 'খাবারের তালিকা' : 'Foods', icon: Apple },
     { path: '/report', label: isBn ? 'পুষ্টি রিপোর্ট' : 'Report', icon: BarChart2 },
-    { path: '/profile', label: isBn ? 'আমার প্রোফাইল' : 'My Profile', icon: User },
   ];
 
   const mobileNavItems = [
@@ -285,8 +284,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
             {headerActions}
+            <Link
+              to="/profile"
+              className="w-9 h-9 rounded-xl bg-cream hover:bg-ink hover:text-cream flex items-center justify-center text-ink-muted transition-all border border-ink/5 shadow-xs shrink-0"
+              title={isBn ? 'আমার প্রোফাইল' : 'My Profile'}
+            >
+              <User size={16} />
+            </Link>
           </div>
         </header>
 

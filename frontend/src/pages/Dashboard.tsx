@@ -25,9 +25,11 @@ import {
   mealPlanApi,
   healthLogApi,
   medicineApi,
+  reportsApi,
   type MealPlanResponse,
   type HealthLogResponse,
   type MedicineReminderListItem,
+  type HealthSummaryReport,
 } from '../lib/api';
 
 export const Dashboard = () => {
@@ -35,19 +37,22 @@ export const Dashboard = () => {
   const [mealPlan, setMealPlan] = useState<MealPlanResponse | null>(null);
   const [healthLogs, setHealthLogs] = useState<HealthLogResponse[]>([]);
   const [medicines, setMedicines] = useState<MedicineReminderListItem[]>([]);
+  const [report, setReport] = useState<HealthSummaryReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [todayPlan, logsList, medsList] = await Promise.all([
+      const [todayPlan, logsList, medsList, reportSummary] = await Promise.all([
         mealPlanApi.getDaily('bn').catch(() => null),
         healthLogApi.list(5).catch(() => []),
         medicineApi.list().catch(() => []),
+        reportsApi.healthSummary(7).catch(() => null),
       ]);
       setMealPlan(todayPlan);
       setHealthLogs(logsList);
       setMedicines(medsList);
+      setReport(reportSummary);
     } catch (err) {
       console.error(err);
     } finally {
@@ -229,55 +234,60 @@ export const Dashboard = () => {
 
         {/* Secondary Info & Logs Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 3: Health logs & Visual Sparkline */}
+          {/* Card 3: Pusti Report & Clinical AI Assessment */}
           <div className="bg-white p-6 rounded-3xl border border-ink/5 shadow-sm flex flex-col justify-between hover:border-accent/15 transition-all">
             <div>
               <div className="flex items-center justify-between mb-4 border-b border-ink/5 pb-2">
                 <h3 className="font-bold text-base text-ink flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-accent" /> স্বাস্থ্য পরিমাপ
+                  <Activity className="w-5 h-5 text-accent" /> পুষ্টি রিপোর্ট ও মূল্যায়ন
                 </h3>
-                {latestLog && (
-                  <span className="text-xs text-ink-faint font-bold bg-cream px-2 py-1 rounded">ওজন: {latestLog.weight_kg ? `${latestLog.weight_kg} kg` : '--'}</span>
+                {report && (
+                  <span className="text-xs text-forest font-bold bg-forest/5 px-2.5 py-1 rounded-full">
+                    অনুমোদন হার: {report.adherence_pct}%
+                  </span>
                 )}
               </div>
 
-              {latestLog ? (
-                <div className="space-y-4 py-2">
+              {report ? (
+                <div className="space-y-4 py-1">
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="bg-cream/40 p-3 rounded-xl border border-ink/5 text-center">
-                      <span className="text-xs text-ink-faint block mb-1">রক্তচাপ</span>
-                      <span className="font-bold text-ink text-base truncate block">{latestLog.blood_pressure || '--'}</span>
+                      <span className="text-xs text-ink-faint block mb-1">গড় দৈনিক ক্যালোরি</span>
+                      <span className="font-bold text-ink text-base block font-mono">
+                        {Math.round(report.avg_daily_calories)} kcal
+                      </span>
                     </div>
                     <div className="bg-cream/40 p-3 rounded-xl border border-ink/5 text-center">
-                      <span className="text-xs text-ink-faint block mb-1">রক্তের শর্করা</span>
-                      <span className="font-bold text-ink text-base truncate block">{latestLog.blood_sugar ? `${latestLog.blood_sugar} mmol` : '--'}</span>
+                      <span className="text-xs text-ink-faint block mb-1">বিশ্লেষিত সময়কাল</span>
+                      <span className="font-bold text-ink text-base block font-mono">
+                        {report.days_with_data} / {report.period_days} দিন
+                      </span>
                     </div>
                   </div>
-                  {/* Visual weight sparkline */}
-                  {sparklineData.length > 1 && (
-                    <div className="h-16 w-full opacity-90 mt-2 bg-cream/20 p-2 rounded-xl border border-ink/5">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={sparklineData}>
-                          <defs>
-                            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <Area type="monotone" dataKey="val" stroke="#3b82f6" fill="url(#sparkGrad)" strokeWidth={2} dot={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
+
+                  {report.ai_verdict ? (
+                    <div className="p-3 bg-accent/5 rounded-xl border border-accent/10">
+                      <span className="text-[10px] font-bold text-accent uppercase tracking-wider block mb-1">
+                        এআই পুষ্টিবিদ মতামত
+                      </span>
+                      <p className="text-xs text-ink-muted leading-relaxed line-clamp-2 italic">
+                        "{report.ai_verdict}"
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-cream/30 rounded-xl border border-ink/5 text-center text-xs text-ink-muted">
+                      পর্যাপ্ত ডায়েট ডেটা যুক্ত হলে এখানে এআই মূল্যায়ন দেখতে পাবেন।
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="py-8 text-center text-sm text-ink-faint">
-                  কোনো স্বাস্থ্য লিপি পাওয়া যায়নি।
+                  পুষ্টি রিপোর্টের কোনো সংক্ষিপ্ত বিবরণী পাওয়া যায়নি।
                 </div>
               )}
             </div>
-            <Link to="/health-log" className="mt-4 pt-3 border-t border-ink/5 flex items-center justify-between text-sm text-accent hover:text-accent/80 font-bold">
-              <span>নতুন পরিমাপ যোগ করুন</span>
+            <Link to="/report" className="mt-4 pt-3 border-t border-ink/5 flex items-center justify-between text-sm text-accent hover:text-accent/80 font-bold">
+              <span>বিস্তারিত পুষ্টি রিপোর্ট দেখুন</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>

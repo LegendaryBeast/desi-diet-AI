@@ -66,24 +66,50 @@ export const Profile = () => {
       <div className="max-w-3xl mx-auto space-y-6 pb-10">
         
         {/* Header / Identity */}
-        <div className="bg-white rounded-2xl border border-ink/5 shadow-sm p-6 flex items-center gap-5">
+        <div className="bg-white rounded-2xl border border-ink/5 shadow-sm p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
           <div className="w-20 h-20 bg-ink rounded-2xl flex items-center justify-center text-cream shrink-0 shadow-md transform rotate-3">
             <User className="w-8 h-8" />
           </div>
-          <div>
-            <h2 className="font-bn font-black text-2xl text-ink leading-none mb-1">
-              {profile.name_bn || profile.name_en || 'ব্যবহারকারী'}
-            </h2>
-            <div className="flex items-center gap-2">
-              <span className="font-bn font-bold text-sm text-ink-muted">
-                {profile.gender === 'male' ? 'পুরুষ' : profile.gender === 'female' ? 'নারী' : 'অন্যান্য'}
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-ink/20" />
-              <span className="font-bn font-bold text-sm text-accent">
-                {targets.bmi_category}
-              </span>
+          <div className="flex-1 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-bn font-black text-2xl text-ink leading-none mb-1.5">
+                  {profile.name_bn || profile.name_en || 'ব্যবহারকারী'}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="font-bn font-bold text-sm text-ink-muted">
+                    {profile.gender === 'male' ? 'পুরুষ' : profile.gender === 'female' ? 'নারী' : 'অন্যান্য'}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-ink/20" />
+                  <span className="font-bn font-bold text-sm text-accent">
+                    {targets.bmi_category}
+                  </span>
+                </div>
+              </div>
+
+              {/* BMI & KCAL display badges with small icons */}
+              <div className="flex items-center gap-3 bg-cream/35 border border-ink/5 p-3 rounded-2xl shrink-0 self-start sm:self-center">
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted font-bold">
+                  <Activity className="w-4 h-4 text-blue-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[0.55rem] text-ink-faint leading-none uppercase font-body">BMI</span>
+                    <span className="text-ink text-sm font-mono mt-0.5">
+                      {targets?.bmi ? targets.bmi.toFixed(1) : ((profile.weight_kg && profile.height_cm) ? (profile.weight_kg / ((profile.height_cm / 100) * (profile.height_cm / 100))).toFixed(1) : '--')}
+                    </span>
+                  </div>
+                </div>
+                <div className="w-px h-6 bg-ink/10" />
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted font-bold">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[0.55rem] text-ink-faint leading-none uppercase font-body">KCAL Target</span>
+                    <span className="text-ink text-sm font-mono mt-0.5">{targets.target_calories}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p className="font-bn text-xs text-ink-faint mt-2">
+
+            <p className="font-bn text-xs text-ink-faint mt-3 pt-2 border-t border-ink/5">
               লক্ষ্য: <span className="font-bold text-ink-muted">{profile.goal}</span>
             </p>
           </div>
