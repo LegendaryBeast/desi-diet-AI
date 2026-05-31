@@ -29,6 +29,7 @@ const DISEASE_MAPPING: Record<string, string> = {
   'Hypothyroidism': 'Hypothyroidism', 'Thyroid Disorders': 'Hypothyroidism',
   'Kidney Stones': 'Kidney Stones', 'Liver Disease': 'Liver Disease',
   'Tuberculosis': 'Tuberculosis', 'Tuberculosis (TB)': 'Tuberculosis',
+  'Gastric': 'Gastric',
 };
 
 export const PersonalCooker = () => {
@@ -52,7 +53,8 @@ export const PersonalCooker = () => {
     const profileConditions = profileData?.profile?.medical_conditions || [];
     const matched = new Set<string>();
     for (const c of profileConditions) {
-      if (DISEASE_MAPPING[c]) matched.add(DISEASE_MAPPING[c]);
+      const canonicalName = DISEASE_MAPPING[c] || c;
+      matched.add(canonicalName);
     }
     const arr = Array.from(matched);
     if (arr.length > 0) {
