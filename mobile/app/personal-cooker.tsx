@@ -85,7 +85,7 @@ export default function PersonalCookerScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const sessionId = `pc_${user?.id || 'guest'}_${new Date().toISOString().slice(0, 10)}`;
-  const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://desi-diet-backend.onrender.com';
+  const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://desi-diet-ai-production.up.railway.app';
 
   const scrollToBottom = useCallback(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
