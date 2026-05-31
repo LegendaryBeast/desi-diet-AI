@@ -39,7 +39,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         "Pantothenic acid (B5)", "Biotin (B7)",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
         "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
-        "Molybdenum (Mo)", "Potassium (K)", "Cis ω-6 Fatty acids",
+        "Molybdenum (Mo)", "Potassium (K)", "Sodium (Na)", "Cis ω-6 Fatty acids",
         "Cis ω-3 Fatty acids"
     ]
     
@@ -132,7 +132,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             "Pantothenic acid (B5)", "Biotin (B7)",
             "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
             "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
-            "Molybdenum (Mo)", "Potassium (K)", "Cis ω-6 Fatty acids",
+            "Molybdenum (Mo)", "Potassium (K)", "Sodium (Na)", "Cis ω-6 Fatty acids",
             "Cis ω-3 Fatty acids",
             # Graph-specific nutrient name aliases
             "Folates (B9)", "α-Tocopherol equivalent (E)"
@@ -214,6 +214,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         "Pantothenic acid (B5)": "প্যান্টোথেনিক অ্যাসিড (B5)",
         "Biotin (B7)": "বায়োটিন (Vitamin B7)",
         "Zinc (Zn)": "জিঙ্ক (Zinc)",
+        "Sodium (Na)": "সোডিয়াম (Sodium)",
         "Cis ω-6 Fatty acids": "ওমেগা-৬ ফ্যাটি অ্যাসিড",
         "Cis ω-3 Fatty acids": "ওমেগা-৩ ফ্যাটি অ্যাসিড",
     }
@@ -233,6 +234,8 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             continue
             
         target_db_mg = nt["target"]
+        if name == "Sodium (Na)" and (target_db_mg is None or target_db_mg == 0.0):
+            target_db_mg = 2000.0  # Fallback to standard 2000mg target
         
         unit, target_val = get_nutrient_unit_and_val(name, target_db_mg)
         
