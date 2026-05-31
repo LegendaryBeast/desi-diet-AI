@@ -37,6 +37,7 @@ import { mealPlanApi, type MealPlanResponse, foodsApi, type FoodSearchResponse, 
 import { MealLogSection, type TrackingTotals } from '../components/meal/MealLogSection';
 import { ProModal } from '../components/ui/ProModal';
 import { ShoppingSources } from '../components/ui/ShoppingSources';
+import { CookingLoader } from '../components/ui/CookingLoader';
 
 const SLOT_ICONS: Record<string, React.ElementType> = {
   breakfast: Coffee,
@@ -1226,10 +1227,7 @@ export const MealPlan = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="w-10 h-10 animate-spin text-accent" />
-            <p className="font-bn text-ink-muted">AI আপনার জন্য পরিকল্পনা তৈরি করছে...</p>
-          </div>
+          <CookingLoader text="AI আপনার জন্য পরিকল্পনা তৈরি করছে..." />
         )}
 
         {/* Content */}
