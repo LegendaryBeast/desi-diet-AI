@@ -51,8 +51,8 @@ export const AuthPage = () => {
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center p-4 relative overflow-hidden font-bn">
       {/* Background blobs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-forest/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-forest/5 rounded-full blur-[100px] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 15 }}
@@ -122,7 +122,7 @@ export const AuthPage = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="পাসওয়ার্ড"
-                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-9 font-bn outline-none transition-all text-xs"
+                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-12 font-bn outline-none transition-all text-xs"
                       required
                     />
                     <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink">

@@ -115,11 +115,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   /* ─── Desktop Sidebar Content ─── */
   const renderDesktopSidebar = () => (
-    <motion.aside
-      animate={{ width: collapsed ? 72 : 256 }}
-      transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-      className="hidden lg:flex lg:flex-col bg-white border-r border-ink/5 h-full shrink-0 overflow-hidden relative"
-    >
+    <div className="hidden lg:flex h-full shrink-0 z-40">
+      <motion.aside
+        animate={{ width: collapsed ? 72 : 256 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+        className="flex flex-col bg-white border-r border-ink/5 h-full shrink-0 overflow-hidden relative"
+      >
       <div className="flex flex-col h-full overflow-hidden">
 
         {/* Toggle button */}
@@ -161,11 +162,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 mt-2.5">
                     <div className="bg-white p-1.5 rounded-lg border border-ink/5 text-center">
-                      <div className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-body">BMI</div>
+                      <div className="text-[0.6rem] uppercase tracking-wider text-ink-faint font-body">BMI</div>
                       <div className="font-bold text-xs text-ink">{computedBmi}</div>
                     </div>
                     <div className="bg-white p-1.5 rounded-lg border border-ink/5 text-center">
-                      <div className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-body">KCAL</div>
+                      <div className="text-[0.6rem] uppercase tracking-wider text-ink-faint font-body">KCAL</div>
                       <div className="font-bold text-xs text-accent">{calories}</div>
                     </div>
                   </div>
@@ -183,7 +184,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   {!collapsed && (
                     <div>
                       <div className="font-bn font-bold text-xs text-ink">{isPro ? 'Pro Plan' : 'Free Plan'}</div>
-                      <div className="text-[0.45rem] uppercase tracking-wider text-ink-faint font-body font-bold">{isPro ? '৳500/month' : 'Limited'}</div>
+                      <div className="text-[0.65rem] uppercase tracking-wider text-ink-faint font-body font-bold">{isPro ? '৳500/month' : 'Limited'}</div>
                     </div>
                   )}
                 </div>
@@ -252,6 +253,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
       </div>
     </motion.aside>
+    </div>
   );
 
   /* ─── Mobile Sidebar Content ─── */
@@ -277,11 +279,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white p-2 rounded-xl border border-ink/5 text-center">
-            <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">BMI</div>
+            <div className="text-[0.6rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">BMI</div>
             <div className="font-bold text-sm text-ink">{computedBmi}</div>
           </div>
           <div className="bg-white p-2 rounded-xl border border-ink/5 text-center">
-            <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">KCAL</div>
+            <div className="text-[0.6rem] uppercase tracking-wider text-ink-faint font-body mb-0.5">KCAL</div>
             <div className="font-bold text-sm text-accent">{calories}</div>
           </div>
         </div>
@@ -296,7 +298,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
             <div>
               <div className="font-bn font-bold text-xs text-ink">{isPro ? 'Pro Plan' : 'Free Plan'}</div>
-              <div className="text-[0.5rem] uppercase tracking-wider text-ink-faint font-body font-bold">{isPro ? '৳500/month' : 'Limited'}</div>
+              <div className="text-[0.65rem] uppercase tracking-wider text-ink-faint font-body font-bold">{isPro ? '৳500/month' : 'Limited'}</div>
             </div>
           </div>
           <button
@@ -429,7 +431,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </header>
 
         {/* Content Stream */}
-        <main className={`flex-1 relative z-10 scroll-smooth ${noPadding ? 'overflow-hidden flex flex-col' : 'overflow-y-auto p-5 md:p-7 lg:p-8 pb-20 lg:pb-8'}`}>
+        <main className={`flex-1 relative z-10 scroll-smooth ${noPadding ? 'overflow-hidden flex flex-col pb-20 lg:pb-0' : 'overflow-y-auto p-5 md:p-7 lg:p-8 pb-24 lg:pb-8'}`}>
           {children}
         </main>
 
@@ -441,6 +443,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <Link
                 key={item.path}
                 to={item.path}
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${isActive ? 'text-accent' : 'text-ink-muted hover:text-ink'}`}
               >
                 <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-accent/5 scale-110' : ''}`}>

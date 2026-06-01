@@ -137,6 +137,25 @@ export const Dashboard = () => {
     { label: 'বাজার', icon: ShoppingCart, route: '/grocery', bg: 'bg-[#FFF0F5]', color: 'text-pink-600' }
   ];
 
+  if (loading) {
+    return (
+      <DashboardLayout title="ড্যাশবোর্ড" subtitle="Overview">
+        <div className="max-w-[1200px] w-full mx-auto space-y-6 px-4 md:px-6 pt-6">
+          <div className="h-10 w-48 bg-ink/5 rounded-lg animate-pulse mb-6"></div>
+          <div className="h-48 w-full bg-ink/5 rounded-[2rem] animate-pulse"></div>
+          <div className="h-20 w-full bg-ink/5 rounded-[1.5rem] animate-pulse mt-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div className="h-64 w-full bg-ink/5 rounded-[2rem] animate-pulse"></div>
+            <div className="space-y-6">
+              <div className="h-40 w-full bg-ink/5 rounded-[2rem] animate-pulse"></div>
+              <div className="h-40 w-full bg-ink/5 rounded-[2rem] animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="ড্যাশবোর্ড" subtitle="Overview">
       <div className="max-w-[1200px] w-full mx-auto space-y-6 font-bn pb-12 px-4 md:px-6">
@@ -185,10 +204,10 @@ export const Dashboard = () => {
         </Link>
 
         {/* QUICK ACTIONS ROW */}
-        <div className="bg-white/60 backdrop-blur-xl border border-ink/5 rounded-[1.5rem] p-3 shadow-sm overflow-x-auto no-scrollbar">
+        <div className="bg-white/60 backdrop-blur-xl border border-ink/5 rounded-[1.5rem] p-3 shadow-sm overflow-x-auto no-scrollbar snap-x snap-mandatory">
           <div className="flex justify-between items-center gap-2 min-w-[500px]">
             {QUICK_ACTIONS.map((act, i) => (
-              <Link key={i} to={act.route} className="flex-1 flex flex-col items-center gap-2 py-2 hover:opacity-80 transition-opacity">
+              <Link key={i} to={act.route} className="flex-1 flex flex-col items-center gap-2 py-2 hover:opacity-80 transition-opacity snap-start">
                 <div className={`w-12 h-12 rounded-[14px] ${act.bg} flex items-center justify-center ${act.color}`}>
                    <act.icon size={20} />
                 </div>

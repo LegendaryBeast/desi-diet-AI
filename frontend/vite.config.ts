@@ -31,4 +31,17 @@ export default defineConfig({
       '/docs-api': { ...apiProxy, rewrite: (path: string) => path.replace(/^\/docs-api/, '/docs') },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'framer-motion': ['framer-motion'],
+          'recharts': ['recharts'],
+          'i18n': ['i18next', 'react-i18next']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600,
+  }
 })

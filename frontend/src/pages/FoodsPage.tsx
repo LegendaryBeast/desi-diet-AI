@@ -179,9 +179,9 @@ export const FoodsPage = () => {
                       </span>
                     </div>
                     <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-cream">
-                      {proteinPct > 0 && <div className="h-full bg-emerald-500" style={{ width: `${proteinPct}%` }} />}
-                      {carbsPct > 0 && <div className="h-full bg-blue-500" style={{ width: `${carbsPct}%` }} />}
-                      {fatPct > 0 && <div className="h-full bg-amber-500" style={{ width: `${fatPct}%` }} />}
+                      {proteinPct > 0 && <div className="h-full bg-emerald-500" style={{ flexGrow: proteinPct }} />}
+                      {carbsPct > 0 && <div className="h-full bg-blue-500" style={{ flexGrow: carbsPct }} />}
+                      {fatPct > 0 && <div className="h-full bg-amber-500" style={{ flexGrow: fatPct }} />}
                     </div>
                   </div>
                 )}

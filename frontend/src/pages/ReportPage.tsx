@@ -143,8 +143,9 @@ export const ReportPage = () => {
         <head>
           <meta charset="utf-8">
           <title>DesiDiet Clinical Report</title>
+          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;800&display=swap" rel="stylesheet">
           <style>
-            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 30px; line-height: 1.6; }
+            body { font-family: 'Noto Sans Bengali', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 30px; line-height: 1.6; }
             .header { border-bottom: 3px solid #A7C924; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
             .logo { font-size: 28px; font-weight: bold; color: #8FB41E; letter-spacing: -0.5px; }
             .meta-info { text-align: right; font-size: 12px; color: #7A8487; }
@@ -613,7 +614,7 @@ export const ReportPage = () => {
                       </div>
                       {report.calorie_history.length > 0 ? (
                         <ResponsiveContainer width="100%" height={150}>
-                          <AreaChart data={report.calorie_history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                          <AreaChart data={report.calorie_history} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                             <defs>
                               <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#e05a1c" stopOpacity={0.2} />
@@ -647,7 +648,7 @@ export const ReportPage = () => {
                       </div>
                       {report.weight_history.length > 1 ? (
                         <ResponsiveContainer width="100%" height={150}>
-                          <LineChart data={report.weight_history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                          <LineChart data={report.weight_history} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ece8" />
                             <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                             <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}kg`} />

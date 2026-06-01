@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Mic,
   List,
+  X,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { medicineApi, type MedicineReminderListItem, type MedicineReminderResponse } from '../lib/api';
@@ -24,6 +25,7 @@ export const MedicinePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [lastAdded, setLastAdded] = useState<MedicineReminderResponse | null>(null);
+  const [showAlert, setShowAlert] = useState(() => localStorage.getItem('desidiet_hide_med_alert') !== 'true');
 
   const fetchReminders = useCallback(async () => {
     setListLoading(true);
@@ -103,13 +105,25 @@ export const MedicinePage = () => {
         </div>
 
         {/* Mobile App Notice */}
-        <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-bn font-bold text-amber-800 text-[0.68rem] leading-none">নোট: নোটিফিকেশন ফিচার</p>
-            <p className="font-bn text-amber-700 text-[0.62rem] mt-1 leading-normal">ওষুধের রিমাইন্ডার পুশ-নোটিফিকেশন শুধুমাত্র আমাদের মোবাইল অ্যাপ্লিকেশনে ব্যবহার করা যাবে। ওয়েবসাইটে আপনি শুধু তালিকা দেখতে ও যোগ করতে পারবেন।</p>
-          </div>
-        </div>
+        <AnimatePresence>
+          {showAlert && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              className="bg-amber-50 border border-amber-200 p-2.5 rounded-lg flex items-start gap-2 relative overflow-hidden"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="pr-6">
+                <p className="font-bn font-bold text-amber-800 text-[0.68rem] leading-none">নোট: নোটিফিকেশন ফিচার</p>
+                <p className="font-bn text-amber-700 text-[0.62rem] mt-1 leading-normal">ওষুধের রিমাইন্ডার পুশ-নোটিফিকেশন শুধুমাত্র আমাদের মোবাইল অ্যাপ্লিকেশনে ব্যবহার করা যাবে। ওয়েবসাইটে আপনি শুধু তালিকা দেখতে ও যোগ করতে পারবেন।</p>
+              </div>
+              <button 
+                onClick={() => { setShowAlert(false); localStorage.setItem('desidiet_hide_med_alert', 'true'); }}
+                className="absolute top-2 right-2 text-amber-600 hover:text-amber-800"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Error / Success */}
         {error && (
@@ -151,8 +165,8 @@ export const MedicinePage = () => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="যেমন: সকালে মেটফরমিন ৫০০ mg খাবারের পরে এবং রাতে গ্লিমেপিরাইড ২mg..."
-                    rows={2}
-                    className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 px-2.5 font-bn outline-none transition-all resize-none text-xs"
+                    rows={3}
+                    className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 px-2.5 font-bn outline-none transition-all text-xs"
                     required
                   />
 
