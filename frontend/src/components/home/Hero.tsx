@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ShieldCheck, Sparkles, ChevronRight, BookOpen, Utensils } from 'lucide-react';
+import { ShieldCheck, Sparkles, ChevronRight, BookOpen, Utensils, MessageSquare, Zap } from 'lucide-react';
 
 export const Hero = () => {
   const { isLoggedIn } = useAuth();
@@ -51,7 +51,7 @@ export const Hero = () => {
               <span className="font-bn text-[clamp(1rem,3vw,1.3rem)] font-medium text-accent block mb-3 tracking-wide">
                 বাংলাদেশের প্রথম AI-চালিত পুষ্টি সহকারী
               </span>
-              <h1 className="font-display text-[clamp(3rem,8vw,7rem)] font-black leading-[0.9] tracking-tight text-ink">
+              <h1 className="font-body text-[clamp(3rem,8vw,7rem)] font-black leading-[0.9] tracking-tight text-ink">
                 Desi<em className="italic text-accent">Diet</em>
                 <span className="block font-bn text-[clamp(1.8rem,5vw,4rem)] font-bold text-ink mt-2 leading-tight">
                   আপনার স্বাস্থ্য, <br className="hidden sm:block" />আপনার পরিকল্পনা।
@@ -103,41 +103,78 @@ export const Hero = () => {
             </motion.div>
           </div>
 
-          {/* Right: Stats card cluster */}
+          {/* Right: Chat UI Mockup */}
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: 40, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="hidden lg:flex flex-col gap-4 min-w-[280px]"
+            className="hidden lg:block relative"
           >
-            {[
-              { num: '৩২০+', label: 'দেশীয় খাবার ডেটাবেস', sub: 'ক্যালোরি, প্রোটিন, ফ্যাট, কার্বসহ' },
-              { num: '৭০+', label: 'রোগভিত্তিক ডায়েট নিয়ম', sub: 'বিশেষজ্ঞ-যাচাইকৃত প্রোটোকল' },
-              { num: '১০০%', label: 'AI-ব্যক্তিগতকৃত', sub: 'আপনার স্বাস্থ্য তথ্য ভিত্তিক' },
-            ].map((s, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 + i * 0.1 }}
-                className="bg-white border border-ink/5 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)]"
-              >
-                <div className="font-display text-3xl font-black text-ink mb-1">{s.num}</div>
-                <div className="font-bn font-bold text-sm text-ink mb-0.5">{s.label}</div>
-                <div className="font-bn text-[0.68rem] text-ink-faint">{s.sub}</div>
-              </motion.div>
-            ))}
-
-            {/* NDG badge */}
-            <div className="flex items-center gap-3 bg-forest/8 border border-forest/15 rounded-2xl p-4 mt-1">
-              <div className="w-10 h-10 bg-forest rounded-xl flex items-center justify-center text-cream shrink-0">
-                <BookOpen size={18} />
+            {/* Mockup Frame */}
+            <div className="bg-white rounded-[2rem] p-4 lg:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-ink/5">
+              <div className="flex items-center gap-3 mb-6 border-b border-ink/5 pb-4">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-ink flex items-center justify-center text-cream">
+                    <MessageSquare size={16} />
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-ink text-sm">DesiDiet AI</div>
+                  <div className="font-body text-[0.6rem] text-green-500 uppercase tracking-widest mt-0.5">Online</div>
+                </div>
               </div>
-              <div>
-                <div className="font-body font-bold text-[0.7rem] text-forest tracking-wider uppercase">NDG 2025 অনুমোদিত</div>
-                <div className="font-bn text-[0.65rem] text-ink-muted mt-0.5">জাতীয় পুষ্টি নির্দেশিকা অনুসরণ</div>
+
+              <div className="space-y-4 mb-6">
+                {/* User message */}
+                <div className="flex justify-end">
+                  <div className="bg-ink text-cream rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%] font-bn text-[0.85rem] leading-relaxed shadow-sm">
+                    আমার ডায়াবেটিস আছে। আজকের জন্য ২,০০০ ক্যালোরির একটি দেশীয় ডায়েট প্ল্যান দাও।
+                  </div>
+                </div>
+
+                {/* Bot typing indicator */}
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center text-cream shrink-0 mt-1 shadow-sm">
+                    <MessageSquare size={12} />
+                  </div>
+                  <div className="bg-cream-dark text-ink border border-ink/5 rounded-2xl rounded-tl-sm p-4 font-bn text-[0.85rem] leading-relaxed shadow-sm w-full">
+                    <div className="font-bold text-accent mb-2">সকালের নাস্তা (৪০০ ক্যালোরি):</div>
+                    <ul className="space-y-1.5 mb-3 text-ink-muted">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> লাল আটার রুটি - ২টি (১২০ গ্রাম)</li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> মিক্সড সবজি ভাজি - ১ বাটি (১৫০ গ্রাম)</li>
+                    </ul>
+                    <div className="font-bold text-accent mb-2 mt-4">দুপুরের খাবার (৬০০ ক্যালোরি):</div>
+                    <ul className="space-y-1.5 text-ink-muted">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> লাল চালের ভাত - ১ কাপ (১৫০ গ্রাম)</li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> রুই মাছের ঝোল - ১ পিস (১০০ গ্রাম)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input mockup */}
+              <div className="relative">
+                <div className="w-full bg-cream rounded-full pl-5 pr-12 py-3.5 border border-ink/5 flex items-center shadow-inner">
+                  <span className="font-bn text-[0.85rem] text-ink-faint">আপনার প্রশ্ন লিখুন...</span>
+                </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-accent rounded-full flex items-center justify-center text-cream shadow-sm">
+                  <Zap size={14} />
+                </div>
               </div>
             </div>
+            
+            {/* Floating elements */}
+            <motion.div 
+              animate={{ y: [-10, 10, -10] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -right-6 top-20 bg-white border border-ink/5 p-3 rounded-xl shadow-xl flex items-center gap-2"
+            >
+               <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                 <ShieldCheck size={12} />
+               </div>
+               <span className="font-bn text-[0.65rem] font-bold text-ink">ADA গাইডলাইন যাচাইকৃত</span>
+            </motion.div>
           </motion.div>
         </div>
 

@@ -30,8 +30,15 @@ export const GroceryPage = () => {
 
   const loadCart = useCallback(() => {
     try {
-      const raw = localStorage.getItem('desidiet_grocery_cart');
-      if (raw) setCart(JSON.parse(raw));
+      const rawCart = localStorage.getItem('desidiet_grocery_cart');
+      if (rawCart) setCart(JSON.parse(rawCart));
+      
+      const loc = localStorage.getItem('desidiet_user_loc');
+      if (loc) {
+        const { lat, lng } = JSON.parse(loc);
+        setUserLat(lat);
+        setUserLng(lng);
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -45,7 +52,12 @@ export const GroceryPage = () => {
   const getLocation = () => {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      pos => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude); setLocating(false); },
+      pos => { 
+        setUserLat(pos.coords.latitude); 
+        setUserLng(pos.coords.longitude); 
+        setLocating(false); 
+        try { localStorage.setItem('desidiet_user_loc', JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })); } catch {}
+      },
       () => setLocating(false),
       { timeout: 8000 }
     );
@@ -109,9 +121,13 @@ export const GroceryPage = () => {
         {/* Cart panel */}
         <AnimatePresence>
           {showCart && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="bg-white rounded-2xl border border-ink/5 shadow-xl p-4 space-y-3"
-            >
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCart(false)}
+                className="fixed inset-0 z-40 bg-ink/20 backdrop-blur-sm md:hidden"
+              />
+              <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="absolute top-0 right-0 left-0 md:left-auto md:w-96 bg-white rounded-2xl border border-ink/5 shadow-2xl p-4 space-y-3 z-50"
+              >
               <div className="flex items-center justify-between">
                 <h3 className="font-bn font-bold text-sm text-ink flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-accent" /> আপনার কার্ট
@@ -145,7 +161,8 @@ export const GroceryPage = () => {
                   </div>
                 </>
               )}
-            </motion.div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
 

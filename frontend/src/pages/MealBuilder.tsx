@@ -19,6 +19,13 @@ const MEAL_SLOTS = [
   { id: 'snack', label: 'স্ন্যাক' },
 ];
 
+const NAV_TABS = [
+  { id: 'today', label: 'আজকের', icon: Flame, requiresPro: false },
+  { id: 'tomorrow', label: 'আগামীকাল', icon: CalendarDays, requiresPro: true },
+  { id: 'history', label: 'ইতিহাস', icon: History, requiresPro: false },
+  { id: 'builder', label: 'মিল বিল্ডার', icon: ChefHat, requiresPro: false },
+];
+
 interface MealItem extends MealBuilderItem {
   name_display: string;
 }
@@ -64,7 +71,7 @@ export const MealBuilder = () => {
 
   const removeItem = (code: string) => {
     setItems(prev => prev.filter(i => i.food_code !== code));
-    setResult(null);
+    // Keep result visible to prevent jarring layout shift, user can re-analyze
   };
 
   const handleAnalyze = async () => {
@@ -114,34 +121,32 @@ export const MealBuilder = () => {
         {/* Tab Selector */}
         <div className="flex justify-center">
           <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
-            {[
-              { id: 'today', label: 'আজকের', icon: Flame, locked: false },
-              { id: 'tomorrow', label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
-              { id: 'history', label: 'ইতিহাস', icon: History, locked: false },
-              { id: 'builder', label: 'মিল বিল্ডার', icon: ChefHat, locked: false },
-            ].map(({ id, label, icon: Icon, locked }) => (
-              <button
-                key={id}
-                onClick={() => {
-                  if (locked) {
-                    setProTrigger('tomorrow');
-                    setShowProModal(true);
-                    return;
-                  }
-                  if (id !== 'builder') {
-                    navigate('/meal-plan', { state: { tab: id } });
-                  }
-                }}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bn text-xs font-bold transition-all ${id === 'builder' ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
-                  } ${locked ? 'opacity-60' : ''}`}
-              >
-                {locked ? <Lock className="w-3 h-3" /> : <Icon className="w-3.5 h-3.5" />}
-                {label}
-                {locked && (
-                  <span className="text-[0.5rem] bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">Pro</span>
-                )}
-              </button>
-            ))}
+            {NAV_TABS.map(({ id, label, icon: Icon, requiresPro }) => {
+              const locked = requiresPro && !isPro;
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    if (locked) {
+                      setProTrigger('tomorrow');
+                      setShowProModal(true);
+                      return;
+                    }
+                    if (id !== 'builder') {
+                      navigate('/meal-plan', { state: { tab: id } });
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bn text-xs font-bold transition-all ${id === 'builder' ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
+                    } ${locked ? 'opacity-60' : ''}`}
+                >
+                  {locked ? <Lock className="w-3 h-3" /> : <Icon className="w-3.5 h-3.5" />}
+                  {label}
+                  {locked && (
+                    <span className="text-[0.5rem] bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">Pro</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

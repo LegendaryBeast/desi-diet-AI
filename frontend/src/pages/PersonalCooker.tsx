@@ -379,14 +379,20 @@ export const PersonalCooker = () => {
                         </span>
                       </div>
                     )}
-                    <div
-                      className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed text-sm md:text-[0.95rem]"
-                      dangerouslySetInnerHTML={{
-                        __html: msg.content
-                          .replace(/\*\*(.*?)\*\*/g, '<strong class="text-accent font-bold">$1</strong>')
-                          .replace(/\n/g, '<br/>'),
-                      }}
-                    />
+                    {msg.role === 'user' ? (
+                      <div className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed text-sm md:text-[0.95rem]">
+                        {msg.content}
+                      </div>
+                    ) : (
+                      <div
+                        className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed text-sm md:text-[0.95rem]"
+                        dangerouslySetInnerHTML={{
+                          __html: msg.content
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-accent font-bold">$1</strong>')
+                            .replace(/\n/g, '<br/>'),
+                        }}
+                      />
+                    )}
                   </div>
                 </motion.div>
               ))
@@ -441,13 +447,13 @@ export const PersonalCooker = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                disabled={loading}
+                maxLength={1000}
                 placeholder={
                   isBn
-                    ? 'একটি রেসিпи বা খাবারের নিরাপত্তা জিজ্ঞাসা করুন...'
+                    ? 'একটি রেসিপি বা খাবারের নিরাপত্তা জিজ্ঞাসা করুন...'
                     : 'Ask for a recipe or food safety advice...'
                 }
-                className="flex-1 bg-transparent py-2.5 md:py-3 font-bn text-xs md:text-sm focus:outline-none placeholder:text-ink/25 disabled:opacity-50"
+                className="flex-1 bg-transparent py-2.5 md:py-3 font-bn text-xs md:text-sm focus:outline-none placeholder:text-ink/25"
               />
               <button
                 onClick={sendMessage}

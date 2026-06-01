@@ -178,9 +178,12 @@ export const HealthLog = () => {
               onSubmit={handleSave}
               className="bg-white rounded-2xl border border-ink/5 shadow-sm p-5 space-y-4"
             >
-              <h3 className="font-bn font-bold text-sm text-ink flex items-center gap-2">
-                <Activity className="w-4 h-4 text-accent" /> নতুন স্বাস্থ্য রেকর্ড
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bn font-bold text-sm text-ink flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-accent" /> নতুন স্বাস্থ্য রেকর্ড
+                </h3>
+                <span className="text-[0.6rem] text-ink-muted italic">যেকোনো একটি তথ্য দিন</span>
+              </div>
 
               {/* Date */}
               <div>
@@ -236,7 +239,7 @@ export const HealthLog = () => {
                 <div className="flex flex-wrap gap-1.5">
                   {SYMPTOM_OPTIONS.map(s => (
                     <button key={s} type="button" onClick={() => toggleSymptom(s)}
-                      className={`px-2.5 py-1 rounded-full text-[0.65rem] font-bn font-bold border transition-all ${selectedSymptoms.includes(s) ? 'bg-ink text-cream border-ink' : 'bg-cream border-ink/10 text-ink-muted hover:border-ink/30'}`}
+                      className={`px-3 py-2 rounded-xl text-[0.75rem] font-bn font-bold border transition-all ${selectedSymptoms.includes(s) ? 'bg-ink text-cream border-ink' : 'bg-cream border-ink/10 text-ink-muted hover:border-ink/30'}`}
                     >{s}</button>
                   ))}
                 </div>
