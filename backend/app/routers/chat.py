@@ -6,6 +6,7 @@ from app.dependencies import get_current_user
 from app.db import prisma
 from app.schemas import ChatRequest, DietPlanChatRequest, DietPlanChatResponse
 from app.core.llm_client import llm_client
+from app.config import settings
 from app.utils import safe_list
 from rag_engine import calculate_targets, KhadokGraphRAG
 import json
@@ -821,6 +822,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                 tool_choice="auto",
                 stream=True,
                 temperature=0.7,
+                max_tokens=settings.llm_max_tokens,
             )
 
             tool_calls = []
@@ -1018,6 +1020,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                     messages=messages,
                     stream=True,
                     temperature=0.7,
+                    max_tokens=settings.llm_max_tokens,
                 )
                 async for chunk in second_response:
                     if len(chunk.choices) > 0:
