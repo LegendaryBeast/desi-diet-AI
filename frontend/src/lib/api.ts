@@ -989,6 +989,13 @@ export interface PersonalCookerHistoryResponse {
   history: PersonalCookerMessage[];
 }
 
+export const whatsappApi = {
+  optin: () =>
+    apiFetch<{ success: boolean; phone: string }>('/whatsapp/optin', {
+      method: 'POST',
+    }),
+};
+
 export const personalCookerApi = {
   history: (sessionId: string) =>
     apiFetch<PersonalCookerHistoryResponse>(`/personal-cooker/history?session_id=${sessionId}`),

@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     pinecone_api_key: str = Field(default="", alias="PINECONE_API_KEY")
     pinecone_index: str = Field(default="bd-cooking-rag", alias="PINECONE_INDEX")
 
+    # WhatsApp / n8n integration
+    service_secret: str = Field(default="", alias="SERVICE_SECRET")
+    n8n_optin_webhook_url: str = Field(default="", alias="N8N_OPTIN_WEBHOOK_URL")
+
+    # Groq (optional — takes priority over OpenAI when set)
+    groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+
     @property
     def cors_origin_list(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]

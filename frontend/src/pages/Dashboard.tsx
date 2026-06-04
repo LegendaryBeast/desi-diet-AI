@@ -23,8 +23,10 @@ import {
   Bot,
   Bell
 } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { WhatsAppConnectModal } from '../components/whatsapp/WhatsAppConnectModal';
 import { useAuth } from '../contexts/AuthContext';
 import {
   mealPlanApi,
@@ -67,6 +69,7 @@ export const Dashboard = () => {
   const [medicines, setMedicines] = useState<MedicineReminderListItem[]>([]);
   const [report, setReport] = useState<HealthSummaryReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -134,7 +137,8 @@ export const Dashboard = () => {
     { label: 'ওষুধ', icon: Pill, route: '/medicine', bg: 'bg-[#FFF7E6]', color: 'text-amber-600' },
     { label: 'পুষ্টি', icon: Shield, route: '/report', bg: 'bg-[#EAF7EE]', color: 'text-forest' },
     { label: 'রান্নাঘর', icon: ChefHat, route: '/personal-cooker', bg: 'bg-[#F0F8E2]', color: 'text-green-700' },
-    { label: 'বাজার', icon: ShoppingCart, route: '/grocery', bg: 'bg-[#FFF0F5]', color: 'text-pink-600' }
+    { label: 'বাজার', icon: ShoppingCart, route: '/grocery', bg: 'bg-[#FFF0F5]', color: 'text-pink-600' },
+    { label: 'WhatsApp', icon: FaWhatsapp, onClick: () => setShowWhatsAppModal(true), bg: 'bg-[#DCF8C6]', color: 'text-[#128C7E]' }
   ];
 
   if (loading) {
@@ -205,15 +209,26 @@ export const Dashboard = () => {
 
         {/* QUICK ACTIONS ROW */}
         <div className="bg-white/60 backdrop-blur-xl border border-ink/5 rounded-[1.5rem] p-3 shadow-sm overflow-x-auto no-scrollbar snap-x snap-mandatory">
-          <div className="flex justify-between items-center gap-2 min-w-[500px]">
-            {QUICK_ACTIONS.map((act, i) => (
-              <Link key={i} to={act.route} className="flex-1 flex flex-col items-center gap-2 py-2 hover:opacity-80 transition-opacity snap-start">
-                <div className={`w-12 h-12 rounded-[14px] ${act.bg} flex items-center justify-center ${act.color}`}>
-                   <act.icon size={20} />
+          <div className="flex justify-between items-center gap-2 min-w-[580px]">
+            {QUICK_ACTIONS.map((act, i) => {
+              const content = (
+                <div className="flex-1 flex flex-col items-center gap-2 py-2 hover:opacity-80 transition-opacity snap-start cursor-pointer">
+                  <div className={`w-12 h-12 rounded-[14px] ${act.bg} flex items-center justify-center ${act.color}`}>
+                     <act.icon size={20} />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-ink">{act.label}</span>
                 </div>
-                <span className="text-[11px] font-extrabold text-ink">{act.label}</span>
-              </Link>
-            ))}
+              );
+              return act.onClick ? (
+                <button key={i} onClick={act.onClick} className="contents">
+                  {content}
+                </button>
+              ) : (
+                <Link key={i} to={act.route!} className="contents">
+                  {content}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -377,6 +392,8 @@ export const Dashboard = () => {
 
         </div>
       </div>
+
+      <WhatsAppConnectModal isOpen={showWhatsAppModal} onClose={() => setShowWhatsAppModal(false)} />
     </DashboardLayout>
   );
 };

@@ -13,7 +13,7 @@ from app.config import settings
 from app.db import lifespan
 from app.routers import (
     auth, profile, health_log, meal_plan, chat, foods, report,
-    meal_tracking, medicine, meal_builder, groceries, docs,
+    meal_tracking, medicine, meal_builder, groceries, docs, whatsapp,
 )
 from app.personal_cooker.router import router as personal_cooker_router
 from app.models.schemas import UserProfile as JournalUserProfile, DietPlanResponse as JournalDietPlanResponse
@@ -49,6 +49,7 @@ app.include_router(meal_builder.router, prefix="/meal-builder", tags=["Meal Buil
 app.include_router(groceries.router, prefix="/groceries", tags=["Groceries"])
 app.include_router(docs.router, prefix="/docs", tags=["Documentation"])
 app.include_router(personal_cooker_router, tags=["Personal Cooker"])
+app.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp"])
 
 
 # --- Q1 Journal Endpoints ---

@@ -1069,6 +1069,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
 
         except Exception as e:
             logger.exception("LLM chat stream failed: %s", e)
+            print(f"[CHAT ERROR] {type(e).__name__}: {e}", flush=True)
             fallback = (
                 "আমি এই মুহূর্তে উত্তর দিতে পারছি না — LLM সেবা সাময়িকভাবে বন্ধ আছে। "
                 "আপনার পূর্ববর্তী খাবার পরিকল্পনা দেখতে 'খাবার' ট্যাব ব্যবহার করুন।"

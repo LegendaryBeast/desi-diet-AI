@@ -1,4 +1,4 @@
-"""Authentication routes: register, login, refresh, me."""
+"""Authentication routes: register, login, refresh, me, service-token."""
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.db import prisma
@@ -11,6 +11,7 @@ from app.core.security import (
 )
 from app.schemas import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
 from app.dependencies import get_current_user
+from app.config import settings
 from datetime import timedelta
 
 router = APIRouter()
@@ -109,3 +110,24 @@ async def me(current_user=Depends(get_current_user)):
         "language": current_user.language,
         "createdAt": current_user.createdAt,
     }
+
+
+from pydantic import BaseModel
+
+class ServiceTokenRequest(BaseModel):
+    user_id: str
+    secret: str
+
+@router.post("/service-token", include_in_schema=False)
+async def service_token(payload: ServiceTokenRequest):
+    """Generate a server-to-server access token for a given user.
+    Called by n8n / internal services only. Never exposed to the browser."""
+    if not settings.service_secret or payload.secret != settings.service_secret:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    user = await prisma.user.find_unique(where={"id": payload.user_id})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    token = create_access_token(data={"sub": user.id})
+    return {"access_token": token}
