@@ -1379,3 +1379,57 @@ async def get_chat_history(current_user=Depends(get_current_user)):
     except Exception as e:
         logger.exception("Failed to fetch chat history: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch chat history")
+
+
+# ─── Unified LangGraph Agent Endpoint ──────────────────────────────────────────
+class UnifiedChatRequest(ChatRequest):
+    """Extended request schema for the unified agent endpoint."""
+    condition: str = ""          # Optional: pre-set NutriSaathi condition
+    session_id: str = "unified"  # NutriSaathi session continuity key
+
+
+@router.post("/unified")
+async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current_user)):
+    """
+    Unified Pushti AI + NutriSaathi agent endpoint (LangGraph).
+
+    A single fast LLM call classifies the user's intent, then routes to:
+      - Pusti AI  → meal planning, calorie queries, meal logging, health reports
+      - NutriSaathi → recipe safety, cooking guide, cooking procedures
+
+    Returns JSON: { "reply": str, "intent": str, "tool_calls": list | null }
+    """
+    from app.agents.graph import unified_graph
+
+    history = [
+        {"role": t.role, "content": t.content}
+        for t in (getattr(req, "history", []) or [])
+        if t.role in ("user", "assistant") and t.content
+    ]
+
+    initial_state = {
+        "user_id":    current_user.id,
+        "message":    req.message or "",
+        "language":   getattr(req, "language", "bn") or "bn",
+        "history":    history,
+        "intent":     None,
+        "condition":  req.condition or "",
+        "session_id": req.session_id or "unified",
+        "reply":      None,
+        "tool_calls": None,
+        "sse_chunks": [],
+        "error":      None,
+    }
+
+    try:
+        result = await unified_graph.ainvoke(initial_state)
+        return {
+            "reply":      result.get("reply") or "",
+            "intent":     result.get("intent") or "pusti_ai",
+            "tool_calls": result.get("tool_calls"),
+            "error":      result.get("error"),
+        }
+    except Exception as e:
+        logger.exception("UnifiedChat LangGraph error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Agent error: {e}")
+
