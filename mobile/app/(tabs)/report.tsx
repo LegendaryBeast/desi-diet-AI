@@ -153,12 +153,10 @@ export default function ReportScreen() {
 
       // Micronutrient grouping exactly like web
       const VITAMIN_NAMES = [
-        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-        "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-        "Pantothenic acid (B5)", "Biotin (B7)"
+        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
+        "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)"
       ];
       const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)", "Sodium", "Sodium (Na)"];
-      const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
       const mappedMicros = (healthSummary?.micronutrient_targets && healthSummary.micronutrient_targets.length > 0)
         ? healthSummary.micronutrient_targets
@@ -182,8 +180,7 @@ export default function ReportScreen() {
           ];
 
       const vitamins = mappedMicros.filter((n: any) => VITAMIN_NAMES.includes(n.name));
-      const minerals = mappedMicros.filter((n: any) => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-      const fatty = mappedMicros.filter((n: any) => FATTY_NAMES.includes(n.name));
+      const minerals = mappedMicros.filter((n: any) => !VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
 
       const isOptimal = (avgVal: number, targetVal: number) => {
         const pct = targetVal > 0 ? (avgVal / targetVal) * 100 : 100;
@@ -470,34 +467,6 @@ export default function ReportScreen() {
               </table>
             ` : ''}
 
-            ${fatty.length > 0 ? `
-              <h3 style="margin-top: 15px; margin-bottom: 5px; color: #10b981; font-size: 14px;">${language === 'bn' ? '🌱 ফ্যাটি অ্যাসিড (Fatty Acids)' : '🌱 Fatty Acids'}</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>${language === 'bn' ? 'ফ্যাটি অ্যাসিড' : 'Fatty Acid'}</th>
-                    <th>${language === 'bn' ? 'গড় দৈনিক গ্রহণ' : 'Daily Avg Intake'}</th>
-                    <th>${language === 'bn' ? 'লক্ষ্যমাত্রা' : 'Target'}</th>
-                    <th>${language === 'bn' ? 'পূরণ হার (%)' : 'Met Ratio (%)'}</th>
-                    <th>${language === 'bn' ? 'অবস্থা' : 'Status'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${fatty.map((nut: any) => {
-                    const status = isOptimal(nut.avg, nut.target);
-                    return `
-                      <tr>
-                        <td><strong>${language === 'bn' ? nut.nameBn : nut.name}</strong></td>
-                        <td>${Math.round(nut.avg)} ${nut.unit}</td>
-                        <td>${Math.round(nut.target)} ${nut.unit}</td>
-                        <td>${Math.round(nut.percentage)}%</td>
-                        <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            ` : ''}
 
             <h2>🍲 ${language === 'bn' ? 'খাদ্য গ্রহণ তালিকা ও ফ্রিকোয়েন্সি (Food Frequency Log)' : 'Food Frequency Log'}</h2>
             <div style="margin-top: 10px; margin-bottom: 20px;">
@@ -709,7 +678,7 @@ export default function ReportScreen() {
         {/* Micros Grid */}
         <Text style={styles.intakeSubSection}>{language === 'bn' ? 'ভিটামিন ও খনিজ খতিয়ান (দৈনিক গড়)' : 'Micronutrient Summary (Daily Avg)'}</Text>
         <View style={styles.microIntakeGrid}>
-          {micronutrients.map((micro) => {
+          {micronutrients.map((micro: any) => {
             const pct = Math.round((micro.avg / micro.target) * 100);
             let statusLabel = language === 'bn' ? 'সঠিক' : 'Optimal';
             let statusColor = colors.success;
