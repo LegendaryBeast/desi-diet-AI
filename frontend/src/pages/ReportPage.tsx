@@ -415,12 +415,6 @@ export const ReportPage = () => {
             এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
             © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
           </div>
-
-          <script>
-            window.onload = function() {
-              window.print();
-            }
-          </script>
         </body>
       </html>
     `;
@@ -430,6 +424,10 @@ export const ReportPage = () => {
       printWindow.document.open();
       printWindow.document.write(htmlContent);
       printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
     }
   };
 
