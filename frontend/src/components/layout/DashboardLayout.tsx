@@ -95,7 +95,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     { path: '/chat', label: isBn ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant', icon: MessageSquare },
     { path: '/meal-plan', label: isBn ? 'আজকের মিল প্ল্যান' : 'Meal Plan', icon: Utensils },
     { path: '/grocery', label: isBn ? 'গ্রোসারি তুলনা' : 'Grocery', icon: ShoppingCart },
-    { path: '/personal-cooker', label: isBn ? 'রান্নার নির্দেশিকা' : 'Cooking Guide', icon: ChefHat },
     { path: '/medicine', label: isBn ? 'ওষুধের রিমাইন্ডার' : 'Medicine', icon: Pill },
     { path: '/foods', label: isBn ? 'খাবারের তালিকা' : 'Foods', icon: Apple },
     { path: '/report', label: isBn ? 'পুষ্টি রিপোর্ট' : 'Report', icon: BarChart2 },
@@ -104,7 +103,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const mobileNavItems = [
     { path: '/dashboard', label: isBn ? 'ড্যাশবোর্ড' : 'Dashboard', icon: Layout },
     { path: '/chat', label: isBn ? 'এআই চ্যাট' : 'AI Chat', icon: MessageSquare },
-    { path: '/personal-cooker', label: isBn ? 'রান্না নির্দেশিকা' : 'Cooking Guide', icon: ChefHat },
+    { path: '/meal-plan', label: isBn ? 'মিল প্ল্যান' : 'Meal Plan', icon: Utensils },
     { path: '/grocery', label: isBn ? 'গ্রোসারি' : 'Grocery', icon: ShoppingCart },
   ];
 
