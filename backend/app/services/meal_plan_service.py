@@ -1091,7 +1091,7 @@ async def _optimize_plan_to_target(
                     val_std = val / 1000.0
 
                 if val_std > ul:
-                    loss += 50000.0 * ((val_std - ul) ** 2)
+                    loss += 500000.0 * ((val_std - ul) ** 2)
 
         # Deficiency correction penalties
         for nut, val in tot_nutrients.items():
@@ -1113,15 +1113,40 @@ async def _optimize_plan_to_target(
 
         return loss
 
+    # Pre-compute UL-aware hard caps per food item
+    # If 100g of a food provides X mg of a nutrient, cap its max weight so it
+    # contributes at most 80% of that nutrient's UL on its own.
+    ul_caps = []
+    for idx, prof in enumerate(profiles):
+        cap = min(500.0, 2.5 * w_orig_list[idx])  # default max
+        for nut, nut_amount_per_100g in prof["nutrients"].items():
+            ul = MICRONUTRIENT_UL.get(nut)
+            if ul is None or nut_amount_per_100g <= 0:
+                continue
+            # Convert nut_amount_per_100g to standard UL unit
+            nut_std_per_100g = nut_amount_per_100g
+            if "vitamin a" in nut.lower() or "folate" in nut.lower():
+                nut_std_per_100g = nut_amount_per_100g * 1000.0
+            elif "potassium" in nut.lower():
+                nut_std_per_100g = nut_amount_per_100g / 1000.0
+            # Weight at which this food alone would hit 80% of UL
+            ul_safe_g = (0.80 * ul / nut_std_per_100g) * 100.0
+            if ul_safe_g < cap:
+                cap = ul_safe_g
+        ul_caps.append(max(10.0, cap))  # always allow at least 10g
+
     # Optimize using Coordinate Descent with hill climbing
     current_weights = list(w_orig_list)
+    # Clamp initial weights to UL-safe caps
+    for j in range(len(current_weights)):
+        current_weights[j] = min(current_weights[j], ul_caps[j])
     best_loss = compute_loss(current_weights)
 
     for _ in range(20):
         improved = False
         for j in range(len(current_weights)):
-            w_min = max(20.0, 0.4 * w_orig_list[j])
-            w_max = min(500.0, 2.5 * w_orig_list[j])
+            w_min = max(10.0, 0.2 * w_orig_list[j])
+            w_max = ul_caps[j]  # hard UL-aware cap
 
             best_w = current_weights[j]
             # Grid search 15 points
@@ -1154,7 +1179,12 @@ async def _optimize_plan_to_target(
             break
 
     # Apply optimized weights and re-calculate macros/calories
-    print(f"⚖️ Optimized portions for {len(flat_items)} foods. Initial Cal: {sum(profiles[i]['calories'] * (w_orig_list[i]/100.0) for i in range(len(flat_items))):.1f} -> Optimized: {sum(profiles[i]['calories'] * (current_weights[i]/100.0) for i in range(len(flat_items))):.1f} kcal")
+    init_cal = sum(profiles[i]['calories'] * (w_orig_list[i]/100.0) for i in range(len(flat_items)))
+    opt_cal  = sum(profiles[i]['calories'] * (current_weights[i]/100.0) for i in range(len(flat_items)))
+    print(f"⚖️ Optimizer: {len(flat_items)} foods | Initial {init_cal:.1f} kcal → Optimized {opt_cal:.1f} kcal (target: {target_calories})")
+    for idx, item in enumerate(flat_items):
+        food_name = item.get("name_en") or item.get("food_code") or f"item_{idx}"
+        print(f"   [{food_name}] orig={w_orig_list[idx]:.1f}g → opt={current_weights[idx]:.1f}g  UL_cap={ul_caps[idx]:.1f}g")
 
     for idx, item in enumerate(flat_items):
         w = round(current_weights[idx], 1)
@@ -1163,7 +1193,7 @@ async def _optimize_plan_to_target(
         fact = w / 100.0
         item["calories"] = round(prof["calories"] * fact, 1)
 
-        # Update macro values
+        # Update macro values (support both snake_case and short keys)
         for key in ["protein", "protein_g"]:
             if key in item or key == "protein_g":
                 item[key] = round(prof["protein_g"] * fact, 2)
@@ -1176,6 +1206,30 @@ async def _optimize_plan_to_target(
         for key in ["fiber", "fiber_g"]:
             if key in item or key == "fiber_g":
                 item[key] = round(prof["fiber_g"] * fact, 2)
+
+    # Post-optimization UL audit — log any remaining aggregate violations
+    final_nutrients: Dict[str, float] = {nut: 0.0 for nut in TRACKED_NUTRIENTS}
+    for idx, prof in enumerate(profiles):
+        fact = current_weights[idx] / 100.0
+        for nut in TRACKED_NUTRIENTS:
+            final_nutrients[nut] += prof["nutrients"].get(nut, 0.0) * fact
+
+    violations = []
+    for nut, val in final_nutrients.items():
+        ul = MICRONUTRIENT_UL.get(nut)
+        if ul is None:
+            continue
+        val_std = val
+        if "vitamin a" in nut.lower() or "folate" in nut.lower():
+            val_std = val * 1000.0
+        elif "potassium" in nut.lower():
+            val_std = val / 1000.0
+        if val_std > ul:
+            violations.append(f"{nut}: {val_std:.2f} > UL {ul}")
+    if violations:
+        print(f"⚠️ Post-optimizer UL violations (still over): {violations}")
+    else:
+        print("✅ No UL violations after optimization.")
 
     # Label target calories per meal slot
     meal_targets = [0.30, 0.40, 0.30]
