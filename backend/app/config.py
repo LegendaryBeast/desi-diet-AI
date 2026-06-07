@@ -43,8 +43,17 @@ class Settings(BaseSettings):
     service_secret: str = Field(default="", alias="SERVICE_SECRET")
     n8n_optin_webhook_url: str = Field(default="", alias="N8N_OPTIN_WEBHOOK_URL")
 
+    # WhatsApp Cloud API direct integration
+    whatsapp_token: str = Field(default="", alias="WHATSAPP_TOKEN")
+    phone_number_id: str = Field(default="", alias="PHONE_NUMBER_ID")
+    whatsapp_verify_token: str = Field(default="", alias="WHATSAPP_VERIFY_TOKEN")
+    backend_url: str = Field(default="http://localhost:8000", alias="BACKEND_URL")
+
     # Groq (optional — takes priority over OpenAI when set)
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+
+    # Frontend URL
+    frontend_url: str = Field(default="http://localhost:5173", alias="FRONTEND_URL")
 
     @property
     def cors_origin_list(self) -> List[str]:

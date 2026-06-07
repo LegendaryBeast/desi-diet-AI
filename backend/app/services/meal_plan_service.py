@@ -3,7 +3,8 @@
 import json
 import random
 import unicodedata
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import List, Dict, Any, Optional
 from app.db import prisma
 from app.core.llm_client import llm_client
@@ -1889,7 +1890,7 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
 async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any], language: str, target_date: datetime = None) -> Any:
     """Save a generated meal plan to the database."""
     if target_date is None:
-        target_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        target_date = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
     ai_cal = sum(
         item.get("calories", 0)

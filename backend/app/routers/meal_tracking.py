@@ -13,7 +13,8 @@ from app.dependencies import get_current_user
 from app.schemas import MealTrackingRequest, MealTrackingResponse, MealTrackingListItem, ParsedFoodItem
 from app.core.llm_client import llm_client
 from app.utils import safe_list, safe_dict, to_json_string, from_json_string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import List, Optional
 from app.routers.foods import _get_rag
 
@@ -153,7 +154,7 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
         # Fetch today's daily meal plan from the database to match exact planned items
         planned_items = []
         try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             today_plan = await prisma.mealplan.find_first(
                 where={
                     "userId":   current_user.id,
@@ -588,7 +589,7 @@ async def log_meal_from_image(
 @router.get("/today", response_model=List[MealTrackingListItem])
 async def get_today_logs(current_user=Depends(get_current_user)):
     """Get all unplanned meal logs for today."""
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     records = await prisma.mealtracking.find_many(
         where={
             "userId":    current_user.id,

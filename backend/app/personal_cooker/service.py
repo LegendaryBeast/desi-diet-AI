@@ -266,8 +266,8 @@ class PersonalCookerService:
         # 5b. Fetch user's today's meal plan for context
         meal_plan_context = ""
         try:
-            from datetime import timezone
-            today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            from zoneinfo import ZoneInfo
+            today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             today_plan = await prisma.mealplan.find_first(
                 where={"userId": user_id, "planDate": {"gte": today}},
                 order={"createdAt": "desc"},

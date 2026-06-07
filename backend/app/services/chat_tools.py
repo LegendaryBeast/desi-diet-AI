@@ -4,6 +4,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from app.db import prisma
 from app.utils import safe_list, from_json_string, to_json_string
 from rag_engine import KhadokGraphRAG, calculate_targets
@@ -51,7 +52,8 @@ _TARGET_FIELDS = {"weight_kg", "height_cm", "age", "activity_level", "goal", "ge
 async def _invalidate_todays_meal_plan(user_id: str) -> None:
     """Delete today's cached meal plan so it regenerates with fresh targets."""
     try:
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        bd_tz = ZoneInfo("Asia/Dhaka")
+        today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
         await prisma.mealplan.delete_many(
             where={
                 "userId": user_id,
@@ -94,7 +96,8 @@ async def tool_update_profile(user_id: str, args: Dict[str, Any]) -> Dict[str, A
 # ── Meal Plan Tools ───────────────────────────────────────────────────────────
 
 async def tool_get_meal_plan(user_id: str, args: Dict[str, Any] = None) -> Dict[str, Any]:
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    bd_tz = ZoneInfo("Asia/Dhaka")
+    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     plan = await prisma.mealplan.find_first(
         where={"userId": user_id, "planDate": {"gte": today}},
         order={"createdAt": "desc"},
@@ -122,7 +125,8 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
     if slot not in ["breakfast", "lunch", "dinner", "snack"]:
         return _err("Invalid slot. Must be breakfast, lunch, dinner, or snack.")
 
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    bd_tz = ZoneInfo("Asia/Dhaka")
+    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     plan = await prisma.mealplan.find_first(
         where={"userId": user_id, "planDate": {"gte": today}},
         order={"createdAt": "desc"},

@@ -142,7 +142,8 @@ async def get_health_summary(
 
     # 1. Log today's weight if provided
     if weight_kg and weight_kg > 0:
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        from zoneinfo import ZoneInfo
+        today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
         existing_log = await prisma.healthlog.find_first(
             where={"userId": current_user.id, "logDate": {"gte": today_start}}
         )

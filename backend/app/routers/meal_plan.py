@@ -6,7 +6,8 @@ from app.dependencies import get_current_user
 from app.schemas import MealPlanResponse, MealPlanFeedbackRequest, MarkSlotCompleteRequest, MarkSlotCompleteResponse, EditMealPlanRequest
 from app.services.meal_plan_service import generate_daily_meal_plan, generate_weekly_meal_plan, save_meal_plan, _ensure_item_emojis
 from app.utils import safe_dict, safe_list, to_json_string, from_json_string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import asyncio
 from typing import List, Dict, Any
 
@@ -283,7 +284,7 @@ async def _plan_to_response(plan) -> MealPlanResponse:
 @router.get("/daily", response_model=MealPlanResponse)
 async def get_daily_plan(language: str = "bn", force: bool = False, offset: int = 0, current_user=Depends(get_current_user)):
     """Generate AI meal plan for today or future day."""
-    target_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=offset)
+    target_date = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc) + timedelta(days=offset)
 
     if not force:
         existing = await prisma.mealplan.find_first(
@@ -316,7 +317,7 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
 @router.get("/weekly", response_model=List[MealPlanResponse])
 async def get_weekly_plan(language: str = "bn", force: bool = False, current_user=Depends(get_current_user)):
     """Generate a 7-day meal plan with variety enforcement."""
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     week_end = today + timedelta(days=7)
     
     if not force:

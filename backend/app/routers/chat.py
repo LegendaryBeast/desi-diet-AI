@@ -13,6 +13,7 @@ import json
 import logging
 import httpx
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.services.diet_plan_chat_service import (
     COLLECTION_SYSTEM_PROMPT,
@@ -99,7 +100,8 @@ Return ONLY valid JSON:
     try:
         from datetime import timedelta
         from app.utils import from_json_string
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        from zoneinfo import ZoneInfo
+        today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
         today_plan = await prisma.mealplan.find_first(
             where={
                 "userId":   user_id,
@@ -272,7 +274,7 @@ Return ONLY valid JSON:
     if resolved_slot not in ["breakfast", "lunch", "dinner", "snack"]:
         slot_scores = {"breakfast": 0, "lunch": 0, "dinner": 0, "snack": 0}
         try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             today_plan = await prisma.mealplan.find_first(
                 where={
                     "userId":   user_id,
@@ -317,7 +319,7 @@ Return ONLY valid JSON:
     # 5. Auto-complete slot in today's Meal Plan
     if resolved_slot:
         try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             today_plan = await prisma.mealplan.find_first(
                 where={
                     "userId":   user_id,
@@ -420,7 +422,7 @@ async def _build_user_context(current_user_id: str) -> str:
             lines.append(f"Notes: {health_log.notes}")
 
     # ── Today's Meal Plan ─────────────────────────────────────────────────────
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     today_plan = await prisma.mealplan.find_first(
         where={"userId": current_user_id, "planDate": {"gte": today}},
         order={"createdAt": "desc"},
@@ -499,17 +501,26 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "  - Meal logging and food tracking\n"
             "  - Complete Health & Nutrition Reports, including calorie history, weights, and compliance\n"
             "  - Nutritional analysis of foods (calories, protein, carbs, fat, fiber)\n"
-            "  - Which foods to prefer or avoid based on their logged medical conditions\n\n"
+            "  - Which foods to prefer or avoid based on their logged medical conditions\n"
+            "  - Food safety questions for specific medical conditions (e.g. 'can I eat X with diabetes?', "
+            "'is Y safe for high blood pressure?', 'what sweets can a diabetic have?')\n\n"
+            "=== IMPORTANT — WHAT IS IN SCOPE ===\n"
+            "ANY question that combines food/eating with a health condition IS in scope. Examples:\n"
+            "  ✅ 'Can I have sweets? I am a diabetic patient' → Answer with food/diet advice for diabetes\n"
+            "  ✅ 'Is rice good for hypertension?' → Answer with nutritional guidance\n"
+            "  ✅ 'What can I eat after surgery?' → Answer with dietary recommendations\n"
+            "  ✅ 'I have kidney disease, can I eat banana?' → Answer with food safety advice\n"
+            "  ✅ 'I feel dizzy, what should I eat?' → Answer with food/nutrition advice\n"
+            "DO NOT reject these as medical questions — they are diet and nutrition questions.\n\n"
             "=== HARD RESTRICTIONS — NEVER VIOLATE ===\n"
             "You are STRICTLY FORBIDDEN from:\n"
-            "  1. Providing any medical consultation, diagnosis, or treatment advice.\n"
-            "  2. Recommending medicines, prescription drug clinical dosages, or medical therapies.\n"
-            "  3. Interpreting blood reports or lab results as a doctor's opinion.\n"
-            "  4. Answering ANY question unrelated to food, diet, nutrition, or weight health reports "
+            "  1. Prescribing medicines or clinical drug dosages.\n"
+            "  2. Diagnosing diseases or replacing a doctor's medical opinion.\n"
+            "  3. Answering questions completely unrelated to food, diet, nutrition, health, or body "
             "(e.g. history, politics, coding, math, travel, entertainment, relationships).\n"
-            "  5. Generating creative content (stories, poems, essays, jokes).\n"
-            "  6. Pretending to be any other assistant or persona.\n\n"
-            "If the user asks ANYTHING outside of food/diet/nutrition/reports, respond ONLY with:\n"
+            "  4. Generating creative content (stories, poems, essays, jokes).\n"
+            "  5. Pretending to be any other assistant or persona.\n\n"
+            "Only reject a question with the message below if it has ZERO connection to food, nutrition, diet, or health:\n"
             "  Bengali: 'দুঃখিত, আমি শুধুমাত্র খাদ্য, পুষ্টি এবং ডায়েট পরিকল্পনা বিষয়ক প্রশ্নের উত্তর দিতে সক্ষম। "
             "চিকিৎসা পরামর্শ বা অন্য যেকোনো বিষয়ের জন্য সংশ্লিষ্ট বিশেষজ্ঞের সাথে যোগাযোগ করুন।'\n"
             "  English: 'Sorry, I can only assist with food, nutrition, and diet planning. "
@@ -960,17 +971,24 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "  - Meal logging and food tracking\n"
                         "  - Complete Health & Nutrition Reports, including calorie history, weights, and compliance\n"
                         "  - Nutritional analysis of foods (calories, protein, carbs, fat, fiber)\n"
-                        "  - Which foods to prefer or avoid based on their logged medical conditions\n\n"
+                        "  - Which foods to prefer or avoid based on their logged medical conditions\n"
+                        "  - Food safety questions for specific medical conditions (e.g. 'can I eat X with diabetes?', "
+                        "'is Y safe for high blood pressure?', 'what sweets can a diabetic have?')\n\n"
+                        "=== IMPORTANT — WHAT IS IN SCOPE ===\n"
+                        "ANY question that combines food/eating with a health condition IS in scope. Examples:\n"
+                        "  ✅ 'Can I have sweets? I am a diabetic patient' → Answer with food/diet advice for diabetes\n"
+                        "  ✅ 'Is rice good for hypertension?' → Answer with nutritional guidance\n"
+                        "  ✅ 'I have kidney disease, can I eat banana?' → Answer with food safety advice\n"
+                        "DO NOT reject these as medical questions — they are diet and nutrition questions.\n\n"
                         "=== HARD RESTRICTIONS — NEVER VIOLATE ===\n"
                         "You are STRICTLY FORBIDDEN from:\n"
-                        "  1. Providing any medical consultation, diagnosis, or treatment advice.\n"
-                        "  2. Recommending medicines, prescription drug clinical dosages, or medical therapies.\n"
-                        "  3. Interpreting blood reports or lab results as a doctor's opinion.\n"
-                        "  4. Answering ANY question unrelated to food, diet, nutrition, or weight health reports "
+                        "  1. Prescribing medicines or clinical drug dosages.\n"
+                        "  2. Diagnosing diseases or replacing a doctor's medical opinion.\n"
+                        "  3. Answering questions completely unrelated to food, diet, nutrition, health, or body "
                         "(e.g. history, politics, coding, math, travel, entertainment, relationships).\n"
-                        "  5. Generating creative content (stories, poems, essays, jokes).\n"
-                        "  6. Pretending to be any other assistant or persona.\n\n"
-                        "If the user asks ANYTHING outside of food/diet/nutrition/reports, respond ONLY with:\n"
+                        "  4. Generating creative content (stories, poems, essays, jokes).\n"
+                        "  5. Pretending to be any other assistant or persona.\n\n"
+                        "Only reject a question with the message below if it has ZERO connection to food, nutrition, diet, or health:\n"
                         "  Bengali: 'দুঃখিত, আমি শুধুমাত্র খাদ্য, পুষ্টি এবং ডায়েট পরিকল্পনা বিষয়ক প্রশ্নের উত্তর দিতে সক্ষম। "
                         "চিকিৎসা পরামর্শ বা অন্য যেকোনো বিষয়ের জন্য সংশ্লিষ্ট বিশেষজ্ঞের সাথে যোগাযোগ করুন।'\n"
                         "  English: 'Sorry, I can only assist with food, nutrition, and diet planning. "
@@ -1018,6 +1036,8 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                 second_response = await llm_client.client.chat.completions.create(
                     model=llm_client.model,
                     messages=messages,
+                    tools=tools,
+                    tool_choice="none",
                     stream=True,
                     temperature=0.7,
                     max_tokens=settings.llm_max_tokens,

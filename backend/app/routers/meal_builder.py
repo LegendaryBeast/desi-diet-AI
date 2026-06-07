@@ -71,8 +71,9 @@ async def analyze_meal(req: MealBuilderAnalyzeRequest, current_user=Depends(get_
     # Determine slot calorie target from today's meal plan
     slot_target = None
     if req.meal_slot:
-        from datetime import datetime, timedelta
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        from datetime import datetime, timedelta, timezone
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
         plan = await prisma.mealplan.find_first(
             where={
                 "userId": current_user.id,
