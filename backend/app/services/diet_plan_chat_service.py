@@ -158,26 +158,14 @@ async def generate_plan_from_collected(
     try:
         from app.services.meal_plan_service import (
             _validate_and_sanitize_meal_plan_foods,
-            _optimize_plan_to_target,
+            _scale_plan_to_target,
             _ensure_item_emojis
         )
         plan_data = _validate_and_sanitize_meal_plan_foods(plan_data, safe_foods, rag.get_neo4j_driver())
-        
-        class _ProfileProxy:
-            age = collected.get("age")
-            gender = collected["gender"]
-            weightKg = float(collected["weight_kg"])
-            heightCm = float(collected["height_cm"])
-            activityLevel = collected["activity_level"]
-            goal = collected.get("goal", "maintain")
-            preferredFoods = None
-            dislikedFoods = None
-            medicalConditions = to_json_string(conditions)
-
-        plan_data = await _optimize_plan_to_target(plan_data, targets, user_id, _ProfileProxy())
+        plan_data = _scale_plan_to_target(plan_data, targets["target_calories"])
         plan_data = _ensure_item_emojis(plan_data)
     except Exception as e:
-        print(f"Error optimizing/sanitizing chat plan: {e}")
+        print(f"Error sanitizing chat plan: {e}")
 
     # Upsert profile with collected data
     try:
