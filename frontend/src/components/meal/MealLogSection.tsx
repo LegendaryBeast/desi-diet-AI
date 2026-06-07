@@ -118,6 +118,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
   // Today's logs
   const [todayLogs, setTodayLogs] = useState<MealTrackingListItem[]>([]);
   const [planItems, setPlanItems] = useState<any[]>([]);
+  const [completedSlots, setCompletedSlots] = useState<string[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
 
@@ -161,15 +162,20 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
       setTodayLogs(items);
       emitTotals(items);
 
-      if (planRes && planRes.plan_data) {
-        const meals = (planRes.plan_data as any).meals || [];
-        const extracted: any[] = [];
-        meals.forEach((m: any) => {
-          (m.items || []).forEach((it: any) => {
-            extracted.push(it);
+      if (planRes) {
+        setCompletedSlots(planRes.completed_slots || []);
+        if (planRes.plan_data) {
+          const meals = (planRes.plan_data as any).meals || [];
+          const extracted: any[] = [];
+          meals.forEach((m: any) => {
+            (m.items || []).forEach((it: any) => {
+              extracted.push(it);
+            });
           });
-        });
-        setPlanItems(extracted);
+          setPlanItems(extracted);
+        }
+      } else {
+        setCompletedSlots([]);
       }
     } catch (err) {
       // soft fail — keep widget usable
@@ -764,23 +770,27 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                   minute: '2-digit',
                 });
                 const combinedFoodNames = group.food_names.join(', ');
+                const isCompleted = completedSlots.includes(group.meal_slot);
+                const suffix = isCompleted ? '(fully)' : '(partial)';
+                const suffixEn = isCompleted ? ' (fully)' : ' (partial)';
+
                 const SLOT_LABELS_BN: Record<string, string> = {
-                  breakfast: 'সকালের নাস্তা',
-                  lunch: 'দুপুরের খাবার',
-                  snack: 'স্ন্যাক্স',
-                  dinner: 'রাতের খাবার',
-                  morning_snack: 'সকালের নাস্তা',
-                  evening_snack: 'বিকেলের নাস্তা',
-                  other: 'অন্যান্য',
+                  breakfast: `sokaler nasta${suffix}`,
+                  lunch: `dupurer khabar${suffix}`,
+                  snack: `snack${suffix}`,
+                  dinner: `rater khabar${suffix}`,
+                  morning_snack: `sokaler nasta${suffix}`,
+                  evening_snack: `bikelir nasta${suffix}`,
+                  other: `other${suffix}`,
                 };
                 const SLOT_LABELS_EN: Record<string, string> = {
-                  breakfast: 'Breakfast',
-                  lunch: 'Lunch',
-                  snack: 'Snack',
-                  dinner: 'Dinner',
-                  morning_snack: 'Morning Snack',
-                  evening_snack: 'Evening Snack',
-                  other: 'Other Food',
+                  breakfast: `Breakfast${suffixEn}`,
+                  lunch: `Lunch${suffixEn}`,
+                  snack: `Snack${suffixEn}`,
+                  dinner: `Dinner${suffixEn}`,
+                  morning_snack: `Morning Snack${suffixEn}`,
+                  evening_snack: `Evening Snack${suffixEn}`,
+                  other: `Other Food${suffixEn}`,
                 };
                 const slotLabel = isBn 
                   ? (SLOT_LABELS_BN[group.meal_slot] || SLOT_LABELS_BN.other)

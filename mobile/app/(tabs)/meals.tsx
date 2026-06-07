@@ -968,9 +968,34 @@ export default function MealsScreen() {
               hour: '2-digit',
               minute: '2-digit',
             });
+
+            const completedSlots = getCompletedSlots(todayQ.data);
+            const isCompleted = completedSlots.includes(group.meal_slot);
+            const suffix = isCompleted ? '(fully)' : '(partial)';
+            const suffixEn = isCompleted ? ' (fully)' : ' (partial)';
+
+            const SLOT_LABELS_BN_LOCAL: Record<string, string> = {
+              breakfast: `sokaler nasta${suffix}`,
+              lunch: `dupurer khabar${suffix}`,
+              snack: `snack${suffix}`,
+              dinner: `rater khabar${suffix}`,
+              morning_snack: `sokaler nasta${suffix}`,
+              evening_snack: `bikelir nasta${suffix}`,
+              other: `other${suffix}`,
+            };
+            const SLOT_LABELS_EN_LOCAL: Record<string, string> = {
+              breakfast: `Breakfast${suffixEn}`,
+              lunch: `Lunch${suffixEn}`,
+              snack: `Snack${suffixEn}`,
+              dinner: `Dinner${suffixEn}`,
+              morning_snack: `Morning Snack${suffixEn}`,
+              evening_snack: `Evening Snack${suffixEn}`,
+              other: `Other Food${suffixEn}`,
+            };
+
             const slotLabel = isBn 
-              ? (SLOT_LABELS_BN[group.meal_slot] || SLOT_LABELS_BN.other)
-              : (SLOT_LABELS_EN[group.meal_slot] || SLOT_LABELS_EN.other);
+              ? (SLOT_LABELS_BN_LOCAL[group.meal_slot] || SLOT_LABELS_BN_LOCAL.other)
+              : (SLOT_LABELS_EN_LOCAL[group.meal_slot] || SLOT_LABELS_EN_LOCAL.other);
 
             const combinedFoodNames = group.food_names.join(', ');
 

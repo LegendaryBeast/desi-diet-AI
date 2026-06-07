@@ -316,28 +316,7 @@ Return ONLY valid JSON:
         }
     )
 
-    # 5. Auto-complete slot in today's Meal Plan
-    if resolved_slot:
-        try:
-            today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-            today_plan = await prisma.mealplan.find_first(
-                where={
-                    "userId":   user_id,
-                    "planType": "daily",
-                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-                }
-            )
-            if today_plan:
-                from app.utils import safe_list
-                completed = safe_list(from_json_string(today_plan.completedSlots)) if today_plan.completedSlots else []
-                if resolved_slot not in completed:
-                    completed.append(resolved_slot)
-                    await prisma.mealplan.update(
-                        where={"planId": today_plan.planId},
-                        data={"completedSlots": to_json_string(completed)},
-                    )
-        except Exception:
-            logger.exception("Failed to auto-complete meal plan slot in chat logging")
+    # 5. Return response (Auto-completion removed to support partial logs without force-completing the whole meal slot)
 
     return {
         "id":             record.id,
