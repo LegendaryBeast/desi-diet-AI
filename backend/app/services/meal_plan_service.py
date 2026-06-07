@@ -1288,7 +1288,6 @@ def _build_meal_plan_prompt(
     language: str = "bn",
     pairings: List[Dict[str, Any]] = None,
     slot_pools: Dict[str, set] = None,
-    micro_status: Dict[str, Any] = None,
 ) -> List[Dict[str, str]]:
     """Build the LLM prompt for meal plan generation."""
 
@@ -1451,20 +1450,7 @@ CRITICAL RULES:
   - Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
   - Organic / farm-fresh items → Khaas Food (khaasfood.com)
   - Packaged foods, snacks, supplements → Daraz (daraz.com.bd)
-19. MICRONUTRIENT BALANCE: Pay attention to the MICRONUTRIENT targets and deficiencies listed in the user prompt. Ensure you select and include foods that are rich in these nutrients (for example: liver/spinach/eggs for Iron/Vitamin A, milk/yogurt/small fish for Calcium, guava/citrus for Vitamin C).
 """
-
-    micro_section = ""
-    if micro_status:
-        if micro_status.get("is_new_user"):
-            target_lines = [f"  - {t['name']}: {t['target']} {t['unit']}" for t in micro_status.get("daily_rda_targets", [])]
-            micro_section = "\nMICRONUTRIENT GOALS (Try to meet these daily RDA targets by selecting nutrient-dense foods):\n" + "\n".join(target_lines) + "\n"
-        else:
-            def_lines = [f"  - {d['name']}: {d['consumed']} {d['unit']} consumed / {d['target']} {d['unit']} target (only {d['percentage']}% met)" for d in micro_status.get("deficiencies", [])]
-            if def_lines:
-                micro_section = "\nCRITICAL MICRONUTRIENT GAPS TO CORRECT (Prioritize foods rich in these specific nutrients to help the user correct these deficiencies):\n" + "\n".join(def_lines) + "\n"
-            else:
-                micro_section = "\nMICRONUTRIENT STATUS: Excellent! All core micronutrients have been met >75% of RDA in recent logs.\n"
 
     user_prompt = f"""{lang_instruction}
 
@@ -1477,7 +1463,6 @@ USER PROFILE:
 DAILY NUTRITION TARGETS (NDG 2025):
 - Total Target Calories: {targets['target_calories']} kcal (YOU MUST REACH THIS)
 - Protein: {targets['protein_g']}g | Carbs: {targets['carbs_g']}g | Fat: {targets['fat_g']}g
-{micro_section}
 
 MEAL CALORIE DISTRIBUTION (MUST HIT EACH TARGET):
 - Breakfast (সকালের নাস্তা): {breakfast_cal} kcal  ← use rice/roti + protein + veg
@@ -1563,7 +1548,6 @@ def _build_weekly_meal_plan_prompt(
     language: str = "bn",
     pairings: List[Dict[str, Any]] = None,
     slot_pools: Dict[str, set] = None,
-    micro_status: Dict[str, Any] = None,
 ) -> List[Dict[str, str]]:
     """Build the LLM prompt for 7-day meal plan generation."""
 
@@ -1682,7 +1666,6 @@ CRITICAL RULES:
   - Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
   - Organic / farm-fresh items → Khaas Food (khaasfood.com)
   - Packaged foods, snacks, supplements → Daraz (daraz.com.bd)
-21. MICRONUTRIENT BALANCE: Pay attention to the MICRONUTRIENT targets and deficiencies listed in the user prompt. Ensure you select and include foods that are rich in these nutrients (for example: liver/spinach/eggs for Iron/Vitamin A, milk/yogurt/small fish for Calcium, guava/citrus for Vitamin C).
 """
 
     dietary_context = ""
@@ -1693,18 +1676,6 @@ CRITICAL RULES:
             for r in rules_for_condition[:5]:
                 action = "AVOID" if r["rule_type"] == "AVOID" else "PREFER"
                 dietary_context += f"  - {action} {r['group_target']}: {r['reason_en']}\n"
-
-    micro_section = ""
-    if micro_status:
-        if micro_status.get("is_new_user"):
-            target_lines = [f"  - {t['name']}: {t['target']} {t['unit']}" for t in micro_status.get("daily_rda_targets", [])]
-            micro_section = "\nMICRONUTRIENT GOALS (Try to meet these daily RDA targets by selecting nutrient-dense foods):\n" + "\n".join(target_lines) + "\n"
-        else:
-            def_lines = [f"  - {d['name']}: {d['consumed']} {d['unit']} consumed / {d['target']} {d['unit']} target (only {d['percentage']}% met)" for d in micro_status.get("deficiencies", [])]
-            if def_lines:
-                micro_section = "\nCRITICAL MICRONUTRIENT GAPS TO CORRECT (Prioritize foods rich in these specific nutrients to help the user correct these deficiencies):\n" + "\n".join(def_lines) + "\n"
-            else:
-                micro_section = "\nMICRONUTRIENT STATUS: Excellent! All core micronutrients have been met >75% of RDA in recent logs.\n"
 
     user_prompt = f"""{lang_instruction}
 
@@ -1718,7 +1689,6 @@ USER PROFILE:
 DAILY TARGETS (per day):
 - Target Calories: {targets['target_calories']} kcal
 - Protein: {targets['protein_g']}g | Carbs: {targets['carbs_g']}g | Fat: {targets['fat_g']}g
-{micro_section}
 
 DIETARY RULES:
 {rules_text}
@@ -2059,205 +2029,6 @@ def _generate_fallback_meal_plan(
     return fallback_plan
 
 
-async def _get_user_micronutrient_status(user_id: str, profile: Any) -> Dict[str, Any]:
-    """Calculate the user's current micronutrient targets and any deficiencies from recent history."""
-    from datetime import datetime, timezone, timedelta
-    from app.db import prisma
-    import json
-
-    user = await prisma.user.find_unique(where={"id": user_id})
-    created_at = user.createdAt if user else datetime.now(timezone.utc)
-
-    # Calculate days since user registration (history length)
-    user_age_days = (datetime.now(timezone.utc) - created_at).days + 1
-    # 3 days for new users, 7 days once they pass 3 days
-    days = 3 if user_age_days <= 3 else 7
-
-    # Fetch meal plans for strictly the past N days (ending today)
-    today_dt = datetime.now(timezone.utc)
-    first_day = today_dt - timedelta(days=days - 1)
-    start_of_period = first_day.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_of_period = today_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-
-    all_plans = await prisma.mealplan.find_many(
-        where={
-            "userId": user_id,
-            "planDate": {
-                "gte": start_of_period,
-                "lte": end_of_period,
-            },
-            "planType": "daily"
-        },
-        order={"planDate": "asc"},
-    )
-
-    # Collect all logged/completed food items
-    all_food_items = []
-    days_with_data = 0
-    for plan in all_plans:
-        plan_data = {}
-        if plan.planData:
-            try:
-                if isinstance(plan.planData, str):
-                    plan_data = json.loads(plan.planData)
-                else:
-                    plan_data = plan.planData
-            except Exception:
-                pass
-
-        completed_slots = []
-        if plan.completedSlots:
-            try:
-                if isinstance(plan.completedSlots, str):
-                    completed_slots = json.loads(plan.completedSlots)
-                else:
-                    completed_slots = plan.completedSlots
-            except Exception:
-                pass
-
-        day_has_data = False
-        meals = plan_data.get("meals", [])
-        for meal in meals:
-            slot = meal.get("slot", "")
-            if slot not in completed_slots:
-                continue
-            for item in meal.get("items", []):
-                day_has_data = True
-                code = item.get("food_code") or item.get("code") or ""
-                name_en = item.get("name_en") or ""
-                amount_g = float(item.get("amount_g") or 100)
-                if code or name_en:
-                    all_food_items.append({
-                        "code": code,
-                        "name_en": name_en,
-                        "amount_g": amount_g
-                    })
-        if day_has_data:
-            days_with_data += 1
-
-    TRACKED_NUTRIENTS = [
-        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
-        "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-        "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Copper (Cu)", "Potassium (K)",
-    ]
-
-    micro_totals = {}
-    micro_targets_map = {}
-
-    # 1. Fetch RDA targets from Neo4j
-    gender_key = (profile.gender or "male").lower()
-    age = profile.age or 30
-    if age < 19:
-        age_key = "14_18"
-    elif age <= 30:
-        age_key = "19_30"
-    elif age <= 50:
-        age_key = "31_50"
-    elif age <= 70:
-        age_key = "51_70"
-    else:
-        age_key = "gt_70"
-    rda_property = f"rda_{gender_key}_{age_key}_mg"
-
-    try:
-        rag = _get_rag()
-        driver = rag.get_neo4j_driver()
-        with driver.session() as session:
-            records = session.run(
-                f"MATCH (n:Nutrient) WHERE n.name IN $tracked RETURN n.name AS name, n.{rda_property} AS rda",
-                tracked=TRACKED_NUTRIENTS
-            )
-            for rec in records:
-                if rec["rda"] is not None:
-                    micro_targets_map[rec["name"]] = float(rec["rda"])
-
-        # 2. Aggregated consumed micronutrients if any
-        if all_food_items:
-            query_tracked = TRACKED_NUTRIENTS + ["Folates (B9)", "α-Tocopherol equivalent (E)"]
-            food_query = """
-            UNWIND $food_inputs AS input
-            MATCH (f:Food)
-            WHERE (input.code <> '' AND f.code = input.code)
-               OR (input.name_en <> '' AND toLower(f.name_en) = toLower(input.name_en))
-            OPTIONAL MATCH (f)-[r:CONTAINS_NUTRIENT]->(n:Nutrient)
-            WHERE n.name IN $tracked
-            RETURN input.code AS in_code, input.name_en AS in_name_en,
-                   input.amount_g AS amount_g,
-                   n.name AS nutrient_name, r.amount_mg AS amount_mg
-            """
-            with driver.session() as session:
-                records = session.run(food_query, food_inputs=all_food_items, tracked=query_tracked)
-                for rec in records:
-                    nut_name = rec["nutrient_name"]
-                    if nut_name == "Folates (B9)":
-                        nut_name = "Folate (total)"
-                    elif nut_name == "α-Tocopherol equivalent (E)":
-                        nut_name = "Vitamin E"
-                    amount_per_100g = rec["amount_mg"]
-                    amount_g = rec["amount_g"] or 100
-                    if nut_name and amount_per_100g is not None:
-                        contributed = float(amount_per_100g) * float(amount_g) / 100.0
-                        micro_totals[nut_name] = micro_totals.get(nut_name, 0.0) + contributed
-    except Exception as e:
-        print(f"Error checking micronutrient deficiencies: {e}")
-
-    # Build list of deficiencies
-    deficiencies = []
-    daily_rda_targets = []
-
-    for nut_name in TRACKED_NUTRIENTS:
-        target_daily_mg = micro_targets_map.get(nut_name)
-        if not target_daily_mg:
-            continue
-
-        unit = "mg"
-        target_val = target_daily_mg
-        if "vitamin a" in nut_name.lower() or "folate" in nut_name.lower():
-            unit = "mcg"
-            target_val = target_daily_mg * 1000.0
-        elif "ascorbic" in nut_name.lower():
-            unit = "mg"
-            target_val = target_daily_mg
-        elif "potassium" in nut_name.lower():
-            unit = "g"
-            target_val = target_daily_mg / 1000.0
-
-        daily_rda_targets.append({
-            "name": nut_name,
-            "target": round(target_val, 2),
-            "unit": unit
-        })
-
-        if days_with_data > 0:
-            consumed_total = micro_totals.get(nut_name, 0.0)
-            avg_daily_consumed = consumed_total / days_with_data
-
-            consumed_val = avg_daily_consumed
-            if "vitamin a" in nut_name.lower() or "folate" in nut_name.lower():
-                consumed_val = avg_daily_consumed * 1000.0
-            elif "potassium" in nut_name.lower():
-                consumed_val = avg_daily_consumed / 1000.0
-
-            percentage = min(100, int((consumed_val / target_val) * 100)) if target_val > 0 else 0
-            if percentage < 75:
-                deficiencies.append({
-                    "name": nut_name,
-                    "target": round(target_val, 2),
-                    "consumed": round(consumed_val, 2),
-                    "percentage": percentage,
-                    "unit": unit
-                })
-
-    return {
-        "is_new_user": user_age_days <= 3 or days_with_data == 0,
-        "days_window": days,
-        "days_with_data": days_with_data,
-        "deficiencies": deficiencies,
-        "daily_rda_targets": daily_rda_targets
-    }
-
-
 async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[str, Any]:
     """Generate a daily meal plan for a user, using the most recent health log weight."""
     profile = await prisma.profile.find_unique(where={"userId": user_id})
@@ -2322,8 +2093,7 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
         pairings = _get_popular_pairings(rag.get_neo4j_driver())
         safe_codes = {f.get("code") for f in safe_foods if f.get("code")}
         slot_pools = _get_slot_separated_foods(rag.get_neo4j_driver(), safe_codes)
-        micro_status = await _get_user_micronutrient_status(user_id, profile)
-        messages = _build_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools, micro_status)
+        messages = _build_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
         llm_response = await llm_client.chat_completion(
             messages=messages,
             temperature=0.35,
@@ -2416,8 +2186,7 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
         pairings = _get_popular_pairings(rag.get_neo4j_driver())
         safe_codes = {f.get("code") for f in safe_foods if f.get("code")}
         slot_pools = _get_slot_separated_foods(rag.get_neo4j_driver(), safe_codes)
-        micro_status = await _get_user_micronutrient_status(user_id, profile)
-        messages = _build_weekly_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools, micro_status)
+        messages = _build_weekly_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
         llm_response = await llm_client.chat_completion(
             messages=messages,
             temperature=0.35,
