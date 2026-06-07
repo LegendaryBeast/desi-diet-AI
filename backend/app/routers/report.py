@@ -336,7 +336,8 @@ async def get_health_summary(
             rag = KhadokGraphRAG()
             driver = rag.get_neo4j_driver()
 
-            # Batch query all nutrients for all food items
+            # Batch query all nutrients for all food items (including aliases)
+            query_tracked = TRACKED_NUTRIENTS + ["Folates (B9)", "α-Tocopherol equivalent (E)"]
             food_query = """
             UNWIND $food_inputs AS input
             MATCH (f:Food)
@@ -349,9 +350,13 @@ async def get_health_summary(
                    n.name AS nutrient_name, r.amount_mg AS amount_mg
             """
             with driver.session() as session:
-                records = session.run(food_query, food_inputs=all_food_items, tracked=TRACKED_NUTRIENTS)
+                records = session.run(food_query, food_inputs=all_food_items, tracked=query_tracked)
                 for rec in records:
                     nut_name = rec["nutrient_name"]
+                    if nut_name == "Folates (B9)":
+                        nut_name = "Folate (total)"
+                    elif nut_name == "α-Tocopherol equivalent (E)":
+                        nut_name = "Vitamin E"
                     amount_per_100g = rec["amount_mg"]
                     amount_g = rec["amount_g"] or 100
                     if nut_name and amount_per_100g is not None:

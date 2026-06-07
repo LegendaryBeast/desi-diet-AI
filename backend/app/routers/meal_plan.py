@@ -90,7 +90,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             return "mg", db_val_mg
 
     # 4. Fetch actual logged foods for this date from the database (MealTracking log)
-    start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_of_day = target_date
     end_of_day = start_of_day + timedelta(days=1)
     
     logs = await prisma.mealtracking.find_many(
