@@ -136,6 +136,13 @@ async def get_health_summary(
     - Macro pie chart
     - Micronutrient progress bars (aggregated from Neo4j)
     """
+    # Calculate days since user registration (history length)
+    user_age_days = (datetime.now(timezone.utc) - current_user.createdAt).days + 1
+    # For new users, default the window to 3 days if they query the default 7 days;
+    # once they pass 3 days (e.g. from Day 4 onwards), use 7 days.
+    if days == 7 and user_age_days <= 3:
+        days = 3
+
     profile = await prisma.profile.find_unique(where={"userId": current_user.id})
     if not profile:
         return {"error": "Profile not found. Please complete your profile first."}
