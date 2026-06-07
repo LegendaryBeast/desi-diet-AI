@@ -34,14 +34,15 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
     # 'vita' abbreviation → 'Vitamin A'
     # 'fe'   abbreviation → 'Iron (Fe)'
     # 'ca'   abbreviation → 'Calcium (Ca)'
+    # Nutrients tracked — limited to what the FCT Bangladesh 2014 dataset provides.
+    # Removed: Biotin (B7), Chromium (Cr), Manganese (Mn), Molybdenum (Mo),
+    #          Selenium (Se), Pantothenic acid (B5), Vitamin K,
+    #          Omega-3 Fatty acids, Omega-6 Fatty acids (not in FCT dataset).
     default_nutrients = [
-        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-        "Pantothenic acid (B5)", "Biotin (B7)",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
-        "Molybdenum (Mo)", "Potassium (K)", "Cis ω-6 Fatty acids",
-        "Cis ω-3 Fatty acids"
+        "Copper (Cu)", "Potassium (K)",
     ]
     
     from rag_engine.food_engine import KhadokGraphRAG
@@ -128,13 +129,10 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
     food_nutrients = {}
     if food_inputs:
         TRACKED_NUTRIENTS = [
-            "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+            "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
             "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-            "Pantothenic acid (B5)", "Biotin (B7)",
             "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-            "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
-            "Molybdenum (Mo)", "Potassium (K)", "Cis ω-6 Fatty acids",
-            "Cis ω-3 Fatty acids",
+            "Copper (Cu)", "Potassium (K)",
             # Graph-specific nutrient name aliases
             "Folates (B9)", "α-Tocopherol equivalent (E)"
         ]
@@ -197,26 +195,17 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         "Magnesium (Mg)": "ম্যাগনেসিয়াম (Magnesium)",
         "Phosphorus (P)": "ফসফরাস (Phosphorus)",
         "Copper (Cu)": "কপার (Copper)",
-        "Selenium (Se)": "সিলেনিয়াম (Selenium)",
-        "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
-        "Chromium (Cr)": "ক্রোমিয়াম (Chromium)",
-        "Molybdenum (Mo)": "মলিবডেনাম (Molybdenum)",
         "Potassium (K)": "পটাশিয়াম (Potassium)",
+        "Zinc (Zn)": "জিঙ্ক (Zinc)",
         "Vitamin A": "ভিটামিন এ (Vitamin A)",
         "Ascorbic acids (C)": "ভিটামিন সি (Vitamin C)",
         "Vitamin D": "ভিটামিন ডি (Vitamin D)",
         "Vitamin E": "ভিটামিন ই (Vitamin E)",
-        "Vitamin K": "ভিটামিন কে (Vitamin K)",
         "Thiamine (B1)": "থায়ামিন (Vitamin B1)",
         "Riboflavin (B2)": "রিবোফ্লাভিন (Vitamin B2)",
         "Niacin (B3)": "নিয়াসিন (Vitamin B3)",
         "Total B6": "ভিটামিন বি৬ (Vitamin B6)",
         "Folate (total)": "ফোলেট (Folate)",
-        "Pantothenic acid (B5)": "প্যান্টোথেনিক অ্যাসিড (B5)",
-        "Biotin (B7)": "বায়োটিন (Vitamin B7)",
-        "Zinc (Zn)": "জিঙ্ক (Zinc)",
-        "Cis ω-6 Fatty acids": "ওমেগা-৬ ফ্যাটি অ্যাসিড",
-        "Cis ω-3 Fatty acids": "ওমেগা-৩ ফ্যাটি অ্যাসিড",
     }
 
     result_list = []
@@ -229,7 +218,11 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             "available cho",  # CHO = carbohydrate
             "chloride (cl)", "choline", "vitamin b12", "energy", "vitamin b", "chloride", "vitamin b12 (cobalamin)", "iodine (i)", "iodine",
             "food code", "food name", "scientific name", "food group", "tags",
-            "essential quantity minerals", "vitamins", "ash", "sodium (na)", "sodium"
+            "essential quantity minerals", "vitamins", "ash", "sodium (na)", "sodium",
+            # Removed — not in FCT Bangladesh 2014 dataset:
+            "biotin (b7)", "chromium (cr)", "manganese (mn)", "molybdenum (mo)",
+            "selenium (se)", "pantothenic acid (b5)", "vitamin k",
+            "cis ω-6 fatty acids", "cis ω-3 fatty acids",
         ]:
             continue
             

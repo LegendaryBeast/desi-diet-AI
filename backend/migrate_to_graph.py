@@ -194,29 +194,42 @@ def migrate_diseases(driver, disease_df, nutrient_mapper, ai_models):
     print(f"✅ Migrated {len(disease_df)} disease entries (Smart Relationships).")
 
 # --- BD DATASET FOOD MIGRATION ---
+# Unified bd_food_nutrients.csv schema (produced by scripts/merge_food_databases.py):
+#   code, name, lang, lang_bn, grup, enerc_kcal, water, protcnt, fatce, cho, fibtg, ash
+#   Minerals (mg): ca, fe, mg, p, k, na, zn, cu
+#   Vitamins (mg or mcg as-is): vita, retol, cartbeq, vitd, vite, thia, ribf, nia, vitb6c, folsum, vitc
+#
+# KEY CHANGES vs old BD_food_details.csv:
+#   - Energy already stored as kcal (no kJ÷4.184 conversion needed)
+#   - Minerals/vitamins already in mg/mcg (no g×1000 conversion needed)
 def migrate_foods(driver, food_df, mapper):
     """
-    Loads Bangladeshi foods from BD_food_details.csv and links them to nutrients.
-    - Stores name_en (from 'name' column), name_bn (from 'lang_bn'), 
-      name_original (from 'lang' — Banglish), and code on each Food node.
+    Loads Bangladeshi foods from bd_food_nutrients.csv (merged FCT+BD dataset)
+    and links them to nutrient nodes in Neo4j.
+    - Stores name_en, name_bn, name_original (Banglish), and code on each Food node.
     - Sets macro properties: energy_kcal, protein_g, fat_g, carbohydrate_g, fiber_g, is_partial.
     - Creates FoodGroup nodes and links Food nodes via BELONGS_TO.
-    - Filters out Energy, metadata, and language columns from nutrient processing.
+    - Builds CONTAINS_NUTRIENT relationships for micronutrients.
     """
     if food_df.empty:
         return
         
-    print("Migrating BD Foods...")
+    print("Migrating BD Foods (merged FCT+BD dataset)...")
     food_df.columns = [col.strip().lower() for col in food_df.columns]
     
-    # NON_NUTRIENT_FIELDS: columns that are metadata, not actual nutrients
-    # 'lang'    = Banglish local name (stored as name_original)
-    # 'lang_bn' = Bengali name (stored as name_bn)
-    # 'enerc'   = Energy (a macronutrient property, not a micronutrient node)
-    NON_NUTRIENT_FIELDS = {'code', 'name', 'scie', 'lang', 'lang_bn', 'grup', 'regn', 'tags', 'enerc'}
+    # NON_NUTRIENT_FIELDS: columns that are metadata / macros stored directly on Food node
+    # NOT processed as CONTAINS_NUTRIENT relationships
+    NON_NUTRIENT_FIELDS = {
+        'source',                              # provenance tracking column
+        'code', 'name', 'scie', 'lang', 'lang_bn', 'grup', 'regn', 'tags',
+        # Macros (stored as direct Food node properties)
+        'enerc', 'enerc_kcal', 'water', 'protcnt', 'fatce', 'cho', 'fibtg', 'ash',
+        # Redundant / error columns
+        'cholc',
+    }
 
     with driver.session() as session:
-        # Collect only columns that map to real Nutrient nodes
+        # Collect only columns that map to real Nutrient nodes in the graph
         nutrient_codes_in_db = [
             col for col in food_df.columns 
             if col in mapper 
@@ -246,7 +259,6 @@ def migrate_foods(driver, food_df, mapper):
             # Food Group
             food_group = str(row.get('grup', 'Other') or 'Other').strip()
             
-            # Extract and parse macro nutrients
             def get_float(val):
                 try:
                     if pd.isna(val):
@@ -255,14 +267,16 @@ def migrate_foods(driver, food_df, mapper):
                 except ValueError:
                     return 0.0
 
-            # BD dataset stores energy in kJ (kilojoules), not kcal!
-            # Convert: kcal = kJ / 4.184
-            energy_kj  = get_float(row.get('enerc'))
-            energy_kcal = round(energy_kj / 4.184, 1)
+            # bd_food_nutrients.csv already stores energy as kcal — read directly
+            energy_kcal = get_float(row.get('enerc_kcal'))
+            # Fallback: if old-format row has 'enerc' (kJ), convert it
+            if energy_kcal == 0.0 and 'enerc' in row and pd.notna(row.get('enerc')):
+                energy_kcal = round(get_float(row.get('enerc')) / 4.184, 1)
+
             protein_g = get_float(row.get('protcnt'))
-            fat_g = get_float(row.get('fatce'))
-            carbs_g = get_float(row.get('cho'))
-            fiber_g = get_float(row.get('fibtg'))
+            fat_g     = get_float(row.get('fatce'))
+            carbs_g   = get_float(row.get('cho'))
+            fiber_g   = get_float(row.get('fibtg'))
             
             # MERGE Food node and set properties
             if food_code:
@@ -310,12 +324,13 @@ def migrate_foods(driver, food_df, mapper):
                 value = row[col_code]
                 if pd.notna(value):
                     try:
-                        # INFOODS/IFCT dataset stores all micronutrients in GRAMS (g) per 100g food.
-                        # Our graph property is named `amount_mg`, so we convert: mg = g * 1000
-                        amount_g = float(str(value).replace(',', ''))
-                        if amount_g == 0:
+                        raw_val = float(str(value).replace(',', ''))
+                        if raw_val == 0:
                             continue
-                        amount_mg = amount_g * 1000.0  # g → mg
+                        # bd_food_nutrients.csv stores all nutrients in GRAMS per 100g
+                        # (same unit as the original BD_food_details.csv).
+                        # Convert g → mg for uniform storage in the graph.
+                        amount_mg = raw_val * 1000.0
                     except ValueError:
                         continue
                         
@@ -347,7 +362,7 @@ def migrate_foods(driver, food_df, mapper):
             """, batch=batch)
             print(f"    Uploaded relationships {i} to {min(i+batch_size, total_rels)}")
                     
-    print(f"✅ Migrated {len(food_df)} BD foods with name_en/name_bn/name_original/code properties, macros, and FoodGroups.")
+    print(f"✅ Migrated {len(food_df)} foods (FCT+BD merged) into Neo4j.")
 # --- END BD DATASET FOOD MIGRATION ---
 
 def migrate_pairings(driver, pairings_df):
