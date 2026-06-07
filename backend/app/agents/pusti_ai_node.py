@@ -97,13 +97,13 @@ PUSTI_TOOLS = [
 
 
 async def pusti_ai_node(state: AgentState) -> AgentState:
-    """Run Pusti AI sub-agent; executes tool calls internally and returns final reply."""
+    """Run Pusti AI sub-agent; returns state with reply and optional tool_calls."""
     user_id = state["user_id"]
     message = state["message"]
     history = state.get("history", [])
     language = state.get("language", "bn")
 
-    # Build initial context (mirrors existing chat.py)
+    # Build full context (mirrors existing chat.py)
     user_context = await _build_user_context(user_id)
     rag_food_context = await _build_rag_food_context(user_id, message)
 
@@ -119,135 +119,21 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
     messages.append({"role": "user", "content": message})
 
     try:
-        mutated = False
-        tool_results_list = []
+        raw = await llm_client.chat_completion(
+            messages=messages,
+            temperature=0.4,
+            max_tokens=2048,
+            tools=PUSTI_TOOLS,
+        )
 
-        while True:
-            # Call OpenAI chat completion with tool definitions
-            response = await llm_client.client.chat.completions.create(
-                model=llm_client.model,
-                messages=messages,
-                tools=PUSTI_TOOLS,
-                tool_choice="auto",
-                temperature=0.4,
-                max_tokens=2048,
-            )
-
-            choice = response.choices[0]
-            message_obj = choice.message
-
-            # If the model didn't generate any tool calls, this is the final response
-            if not message_obj.tool_calls:
-                reply_text = message_obj.content or ""
-                return {
-                    **state,
-                    "reply": reply_text,
-                    "tool_calls": tool_results_list if tool_results_list else None,
-                }
-
-            # Reformat tool calls for history
-            formatted_tool_calls = []
-            tool_calls_to_execute = []
-            for tc in message_obj.tool_calls:
-                formatted_tool_calls.append({
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {
-                        "name": tc.function.name,
-                        "arguments": tc.function.arguments,
-                    },
-                })
-                tool_calls_to_execute.append(tc)
-
-            # Append assistant's tool-call response to messages list
-            messages.append({
-                "role": "assistant",
-                "content": message_obj.content,
-                "tool_calls": formatted_tool_calls,
-            })
-
-            # Import dispatch map inside function to avoid circular imports
-            from app.routers.chat import TOOL_DISPATCH, perform_meal_logging, _MUTATING_TOOLS
-
-            # Execute each tool call sequentially
-            for tc in tool_calls_to_execute:
-                func_name = tc.function.name
-                arguments_str = tc.function.arguments
-                try:
-                    args = json.loads(arguments_str)
-                except Exception:
-                    args = {}
-
-                result = None
-
-                # Special handle for log_meal (which has complex database log hooks)
-                if func_name == "log_meal":
-                    description = args.get("meal_description") or args.get("description") or ""
-                    meal_slot = args.get("meal_slot", "snack")
-                    logged_meal = await perform_meal_logging(
-                        user_id=user_id,
-                        input_text=description,
-                        meal_slot=meal_slot,
-                        language=language,
-                    )
-                    result = logged_meal
-                    tool_results_list.append({"tool": func_name, "result": logged_meal})
-                    mutated = True
-                elif func_name in TOOL_DISPATCH:
-                    handler, needs_user = TOOL_DISPATCH[func_name]
-                    if handler:
-                        try:
-                            if needs_user:
-                                result = await handler(user_id, args)
-                            else:
-                                result = await handler(args)
-                        except Exception as e:
-                            logger.warning("Agent tool %s failed: %s", func_name, e)
-                            result = {"success": False, "error": str(e)}
-
-                        # Structure the tool result to match what frontend cards expect
-                        if isinstance(result, dict) and result.get("action"):
-                            tool_results_list.append({
-                                "tool": func_name,
-                                "action": result["action"],
-                                "result": result.get("data"),
-                            })
-                        elif isinstance(result, dict) and result.get("success"):
-                            tool_results_list.append({
-                                "tool": func_name,
-                                "result": result.get("data", result),
-                            })
-                        else:
-                            tool_results_list.append({
-                                "tool": func_name,
-                                "result": result,
-                            })
-                    else:
-                        result = {"success": False, "error": f"Handler not found for {func_name}"}
-                else:
-                    result = {"success": False, "error": f"Unknown tool: {func_name}"}
-
-                if func_name in _MUTATING_TOOLS:
-                    mutated = True
-
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "name": func_name,
-                    "content": json.dumps(result),
-                })
-
-            # Rebuild user profile context if any mutating tools executed
-            if mutated:
-                user_context = await _build_user_context(user_id)
-                system_msg = _PUSTI_SYSTEM.format(
-                    user_context=user_context,
-                    rag_food_context=rag_food_context,
-                )
-                messages[0] = {"role": "system", "content": system_msg}
-                mutated = False
+        # Detect tool calls vs plain text reply
+        if isinstance(raw, dict) and raw.get("tool_calls"):
+            return {**state, "reply": None, "tool_calls": raw["tool_calls"]}
+        else:
+            reply_text = raw if isinstance(raw, str) else raw.get("content", "")
+            return {**state, "reply": reply_text, "tool_calls": None}
 
     except Exception as e:
-        logger.exception("PustiAiNode error in execution loop: %s", e)
+        logger.error("PustiAiNode error: %s", e)
         error_msg = "দুঃখিত, একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।" if language == "bn" else "Sorry, an error occurred. Please try again."
         return {**state, "reply": error_msg, "error": str(e)}

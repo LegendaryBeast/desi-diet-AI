@@ -510,35 +510,6 @@ export const chatApi = {
     }
     return res.json();
   },
-
-  /** Send a message to the unified LangGraph agent. */
-  unified: async (
-    message: string,
-    language: string,
-    history: ChatHistoryItem[],
-    condition: string = "",
-    sessionId: string = "unified"
-  ): Promise<{ reply: string; intent: string; tool_calls: any[] | null; error: string | null }> => {
-    const token = getToken();
-    const res = await fetch(`${BASE_URL}/chat/unified`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        message,
-        language,
-        history,
-        condition,
-        session_id: sessionId
-      }),
-    });
-    if (!res.ok) {
-      throw new Error('Failed to connect to agent');
-    }
-    return res.json();
-  },
 };
 
 export interface RealtimeSession {

@@ -23,7 +23,6 @@ import {
   MapPin,
   RotateCcw,
   Trash2,
-  ChefHat,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { GroceryCard } from '../grocery/GroceryCard';
@@ -46,7 +45,6 @@ interface Message {
   loggedMeal?: MealTrackingResponse;
   grocerySuggestions?: Record<string, unknown>;
   toolResult?: Record<string, unknown>;
-  intent?: 'pusti_ai' | 'nutrisaathi';
 }
 
 const renderFormattedText = (text: string) => {
@@ -457,87 +455,81 @@ export const ChatWindow = () => {
 
     const history = buildHistory();
 
-    chatApi.unified(
+    const abort = chatApi.stream(
       textToSend || 'Please describe what you see in this image and how it fits my diet.',
       i18n.language,
-      history
-    )
-      .then((res) => {
-        setIsStreaming(false);
-
-        // Update the AI message text and intent
+      history,
+      (token) => {
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === aiMsgId
-              ? {
-                  ...m,
-                  text: res.reply || '',
-                  intent: res.intent as 'pusti_ai' | 'nutrisaathi',
-                }
-              : m
-          )
+          prev.map((m) => (m.id === aiMsgId ? { ...m, text: m.text + token } : m))
         );
-
-        if (res.error) {
-          setApiError(res.error);
-        }
-
-        // Handle tool calls if any
-        if (res.tool_calls && res.tool_calls.length > 0) {
-          // 1. Check for logged meal
-          const mealLog = res.tool_calls.find((t: any) => t.tool === 'log_meal');
-          if (mealLog) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === aiMsgId ? { ...m, loggedMeal: mealLog.result } : m))
-            );
-            window.dispatchEvent(new Event('data:refresh'));
-          }
-
-          // 2. Set toolResult for other tools so they render inline card
-          const otherTool = res.tool_calls.find((t: any) => t.tool !== 'log_meal');
-          if (otherTool) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === aiMsgId ? { ...m, toolResult: otherTool } : m))
-            );
-          }
-
-          // 3. Handle actions
-          res.tool_calls.forEach((t: any) => {
-            if (t.action) {
-              const type = t.action.type;
-              const payload = t.action.payload || {};
-              if (type === 'navigate' && payload.to) {
-                navigateTo(String(payload.to));
-              } else if (type === 'show_toast') {
-                showToast(String(payload.message || ''), (payload.level) || 'info');
-              }
-            }
-          });
-
-          // Refresh data on mutating tools
-          const mutatingTools = new Set([
-            'update_profile',
-            'log_health',
-            'log_meal',
-            'mark_meal_complete',
-            'add_medicine_reminder',
-            'delete_medicine_reminder',
-          ]);
-          const hasMutation = res.tool_calls.some((t: any) => mutatingTools.has(t.tool));
-          if (hasMutation) {
-            window.dispatchEvent(new Event('data:refresh'));
-          }
-        }
-
+      },
+      () => {
+        setIsStreaming(false);
+        abortRef.current = null;
         // Persist final messages to localStorage
         try {
-          localStorage.setItem('desidiet_chat_messages', JSON.stringify(messages));
+          const toSave = messages.map((m) => ({
+            ...m,
+            grocerySuggestions: m.grocerySuggestions,
+          }));
+          localStorage.setItem('desidiet_chat_messages', JSON.stringify(toSave));
         } catch { /* ignore */ }
-      })
-      .catch((err) => {
+      },
+      (err) => {
         setIsStreaming(false);
-        setApiError(err instanceof Error ? err.message : String(err));
-      });
+        setApiError(err);
+        abortRef.current = null;
+      },
+      attachedImage
+        ? { imageDataUrl: attachedImage.dataUrl, lat: userLocation?.lat, lng: userLocation?.lng }
+        : { lat: userLocation?.lat, lng: userLocation?.lng },
+      (meal) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiMsgId ? { ...m, loggedMeal: meal } : m))
+        );
+        window.dispatchEvent(new Event('data:refresh'));
+      },
+      (groceryData) => {
+        setMessages((prev) => {
+          const updated = prev.map((m) => (m.id === aiMsgId ? { ...m, grocerySuggestions: groceryData } : m));
+          try {
+            localStorage.setItem(GROCERY_LS_KEY, JSON.stringify({
+              msgId: aiMsgId,
+              data: groceryData,
+              savedAt: Date.now(),
+            }));
+          } catch { /* ignore */ }
+          return updated;
+        });
+      },
+      // onAction: handle frontend actions from chat tools
+      (action) => {
+        const type = action.type as string;
+        const payload = (action.payload || {}) as Record<string, unknown>;
+        if (type === 'navigate' && payload.to) {
+          navigateTo(String(payload.to));
+        } else if (type === 'show_toast') {
+          showToast(String(payload.message || ''), (payload.level as 'info' | 'success' | 'warning' | 'error') || 'info');
+        }
+      },
+      // onToolResult: attach tool results to the AI message for inline cards
+      (toolResult) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiMsgId ? { ...m, toolResult } : m))
+        );
+        // Notify dashboard and other pages to refresh when data mutates
+        const mutatingTools = new Set([
+          'update_profile', 'log_health', 'log_meal',
+          'mark_meal_complete', 'add_medicine_reminder', 'delete_medicine_reminder',
+        ]);
+        if (toolResult && mutatingTools.has(String((toolResult as any).tool))) {
+          window.dispatchEvent(new Event('data:refresh'));
+        }
+      }
+    );
+
+    abortRef.current = abort;
   }, [input, isStreaming, isLoggedIn, i18n.language, messages, pendingImage, canSendMessage, isPro, incrementMessageCount]);
 
   // ─── Image attach handler ────────────────────────────────────────────────
@@ -804,21 +796,6 @@ export const ChatWindow = () => {
                         alt="attached"
                         className="max-h-48 rounded-xl mb-2.5 border border-white/10 shadow-sm"
                       />
-                    )}
-                    {msg.type === 'ai' && msg.intent && (
-                      <div className="flex items-center gap-1.5 mb-1.5 text-[0.62rem] font-bold text-accent tracking-wider uppercase opacity-85 select-none font-bn border-b border-ink/5 pb-1">
-                        {msg.intent === 'nutrisaathi' ? (
-                          <>
-                            <ChefHat size={11} className="text-amber-500 shrink-0" />
-                            <span className="text-amber-600">{isBn ? 'রান্না নির্দেশিকা (NutriSaathi)' : 'Cooking Guide (NutriSaathi)'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={11} className="text-purple-500 shrink-0" />
-                            <span className="text-purple-600">{isBn ? 'পুষ্টি এআই (Pusti AI)' : 'Nutrition AI (Pusti AI)'}</span>
-                          </>
-                        )}
-                      </div>
                     )}
                     <div className="relative z-10 whitespace-pre-wrap font-bn break-words leading-relaxed text-sm md:text-[0.95rem]">
                       {msg.type === 'user' ? msg.text : renderFormattedText(msg.text)}
