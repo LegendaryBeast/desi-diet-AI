@@ -44,7 +44,7 @@ async def test_ws_send_message():
     NOTE: This will actually call Meta Cloud API if WHATSAPP_TOKEN is valid.
     Use a test phone number you control.
     """
-    test_phone = os.getenv("TEST_PHONE", "8801XXXXXXXXX")
+    test_phone = os.getenv("TEST_PHONE", "+8801XXXXXXXXX")
     payload = {"to": test_phone, "text": f"Pushti AI test message {uuid.uuid4().hex[:6]}"}
 
     async with httpx.AsyncClient() as client:
@@ -67,7 +67,7 @@ async def test_backend_incoming():
     This will fail with 401 if the API key is wrong and with 404/500 if
     the user does not exist or RAG is unavailable.
     """
-    test_phone = os.getenv("TEST_PHONE", "8801XXXXXXXXX")
+    test_phone = os.getenv("TEST_PHONE", "+8801XXXXXXXXX")
     payload = {"phone": test_phone, "message": "হ্যালো, তুমি কেমন আছো?"}
 
     async with httpx.AsyncClient() as client:
