@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str = Field(default="", alias="WHATSAPP_VERIFY_TOKEN")
     backend_url: str = Field(default="http://localhost:8000", alias="BACKEND_URL")
 
+    # Standalone WhatsApp service integration
+    whatsapp_service_url: str = Field(default="", alias="WHATSAPP_SERVICE_URL")
+    whatsapp_service_api_key: str = Field(default="", alias="WHATSAPP_SERVICE_API_KEY")
+
     # Groq (optional — takes priority over OpenAI when set)
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
 
