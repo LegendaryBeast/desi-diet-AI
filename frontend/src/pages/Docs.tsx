@@ -517,6 +517,43 @@ export const Docs: React.FC = () => {
                           </ul>
                         );
                       }
+                      if (paragraph.startsWith('|')) {
+                        const lines = paragraph.split('\n').filter(line => line.trim() !== '');
+                        const headers = lines[0].split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                        const rows = lines.slice(2).map(rowLine => {
+                          return rowLine.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                        });
+                        return (
+                          <div key={index} className="overflow-x-auto my-6 rounded-2xl border border-slate-800 bg-slate-950/40">
+                            <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+                              <thead className="bg-slate-900/60 font-semibold text-slate-200">
+                                <tr>
+                                  {headers.map((h, i) => (
+                                    <th key={i} className="px-4 py-3 font-semibold text-teal-400">{h.replace(/\*\*/g, '')}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                {rows.map((row, rowIndex) => (
+                                  <tr key={rowIndex} className="hover:bg-slate-900/10 transition-colors">
+                                    {row.map((cell, cellIndex) => (
+                                      <td key={cellIndex} className="px-4 py-3 font-medium whitespace-pre-wrap">
+                                        {cell.startsWith('**') && cell.endsWith('**') ? (
+                                          <strong className="text-slate-200">{cell.replace(/\*\*/g, '')}</strong>
+                                        ) : cell.includes('**') ? (
+                                          cell.split('**').map((part, partIdx) => partIdx % 2 === 1 ? <strong key={partIdx} className="text-teal-400">{part}</strong> : part)
+                                        ) : (
+                                          cell
+                                        )}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      }
                       return <p key={index}>{paragraph}</p>;
                     })}
                   </div>
@@ -737,6 +774,43 @@ export const Docs: React.FC = () => {
                             <li key={i}>{li.replace('- ', '')}</li>
                           ))}
                         </ul>
+                      );
+                    }
+                    if (paragraph.startsWith('|')) {
+                      const lines = paragraph.split('\n').filter(line => line.trim() !== '');
+                      const headers = lines[0].split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                      const rows = lines.slice(2).map(rowLine => {
+                        return rowLine.split('|').map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                      });
+                      return (
+                        <div key={index} className="overflow-x-auto my-6 rounded-2xl border border-slate-800 bg-slate-950/40">
+                          <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+                            <thead className="bg-slate-900/60 font-semibold text-slate-200">
+                              <tr>
+                                {headers.map((h, i) => (
+                                  <th key={i} className="px-4 py-3 font-semibold text-teal-400">{h.replace(/\*\*/g, '')}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                              {rows.map((row, rowIndex) => (
+                                <tr key={rowIndex} className="hover:bg-slate-900/10 transition-colors">
+                                  {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex} className="px-4 py-3 font-medium whitespace-pre-wrap">
+                                      {cell.startsWith('**') && cell.endsWith('**') ? (
+                                        <strong className="text-slate-200">{cell.replace(/\*\*/g, '')}</strong>
+                                      ) : cell.includes('**') ? (
+                                        cell.split('**').map((part, partIdx) => partIdx % 2 === 1 ? <strong key={partIdx} className="text-teal-400">{part}</strong> : part)
+                                      ) : (
+                                        cell
+                                      )}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       );
                     }
                     return <p key={index}>{paragraph}</p>;
