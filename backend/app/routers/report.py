@@ -108,13 +108,13 @@ def _get_nutrient_unit_and_val(name: str, db_val_mg: float):
     """Mirror the unit conversion logic from meal_plan.py."""
     name_lower = name.lower()
     if any(u in name_lower for u in [
-        "vitamin a", "vitamin d", "vitamin k", "folate", "vitamin b12",
-        "copper", "selenium", "iodine", "chromium", "molybdenum", "biotin",
+        "vitamin a", "vitamin d", "folate",
+        "copper",  # copper is stored mg but displayed mcg
     ]):
         return "mcg", db_val_mg * 1000.0
     elif "ascorbic" in name_lower:
         return "mg", db_val_mg
-    elif any(u in name_lower for u in ["potassium", "chloride", "fatty"]):
+    elif any(u in name_lower for u in ["potassium", "chloride"]):
         return "g", db_val_mg / 1000.0
     else:
         return "mg", db_val_mg
@@ -136,6 +136,13 @@ async def get_health_summary(
     - Macro pie chart
     - Micronutrient progress bars (aggregated from Neo4j)
     """
+    # Calculate days since user registration (history length)
+    user_age_days = (datetime.now(timezone.utc) - current_user.createdAt).days + 1
+    # For new users, default the window to 3 days if they query the default 7 days;
+    # once they pass 3 days (e.g. from Day 4 onwards), use 7 days.
+    if days == 7 and user_age_days <= 3:
+        days = 3
+
     profile = await prisma.profile.find_unique(where={"userId": current_user.id})
     if not profile:
         return {"error": "Profile not found. Please complete your profile first."}
@@ -303,33 +310,28 @@ async def get_health_summary(
     adherence_pct = round((days_with_data / days) * 100) if days > 0 else 0
 
     # 6. Micronutrient aggregation via Neo4j
+    # Nutrients tracked — limited to what the FCT Bangladesh 2014 dataset provides.
+    # Removed: Biotin (B7), Chromium (Cr), Manganese (Mn), Molybdenum (Mo),
+    #          Selenium (Se), Pantothenic acid (B5), Vitamin K,
+    #          Omega-3 Fatty acids, Omega-6 Fatty acids (not in FCT dataset).
     TRACKED_NUTRIENTS = [
-        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
+        "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
         "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-        "Pantothenic acid (B5)", "Biotin (B7)",
         "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
-        "Copper (Cu)", "Selenium (Se)", "Manganese (Mn)", "Chromium (Cr)",
-        "Molybdenum (Mo)", "Potassium (K)",
-        "Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids",
+        "Copper (Cu)", "Potassium (K)",
     ]
 
     NUTRIENT_NAMES_BN = {
         "Calcium (Ca)": "ক্যালসিয়াম (Calcium)", "Iron (Fe)": "আয়রন (Iron)",
         "Magnesium (Mg)": "ম্যাগনেসিয়াম (Magnesium)", "Phosphorus (P)": "ফসফরাস (Phosphorus)",
         "Copper (Cu)": "কপার (Copper)",
-        "Selenium (Se)": "সিলেনিয়াম (Selenium)",
-        "Manganese (Mn)": "ম্যাঙ্গানিজ (Manganese)",
-        "Chromium (Cr)": "ক্রোমিয়াম (Chromium)", "Molybdenum (Mo)": "মলিবডেনাম (Molybdenum)",
         "Potassium (K)": "পটাশিয়াম (Potassium)",
         "Vitamin A": "ভিটামিন এ (Vitamin A)", "Ascorbic acids (C)": "ভিটামিন সি (Vitamin C)",
         "Vitamin D": "ভিটামিন ডি (Vitamin D)", "Vitamin E": "ভিটামিন ই (Vitamin E)",
-        "Vitamin K": "ভিটামিন কে (Vitamin K)", "Thiamine (B1)": "থায়ামিন (Vitamin B1)",
+        "Thiamine (B1)": "থায়ামিন (Vitamin B1)",
         "Riboflavin (B2)": "রিবোফ্লাভিন (Vitamin B2)", "Niacin (B3)": "নিয়াসিন (Vitamin B3)",
         "Total B6": "ভিটামিন বি৬ (Vitamin B6)", "Folate (total)": "ফোলেট (Folate)",
-        "Pantothenic acid (B5)": "প্যান্টোথেনিক অ্যাসিড (B5)",
-        "Biotin (B7)": "বায়োটিন (Vitamin B7)",
-        "Zinc (Zn)": "জিঙ্ক (Zinc)", "Cis ω-6 Fatty acids": "ওমেগা-৬ ফ্যাটি অ্যাসিড",
-        "Cis ω-3 Fatty acids": "ওমেগা-৩ ফ্যাটি অ্যাসিড",
+        "Zinc (Zn)": "জিঙ্ক (Zinc)",
     }
 
     micro_totals = {}
@@ -341,7 +343,8 @@ async def get_health_summary(
             rag = KhadokGraphRAG()
             driver = rag.get_neo4j_driver()
 
-            # Batch query all nutrients for all food items
+            # Batch query all nutrients for all food items (including aliases)
+            query_tracked = TRACKED_NUTRIENTS + ["Folates (B9)", "α-Tocopherol equivalent (E)"]
             food_query = """
             UNWIND $food_inputs AS input
             MATCH (f:Food)
@@ -354,9 +357,13 @@ async def get_health_summary(
                    n.name AS nutrient_name, r.amount_mg AS amount_mg
             """
             with driver.session() as session:
-                records = session.run(food_query, food_inputs=all_food_items, tracked=TRACKED_NUTRIENTS)
+                records = session.run(food_query, food_inputs=all_food_items, tracked=query_tracked)
                 for rec in records:
                     nut_name = rec["nutrient_name"]
+                    if nut_name == "Folates (B9)":
+                        nut_name = "Folate (total)"
+                    elif nut_name == "α-Tocopherol equivalent (E)":
+                        nut_name = "Vitamin E"
                     amount_per_100g = rec["amount_mg"]
                     amount_g = rec["amount_g"] or 100
                     if nut_name and amount_per_100g is not None:

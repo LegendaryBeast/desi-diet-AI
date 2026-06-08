@@ -126,16 +126,13 @@ export const ReportPage = () => {
 
     // Micronutrient groups
     const VITAMIN_NAMES = [
-      "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-      "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-      "Pantothenic acid (B5)", "Biotin (B7)"
+      "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
+      "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)"
     ];
     const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Sodium", "Sodium (Na)"];
-    const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
     const vitamins = deficiencies.filter(n => VITAMIN_NAMES.includes(n.name));
-    const minerals = deficiencies.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-    const fatty = deficiencies.filter(n => FATTY_NAMES.includes(n.name));
+    const minerals = deficiencies.filter(n => !VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -413,54 +410,43 @@ export const ReportPage = () => {
             </table>
           ` : ''}
 
-          ${fatty.length > 0 ? `
-            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #10b981; font-size: 14px;">🌱 ফ্যাটি অ্যাসিড (Fatty Acids)</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>ফ্যাটি অ্যাসিড</th>
-                  <th>গড় দৈনিক গ্রহণ</th>
-                  <th>লক্ষ্যমাত্রা</th>
-                  <th>পূরণ হার (%)</th>
-                  <th>অবস্থা</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${fatty.map(nut => {
-                  const status = isOptimal(nut.consumed, nut.target);
-                  return `
-                    <tr>
-                      <td><strong>${nut.name_bn || nut.name} (${nut.name})</strong></td>
-                      <td>${Math.round(nut.consumed)} ${nut.unit}</td>
-                      <td>${Math.round(nut.target)} ${nut.unit}</td>
-                      <td>${Math.round(nut.percentage)}%</td>
-                      <td><span class="status-badge" style="background-color: ${status.bg}; color: ${status.color};">${status.label}</span></td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          ` : ''}
 
           <div class="footer">
             এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
             © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
           </div>
-
-          <script>
-            window.onload = function() {
-              window.print();
-            }
-          </script>
         </body>
       </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
+    // Create a temporary hidden iframe to prevent popup blocker interception
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.name = 'print_iframe';
+    
+    document.body.appendChild(iframe);
+    
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+      
+      setTimeout(() => {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          // Remove the iframe after a short delay so the print dialogue handles it
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+          }, 1000);
+        }
+      }, 500);
     }
   };
 
@@ -830,20 +816,16 @@ export const ReportPage = () => {
                   {/* Micronutrient Tracker */}
                   {report.micronutrient_targets.length > 0 && (() => {
                     const VITAMIN_NAMES = [
-                      "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-                      "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-                      "Pantothenic acid (B5)", "Biotin (B7)"
+                      "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
+                      "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)"
                     ];
                     const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Iodine (I)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Sodium", "Sodium (Na)"];
-                    const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
                     const all = report.micronutrient_targets;
                     const vitamins = all.filter(n => VITAMIN_NAMES.includes(n.name));
-                    const minerals = all.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-                    const fatty = all.filter(n => FATTY_NAMES.includes(n.name));
+                    const minerals = all.filter(n => !VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
                     const groups = [
                       { id: 'v', label: 'ভিটামিন', items: vitamins, color: 'bg-amber-500' },
                       { id: 'm', label: 'খনিজ', items: minerals, color: 'bg-blue-500' },
-                      { id: 'f', label: 'ফ্যাটি অ্যাসিড', items: fatty, color: 'bg-green-500' },
                     ];
                     return (
                       <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm space-y-4">

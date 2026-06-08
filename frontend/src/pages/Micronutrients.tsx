@@ -20,11 +20,9 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { mealPlanApi, type MealPlanResponse } from '../lib/api';
 
 const VITAMIN_NAMES = [
-  "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-  "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-  "Pantothenic acid (B5)", "Biotin (B7)"
+  "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
+  "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)"
 ];
-const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
 const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; category: string }> = {
   "Vitamin A": {
@@ -45,11 +43,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
   "Vitamin E": {
     desc: "শক্তিশালী অ্যান্টিঅক্সিডেন্ট যা কোষকে ক্ষতি থেকে রক্ষা করে এবং ত্বক ভালো রাখে।",
     foods: ["কাঠবাদাম", "সূর্যমুখীর বীজ", "পালং শাক", "ব্রকলি", "সবজি তেল"],
-    category: "ভিটামিন"
-  },
-  "Vitamin K": {
-    desc: "রক্ত জমাট বাঁধতে সাহায্য করে এবং হাড়ের স্বাস্থ্য ভালো রাখে।",
-    foods: ["বাঁধাকপি", "ব্রকলি", "পালং শাক", "সরিষা শাক", "সবুজ শাকসবজি"],
     category: "ভিটামিন"
   },
   "Thiamine (B1)": {
@@ -75,16 +68,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
   "Folate (total)": {
     desc: "ডিএনএ তৈরি এবং নতুন কোষ গঠনে অত্যন্ত গুরুত্বপূর্ণ, বিশেষ করে গর্ভবতী নারীদের জন্য।",
     foods: ["পালং শাক", "ডাল", "কমলা", "ব্রকলি", "ডিম", "সবুজ শাকসবজি"],
-    category: "ভিটামিন"
-  },
-  "Pantothenic acid (B5)": {
-    desc: "হরমোন ও কোলেস্টেরল তৈরিতে এবং খাদ্য থেকে শক্তি রূপান্তরে সাহায্য করে।",
-    foods: ["ডিম", "মুরগির মাংস", "মাশরুম", "মিষ্টি আলু", "বাদাম"],
-    category: "ভিটামিন"
-  },
-  "Biotin (B7)": {
-    desc: "চুল, নখ এবং ত্বকের স্বাস্থ্য রক্ষায় ও শক্তি বিপাকে ভূমিকা রাখে।",
-    foods: ["ডিমের কুসুম", "বাদাম", "মিষ্টি আলু", "ফুলকপি", "কলা"],
     category: "ভিটামিন"
   },
   "Calcium (Ca)": {
@@ -126,26 +109,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
     desc: "লোহা শোষণে, রক্তনালী ও স্নায়ুতন্ত্রের স্বাস্থ্য বজায় রাখতে ভূমিকা রাখে।",
     foods: ["কলিজা", "বাদাম", "আস্ত শস্যদানা", "সবুজ শাকসবজি", "ডার্ক চকলেট"],
     category: "খনিজ"
-  },
-  "Manganese (Mn)": {
-    desc: "হাড়ের গঠনে, অ্যামিনো অ্যাসিড ও কার্বোহাইড্রেট বিপাকে সাহায্য করে।",
-    foods: ["বাদাম", "ডাল", "আস্ত শস্যদানা", "সবুজ চা", "সবুজ শাকসবজি"],
-    category: "খনিজ"
-  },
-  "Selenium (Se)": {
-    desc: "কোষকে জারণ ক্ষতি থেকে রক্ষা করে এবং থাইরয়েড গ্রন্থির কার্যকারিতা সচল রাখে।",
-    foods: ["সামুদ্রিক মাছ", "ডিম", "মুরগির মাংস", "লাল চালের ভাত", "বাদাম"],
-    category: "খনিজ"
-  },
-  "Cis ω-6 Fatty acids": {
-    desc: "মস্তিষ্কের সঠিক কার্যকারিতা বজায় রাখতে এবং কোষের বৃদ্ধিতে সাহায্য করে।",
-    foods: ["সূর্যমুখী তেল", "সয়াবিন তেল", "বাদাম", "তিল তেল"],
-    category: "ফ্যাটি অ্যাসিড"
-  },
-  "Cis ω-3 Fatty acids": {
-    desc: "হৃদযন্ত্রের সুরক্ষা দেয়, কোলেস্টেরল কমায় এবং প্রদাহ দূর করতে সাহায্য করে।",
-    foods: ["ইলিশ মাছ", "রুই মাছ", "তিসির তেল", "আখরোট", "চিয়া সিড"],
-    category: "ফ্যাটি অ্যাসিড"
   }
 };
 
@@ -158,7 +121,7 @@ export const Micronutrients: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [micronutrients, setMicronutrients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'vitamins' | 'minerals' | 'fats'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'vitamins' | 'minerals'>('all');
   const [selectedNutrient, setSelectedNutrient] = useState<any | null>(null);
 
   useEffect(() => {
@@ -191,14 +154,12 @@ export const Micronutrients: React.FC = () => {
 
   const EXCLUDE_NAMES = ["Choline", "Vitamin B12", "Chloride (Cl)", "Energy", "Vitamin B", "Chloride", "Vitamin B12 (Cobalamin)", "Iodine (I)", "Sodium", "Sodium (Na)"];
   const vitamins = micronutrients.filter(n => VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-  const minerals = micronutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
-  const fatty = micronutrients.filter(n => FATTY_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
+  const minerals = micronutrients.filter(n => !VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
 
   const getFilteredItems = () => {
     let items = micronutrients.filter(n => !EXCLUDE_NAMES.includes(n.name));
     if (activeTab === 'vitamins') items = vitamins;
     else if (activeTab === 'minerals') items = minerals;
-    else if (activeTab === 'fats') items = fatty;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -306,9 +267,6 @@ export const Micronutrients: React.FC = () => {
                   <span className="font-bn text-[0.6rem] font-bold px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full">
                     খনিজ: {minerals.filter(n => n.percentage >= 100).length}/{minerals.length}
                   </span>
-                  <span className="font-bn text-[0.6rem] font-bold px-3 py-1 bg-green-50 text-green-700 border border-green-100 rounded-full">
-                    ফ্যাটি অ্যাসিড: {fatty.filter(n => n.percentage >= 100).length}/{fatty.length}
-                  </span>
                 </div>
               </div>
             </div>
@@ -319,8 +277,7 @@ export const Micronutrients: React.FC = () => {
                 {([
                   { id: 'all', label: isBn ? 'সব' : 'All' },
                   { id: 'vitamins', label: isBn ? 'ভিটামিন' : 'Vitamins' },
-                  { id: 'minerals', label: isBn ? 'খনিজ' : 'Minerals' },
-                  { id: 'fats', label: isBn ? 'ফ্যাটি অ্যাসিড' : 'Fatty Acids' }
+                  { id: 'minerals', label: isBn ? 'খনিজ' : 'Minerals' }
                 ] as const).map((tab) => {
                   const active = activeTab === tab.id;
                   return (

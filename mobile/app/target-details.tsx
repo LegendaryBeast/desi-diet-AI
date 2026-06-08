@@ -35,11 +35,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
     foods: ["কাঠবাদাম", "সূর্যমুখীর বীজ", "পালং শাক", "ব্রকলি", "সবজি তেল"],
     category: "ভিটামিন"
   },
-  "Vitamin K": {
-    desc: "রক্ত জমাট বাঁধতে সাহায্য করে এবং হাড়ের স্বাস্থ্য ভালো রাখে।",
-    foods: ["বাঁধাকপি", "ব্রকলি", "পালং শাক", "সরিষা শাক", "সবুজ শাকসবজি"],
-    category: "ভিটামিন"
-  },
   "Thiamine (B1)": {
     desc: "কার্বোহাইড্রেট থেকে শক্তি উৎপাদনে সাহায্য করে এবং স্নায়ুতন্ত্র সচল রাখে।",
     foods: ["লাল চালের ভাত", "ঢেঁকি ছাঁটা চাল", "আস্ত গম", "ডাল", "বাদাম"],
@@ -65,16 +60,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
     foods: ["পালং শাক", "ডাল", "কমলা", "ব্রকলি", "ডিম", "সবুজ শাকসবজি"],
     category: "ভিটামিন"
   },
-  "Pantothenic acid (B5)": {
-    desc: "হরমোন ও কোলেস্টেরল তৈরিতে এবং খাদ্য থেকে শক্তি রূপান্তরে সাহায্য করে।",
-    foods: ["ডিম", "মুরগির মাংস", "মাশরুম", "মিষ্টি আলু", "বাদাম"],
-    category: "ভিটামিন"
-  },
-  "Biotin (B7)": {
-    desc: "চুল, নখ এবং ত্বকের স্বাস্থ্য রক্ষায় ও শক্তি বিপাকে ভূমিকা রাখে।",
-    foods: ["ডিমের কুসুম", "বাদাম", "মিষ্টি আলু", "ফুলকপি", "কলা"],
-    category: "ভিটামিন"
-  },
   "Calcium (Ca)": {
     desc: "হাড় ও দাঁত শক্ত করে এবং পেশী ও স্নায়ুর সঠিক কার্যকারিতা নিয়ন্ত্রণ করে।",
     foods: ["দুধ", "দই", "পনির", "ছোট মাছ (কাঁটাসহ)", "পালং শাক", "বাদাম"],
@@ -97,7 +82,7 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
   },
   "Potassium (K)": {
     desc: "রক্তচাপ নিয়ন্ত্রণ করে, হৃদযন্ত্র সুস্থ রাখে এবং তরলের ভারসাম্য বজায় রাখে।",
-    foods: ["ডাবের পানি", "কলা", "মিষ্টি আলু", "পালং শাক", "টমেটো", "ডাল"],
+    foods: ["ডাবের পানি", "কলা", "মিстый আলু", "পালং শাক", "টমেটো", "ডাল"],
     category: "খনিজ"
   },
   "Sodium (Na)": {
@@ -115,27 +100,6 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
     foods: ["কলিজা", "বাদাম", "আস্ত শস্যদানা", "সবুজ শাকসবজি", "ডার্ক চকলেট"],
     category: "খনিজ"
   },
-  "Manganese (Mn)": {
-    desc: "হাড়ের গঠনে, অ্যামিনো অ্যাসিড ও কার্বোহাইড্রেট বিপাকে সাহায্য করে।",
-    foods: ["বাদাম", "ডাল", "আস্ত শস্যদানা", "সবুজ চা", "সবুজ শাকসবজি"],
-    category: "খনিজ"
-  },
-  "Selenium (Se)": {
-    desc: "কোষকে জারণ ক্ষতি থেকে রক্ষা করে এবং থাইরয়েড গ্রন্থির কার্যকারিতা সচল রাখে।",
-    foods: ["সামুদ্রিক মাছ", "ডিম", "মুরগির মাংস", "লাল চালের ভাত", "বাদাম"],
-    category: "খনিজ"
-  },
-  "Cis ω-6 Fatty acids": {
-    desc: "মস্তিষ্কের সঠিক কার্যকারিতা বজায় রাখতে এবং কোষের বৃদ্ধিতে সাহায্য করে।",
-    foods: ["সূর্যমুখী তেল", "সয়াবিন তেল", "বাদাম", "তিল তেল"],
-    category: "ফ্যাটি অ্যাসিড"
-  },
-  "Cis ω-3 Fatty acids": {
-    desc: "হৃদযন্ত্রের সুরক্ষা দেয়, কোলেস্টেরল কমায় এবং প্রদাহ দূর করতে সাহায্য করে।",
-    foods: ["ইলিশ মাছ", "রুই মাছ", "তিসির তেল", "আখরোট", "চিয়া সিড"],
-    category: "ফ্যাটি অ্যাসিড"
-  },
-
   "Iodine (I)": {
     desc: "থাইরয়েড হরমোন তৈরি করতে সাহায্য করে যা মেটাবলিজম, শারীরিক ও মানসিক বিকাশ এবং শক্তি নিয়ন্ত্রণ করে।",
     foods: ["আয়োডিনযুক্ত লবণ", "সামুদ্রিক মাছ", "চিংড়ি", "দুধ", "দই", "ডিম"],
@@ -164,11 +128,6 @@ const NUTRIENT_METADATA_EN: Record<string, { desc: string; foods: string[]; cate
     foods: ["Almond", "Sunflower Seeds", "Spinach", "Broccoli", "Vegetable Oil"],
     category: "Vitamin"
   },
-  "Vitamin K": {
-    desc: "Helps blood clotting and maintains good bone health.",
-    foods: ["Cabbage", "Broccoli", "Spinach", "Mustard Greens", "Green Leafy Vegetables"],
-    category: "Vitamin"
-  },
   "Thiamine (B1)": {
     desc: "Helps produce energy from carbohydrates and keeps the nervous system active.",
     foods: ["Brown Rice", "Hand-crushed Rice", "Whole Wheat", "Lentil", "Nut"],
@@ -192,16 +151,6 @@ const NUTRIENT_METADATA_EN: Record<string, { desc: string; foods: string[]; cate
   "Folate (total)": {
     desc: "Crucial for DNA synthesis and new cell formation, especially for pregnant women.",
     foods: ["Spinach", "Lentil", "Orange", "Broccoli", "Egg", "Green Leafy Vegetables"],
-    category: "Vitamin"
-  },
-  "Pantothenic acid (B5)": {
-    desc: "Helps hormone and cholesterol synthesis, and converts food to energy.",
-    foods: ["Egg", "Chicken", "Mushroom", "Sweet Potato", "Nut"],
-    category: "Vitamin"
-  },
-  "Biotin (B7)": {
-    desc: "Plays a role in hair, nail, and skin health, and energy metabolism.",
-    foods: ["Egg Yolk", "Nut", "Sweet Potato", "Cauliflower", "Banana"],
     category: "Vitamin"
   },
   "Calcium (Ca)": {
@@ -244,25 +193,10 @@ const NUTRIENT_METADATA_EN: Record<string, { desc: string; foods: string[]; cate
     foods: ["Liver", "Nut", "Whole Grain", "Green Leafy Vegetables", "Dark Chocolate"],
     category: "Mineral"
   },
-  "Manganese (Mn)": {
-    desc: "Helps in bone formation, amino acid, and carbohydrate metabolism.",
-    foods: ["Nut", "Lentil", "Whole Grain", "Green Tea", "Green Leafy Vegetables"],
+  "Iodine (I)": {
+    desc: "Helps thyroid hormone synthesis, metabolism, and physical/mental development.",
+    foods: ["Iodized Salt", "Marine Fish", "Shrimp", "Milk", "Yogurt", "Egg"],
     category: "Mineral"
-  },
-  "Selenium (Se)": {
-    desc: "Protects cells from oxidative damage and keeps thyroid function healthy.",
-    foods: ["Marine Fish", "Egg", "Chicken", "Brown Rice", "Nut"],
-    category: "Mineral"
-  },
-  "Cis ω-6 Fatty acids": {
-    desc: "Helps maintain proper brain function and cell growth.",
-    foods: ["Sunflower Oil", "Soybean Oil", "Nut", "Sesame Oil"],
-    category: "Fatty Acid"
-  },
-  "Cis ω-3 Fatty acids": {
-    desc: "Protects the heart, reduces cholesterol, and helps eliminate inflammation.",
-    foods: ["Hilsa Fish", "Rohu Fish", "Flaxseed Oil", "Walnut", "Chia Seeds"],
-    category: "Fatty Acid"
   }
 };
 
@@ -299,7 +233,7 @@ export default function TargetDetailsScreen() {
   const router = useRouter();
   const haptics = useHaptics();
   const [selectedNutrient, setSelectedNutrient] = React.useState<any>(null);
-  const [activeTab, setActiveTab] = React.useState<'all' | 'vitamins' | 'minerals' | 'fats'>('all');
+  const [activeTab, setActiveTab] = React.useState<'all' | 'vitamins' | 'minerals'>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const { language } = useTranslation();
 
@@ -408,21 +342,17 @@ export default function TargetDetailsScreen() {
   const allMicros = (planData?.micronutrient_targets || []).filter((n: any) => !EXCLUDE_NAMES.includes(n.name));
 
   const VITAMIN_NAMES = [
-    "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E", "Vitamin K",
-    "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
-    "Pantothenic acid (B5)", "Biotin (B7)"
+    "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
+    "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)"
   ];
-  const FATTY_NAMES = ["Cis ω-6 Fatty acids", "Cis ω-3 Fatty acids"];
 
   const vitamins = allMicros.filter((n: any) => VITAMIN_NAMES.includes(n.name));
-  const minerals = allMicros.filter((n: any) => !VITAMIN_NAMES.includes(n.name) && !FATTY_NAMES.includes(n.name));
-  const fatty = allMicros.filter((n: any) => FATTY_NAMES.includes(n.name));
+  const minerals = allMicros.filter((n: any) => !VITAMIN_NAMES.includes(n.name));
 
   const getFilteredMicros = () => {
     let items = allMicros;
     if (activeTab === 'vitamins') items = vitamins;
     else if (activeTab === 'minerals') items = minerals;
-    else if (activeTab === 'fats') items = fatty;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -649,11 +579,6 @@ export default function TargetDetailsScreen() {
                     {language === 'bn' ? `খনিজ: ${minerals.filter((n:any)=>n.percentage>=100).length}/${minerals.length}` : `Minerals: ${minerals.filter((n:any)=>n.percentage>=100).length}/${minerals.length}`}
                   </Text>
                 </View>
-                <View style={[styles.scoreMiniBadge, { backgroundColor: '#E8F5E9' }]}>
-                  <Text style={[styles.scoreMiniText, { color: '#2E7D32' }]}>
-                    {language === 'bn' ? `ফ্যাটি: ${fatty.filter((n:any)=>n.percentage>=100).length}/${fatty.length}` : `Fatty: ${fatty.filter((n:any)=>n.percentage>=100).length}/${fatty.length}`}
-                  </Text>
-                </View>
               </View>
             </View>
           </View>
@@ -666,7 +591,6 @@ export default function TargetDetailsScreen() {
               { id: 'all', labelBn: 'সব', labelEn: 'All' },
               { id: 'vitamins', labelBn: 'ভিটামিন', labelEn: 'Vitamins' },
               { id: 'minerals', labelBn: 'খনিজ', labelEn: 'Minerals' },
-              { id: 'fats', labelBn: 'ফ্যাটি অ্যাসিড', labelEn: 'Fatty Acids' },
             ] as const).map((tab) => (
               <TouchableOpacity
                 key={tab.id}
