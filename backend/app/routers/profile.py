@@ -139,9 +139,21 @@ async def get_profile(current_user=Depends(get_current_user)):
     """Get the user's profile with calculated nutrition targets."""
     profile = await prisma.profile.find_unique(where={"userId": current_user.id})
     if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile not found",
+        profile = await prisma.profile.create(
+            data={
+                "userId": current_user.id,
+                "nameEn": "Pusti User",
+                "nameBn": "পুষ্টি ব্যবহারকারী",
+                "age": 30,
+                "gender": "male",
+                "weightKg": 70.0,
+                "heightCm": 170.0,
+                "activityLevel": "Moderate",
+                "goal": "Maintain",
+                "medicalConditions": "[]",
+                "preferredFoods": "[]",
+                "dislikedFoods": "[]",
+            }
         )
 
     profile_resp = _profile_to_response(profile)
