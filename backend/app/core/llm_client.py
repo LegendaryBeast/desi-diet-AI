@@ -64,6 +64,14 @@ class LLMClient:
             if content:
                 yield content
 
+    async def get_embedding(self, text: str, model: str = "text-embedding-3-small") -> List[float]:
+        """Generate vector embedding for a text query using OpenAI."""
+        response = await self.client.embeddings.create(
+            input=[text],
+            model=model
+        )
+        return response.data[0].embedding
+
     async def transcribe_audio(
         self,
         audio_bytes: bytes,

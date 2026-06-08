@@ -74,6 +74,7 @@ ANY question that combines food/eating with a health condition IS in scope.
 8. Use tools proactively for actions (profile, plan, reminders, navigation).
 
 === USER'S COMPLETE CONTEXT ===
+{early_summary_context}
 {user_context}
 {rag_food_context}"""
 
@@ -103,11 +104,24 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
     history = state.get("history", [])
     language = state.get("language", "bn")
 
+    from app.core.token_optimizer import token_optimizer
+
     # Build initial context (mirrors existing chat.py)
     user_context = await _build_user_context(user_id)
     rag_food_context = await _build_rag_food_context(user_id, message)
 
+    # Apply context pruning
+    user_context = token_optimizer.prune_context(user_context, message, max_chars=1200)
+    rag_food_context = token_optimizer.prune_context(rag_food_context, message, max_chars=1200)
+
+    # Build early summary context
+    early_summary = state.get("early_history_summary")
+    early_summary_context = ""
+    if early_summary:
+        early_summary_context = f"\n=== SUMMARY OF PREVIOUS CONVERSATION CONTEXT ===\n{early_summary}\n"
+
     system_msg = _PUSTI_SYSTEM.format(
+        early_summary_context=early_summary_context,
         user_context=user_context,
         rag_food_context=rag_food_context,
     )
@@ -240,7 +254,10 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
             # Rebuild user profile context if any mutating tools executed
             if mutated:
                 user_context = await _build_user_context(user_id)
+                # Apply context pruning
+                user_context = token_optimizer.prune_context(user_context, message, max_chars=1200)
                 system_msg = _PUSTI_SYSTEM.format(
+                    early_summary_context=early_summary_context,
                     user_context=user_context,
                     rag_food_context=rag_food_context,
                 )

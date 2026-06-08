@@ -182,7 +182,6 @@ class PersonalCookerService:
         except Exception as e:
             logger.warning("Pinecone query failed: %s", e)
             return []
-
     @staticmethod
     async def generate_reply(
         user_message: str,
@@ -190,12 +189,21 @@ class PersonalCookerService:
         history: List[Dict[str, str]],
         contexts: List[Dict[str, Any]],
         meal_plan_context: str = "",
+        early_history_summary: Optional[str] = None,
     ) -> str:
         """Synthesize final reply using retrieved context + chat history."""
+        from app.core.token_optimizer import token_optimizer
+
         context_str = "\n\n".join(
             f"--- Context from Knowledge Base (Condition: {c.get('condition')}) ---\n{c.get('text', '')}"
             for c in contexts
         ) if contexts else "No specific context retrieved. Use your general expert nutritional knowledge while strictly adhering to the user's condition."
+
+        # Prune retrieval context
+        context_str = token_optimizer.prune_context(context_str, user_message, max_chars=1200)
+
+        if early_history_summary:
+            meal_plan_context = f"PREVIOUS CONVERSATION SUMMARY: {early_history_summary}\n\n{meal_plan_context}"
 
         system_prompt = _NUTRISAATHI_SYSTEM_PROMPT.format(
             condition=condition or "None",

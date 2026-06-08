@@ -34,3 +34,4 @@ class AgentState(TypedDict):
     tool_calls: Optional[List[Dict[str, Any]]]
     sse_chunks: Annotated[List[str], operator.add]   # accumulate across nodes
     error:      Optional[str]
+    early_history_summary: Optional[str]

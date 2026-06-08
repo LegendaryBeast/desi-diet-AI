@@ -1400,6 +1400,21 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
     Returns JSON: { "reply": str, "intent": str, "tool_calls": list | null }
     """
     from app.agents.graph import unified_graph
+    from app.core.token_optimizer import token_optimizer
+
+    # 1. Semantic cache lookup
+    try:
+        cached_res = await token_optimizer.lookup_semantic_cache(req.message)
+        if cached_res:
+            return {
+                "reply": cached_res.get("reply") or "",
+                "intent": cached_res.get("intent") or "pusti_ai",
+                "tool_calls": cached_res.get("tool_calls"),
+                "error": None,
+                "cached": True
+            }
+    except Exception as cache_err:
+        logger.warning("Failed lookup semantic cache: %s", cache_err)
 
     history = [
         {"role": t.role, "content": t.content}
@@ -1407,11 +1422,14 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
         if t.role in ("user", "assistant") and t.content
     ]
 
+    # 2. Sliding History Windows & Condensation
+    active_history, early_summary = await token_optimizer.condense_history(history)
+
     initial_state = {
         "user_id":    current_user.id,
         "message":    req.message or "",
         "language":   getattr(req, "language", "bn") or "bn",
-        "history":    history,
+        "history":    active_history,
         "intent":     None,
         "condition":  req.condition or "",
         "session_id": req.session_id or "unified",
@@ -1419,16 +1437,26 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
         "tool_calls": None,
         "sse_chunks": [],
         "error":      None,
+        "early_history_summary": early_summary,
     }
 
     try:
         result = await unified_graph.ainvoke(initial_state)
-        return {
+        response_data = {
             "reply":      result.get("reply") or "",
             "intent":     result.get("intent") or "pusti_ai",
             "tool_calls": result.get("tool_calls"),
             "error":      result.get("error"),
         }
+
+        # 3. Save to semantic cache if successful
+        if not response_data.get("error") and response_data.get("reply"):
+            try:
+                await token_optimizer.save_semantic_cache(req.message, response_data)
+            except Exception as cache_save_err:
+                logger.warning("Failed saving to semantic cache: %s", cache_save_err)
+
+        return response_data
     except Exception as e:
         logger.exception("UnifiedChat LangGraph error: %s", e)
         raise HTTPException(status_code=500, detail=f"Agent error: {e}")

@@ -110,6 +110,7 @@ async def nutrisaathi_node(state: AgentState) -> AgentState:
             history=history_dicts,
             contexts=contexts,
             meal_plan_context=meal_plan_context,
+            early_history_summary=state.get("early_history_summary"),
         )
 
         # Persist messages for session continuity (NutriSaathi history)
