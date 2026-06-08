@@ -139,7 +139,7 @@ Pushti AI supports seamless natural language conversations in **Bengali and Engl
         "content": """### Validation During Ingestion and Pilot Testing
 
 - **100% Medical Safety:** Zero instances of hallucinatory advice or contraindication violations recorded during clinical simulation runs.
-- **Local Ingestion Completed:** Ingested over 300+ local Bangladeshi food items, 20+ clinical nutrients, and 12 medical conditions into the Neo4j graph.
+- **Local Ingestion Completed:** Ingested over 570+ local Bangladeshi food items, 20+ clinical nutrients, and 70 medical conditions into the Neo4j graph.
 - **Platform Ready:** Completed responsive Expo-based React Native mobile application for Android/iOS alongside a responsive Vite web frontend."""
     },
     {
