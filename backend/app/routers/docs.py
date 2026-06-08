@@ -338,7 +338,7 @@ def load_docs_config() -> Dict[str, Any]:
         # Create default config
         default_config = {
             "visibility": True,
-            "override_schedule": True,
+            "override_schedule": False,
             "start_date": "2026-06-10T00:00:00",
             "end_date": "2026-06-14T23:59:59",
             "team_name": "Pusti AI Founders",
@@ -369,7 +369,7 @@ def load_docs_config() -> Dict[str, Any]:
         # Recreate if corrupted
         default_config = {
             "visibility": True,
-            "override_schedule": True,
+            "override_schedule": False,
             "start_date": "2026-06-10T00:00:00",
             "end_date": "2026-06-14T23:59:59",
             "team_name": "Pusti AI Founders",

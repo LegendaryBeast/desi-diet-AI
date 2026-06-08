@@ -3,6 +3,8 @@ import os
 import csv
 import time
 import logging
+import re
+import numpy as np
 
 # Add project root and scripts directory to sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -65,8 +67,6 @@ def init_pinecone_index(pc):
         logger.error("Failed to initialize Pinecone index: %s", e)
         raise e
 
-import re
-import numpy as np
 
 def split_into_sentences(text: str) -> list:
     """Split text into individual sentences using punctuation boundaries."""
