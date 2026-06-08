@@ -47,7 +47,7 @@ app.include_router(meal_tracking.router, prefix="/meal-tracking", tags=["Meal Tr
 app.include_router(medicine.router, prefix="/medicine-reminders", tags=["Medicine"])
 app.include_router(meal_builder.router, prefix="/meal-builder", tags=["Meal Builder"])
 app.include_router(groceries.router, prefix="/groceries", tags=["Groceries"])
-app.include_router(docs.router, prefix="/docs", tags=["Documentation"])
+app.include_router(docs.router, prefix="/docs-api", tags=["Documentation"])
 app.include_router(personal_cooker_router, tags=["Personal Cooker"])
 app.include_router(whatsapp.router, tags=["WhatsApp"])
 
