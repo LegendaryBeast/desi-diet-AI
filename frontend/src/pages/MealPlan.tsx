@@ -249,7 +249,7 @@ export const MealPlan = () => {
   };
 
   const handleSwapRequest = (items: string[]) => {
-    navigate('/chat', { state: { prefill: `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।` }});
+    navigate('/chat', { state: { prefill: `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।` } });
   };
 
   const handleAutoSwap = async (targetPlan: MealPlanResponse, mealSlot: string, item: any, itemIndex: number) => {
@@ -342,7 +342,7 @@ export const MealPlan = () => {
       if (plan && plan.plan_id === targetPlan.plan_id) setPlan(updated);
       if (tomorrowPlan && tomorrowPlan.plan_id === targetPlan.plan_id) setTomorrowPlan(updated);
       setHistoryPlans(prev => prev.map(p => p.plan_id === targetPlan.plan_id ? updated : p));
-      
+
       window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'বিকল্প খাবার খুঁজতে সমস্যা হয়েছে');
@@ -590,7 +590,7 @@ export const MealPlan = () => {
           }
         });
         await Promise.all(deletePromises);
-        
+
         // Also look through today's logs from the tracking service to ensure any backend matches are deleted
         try {
           const todayLogsRes = await mealTrackingApi.today();
@@ -810,11 +810,10 @@ export const MealPlan = () => {
                     <button
                       onClick={() => regenerateDaily(tab === 'today' ? 0 : 1)}
                       disabled={loading}
-                      className={`text-[11px] font-bn font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${
-                        isPro
+                      className={`text-[11px] font-bn font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${isPro
                           ? 'bg-accent text-white hover:bg-accent/85 shadow-accent/10'
                           : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-orange-500/10 hover:shadow-md'
-                      }`}
+                        }`}
                     >
                       {isPro ? (
                         <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
@@ -880,9 +879,8 @@ export const MealPlan = () => {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className={`bg-white rounded-xl p-3 border transition-all group shadow-sm ${
-                  isDone ? 'border-green-200 bg-green-50/20' : 'border-ink/5 hover:border-accent/10'
-                }`}
+                className={`bg-white rounded-xl p-3 border transition-all group shadow-sm ${isDone ? 'border-green-200 bg-green-50/20' : 'border-ink/5 hover:border-accent/10'
+                  }`}
               >
                 <div className="flex flex-col gap-2">
                   {/* Slot header row */}
@@ -909,11 +907,10 @@ export const MealPlan = () => {
                         </button>
                         <button
                           onClick={() => toggleSlotForPlan(p, slot.slot)}
-                          className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-md transition-all ${
-                            isDone
+                          className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-md transition-all ${isDone
                               ? 'bg-green-500 text-white hover:bg-red-400'
                               : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
-                          }`}
+                            }`}
                         >
                           {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়ানি'}
                         </button>
@@ -962,11 +959,10 @@ export const MealPlan = () => {
                               {!isEditing && (
                                 <button
                                   onClick={() => toggleFoodJustification(food.food_code || food.code || food.name_en || food.name_bn || '', food.name_bn || food.name_en || '')}
-                                  className={`p-1 rounded border transition-all ${
-                                    justifications[food.food_code || food.code || food.name_en || food.name_bn || '']
+                                  className={`p-1 rounded border transition-all ${justifications[food.food_code || food.code || food.name_en || food.name_bn || '']
                                       ? 'bg-accent/10 text-accent border-accent/25'
                                       : 'bg-white hover:bg-accent/5 text-ink-faint hover:text-accent border-ink/5'
-                                  }`}
+                                    }`}
                                   title="কেন এই খাবার?"
                                 >
                                   <Info className="w-3 h-3" />
@@ -978,11 +974,10 @@ export const MealPlan = () => {
                                 <button
                                   onClick={() => handleAutoSwap(p, slot.slot, food, j)}
                                   disabled={loadingSwapKey === `${slot.slot}-${j}`}
-                                  className={`p-1 rounded border transition-all ${
-                                    loadingSwapKey === `${slot.slot}-${j}`
+                                  className={`p-1 rounded border transition-all ${loadingSwapKey === `${slot.slot}-${j}`
                                       ? 'bg-accent/5 border-transparent'
                                       : 'bg-white hover:bg-accent/5 text-ink-muted hover:text-accent border-ink/5'
-                                  }`}
+                                    }`}
                                   title="এই খাবারের বিকল্প খুঁজুন"
                                 >
                                   {loadingSwapKey === `${slot.slot}-${j}` ? (
@@ -998,11 +993,10 @@ export const MealPlan = () => {
                                 <button
                                   onClick={() => logFoodItem(slot.slot, j, food)}
                                   disabled={loggingFoods[`${slot.slot}-${j}`]}
-                                  className={`p-1 rounded border transition-all ${
-                                    loggedFoods[`${slot.slot}-${j}`]
+                                  className={`p-1 rounded border transition-all ${loggedFoods[`${slot.slot}-${j}`]
                                       ? 'bg-emerald-500 text-white border-emerald-500'
                                       : 'bg-white hover:bg-emerald-50 text-ink-faint hover:text-emerald-600 border-ink/5'
-                                  }`}
+                                    }`}
                                   title={loggedFoods[`${slot.slot}-${j}`] ? 'বাদ দিতে আবার ক্লিক করুন' : 'খাওয়া হিসেবে যোগ করুন'}
                                 >
                                   {loggingFoods[`${slot.slot}-${j}`] ? (
@@ -1376,8 +1370,8 @@ export const MealPlan = () => {
                                       <div
                                         key={slot.slot + idx}
                                         className={`p-3.5 rounded-2xl border transition-all ${isDone
-                                            ? 'bg-green-50/20 border-green-200'
-                                            : 'bg-white border-ink/5'
+                                          ? 'bg-green-50/20 border-green-200'
+                                          : 'bg-white border-ink/5'
                                           }`}
                                       >
                                         <div className="flex items-start justify-between gap-3">
@@ -1404,8 +1398,8 @@ export const MealPlan = () => {
                                                 await toggleSlotForPlan(p, slot.slot);
                                               }}
                                               className={`text-[0.62rem] shrink-0 font-bn font-bold px-2.5 py-1 rounded-xl transition-all ${isDone
-                                                  ? 'bg-green-500 text-white hover:bg-red-400'
-                                                  : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
+                                                ? 'bg-green-500 text-white hover:bg-red-400'
+                                                : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                                                 }`}
                                             >
                                               {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}

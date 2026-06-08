@@ -1692,34 +1692,10 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
     """Generate a daily meal plan for a user, using the most recent health log weight."""
     profile = await prisma.profile.find_unique(where={"userId": user_id})
     if not profile:
-        profile = await prisma.profile.create(
-            data={
-                "userId": user_id,
-                "nameEn": "Pusti User",
-                "nameBn": "পুষ্টি ব্যবহারকারী",
-                "age": 30,
-                "gender": "male",
-                "weightKg": 70.0,
-                "heightCm": 170.0,
-                "activityLevel": "Moderate",
-                "goal": "Maintain",
-                "medicalConditions": "[]",
-                "preferredFoods": "[]",
-                "dislikedFoods": "[]",
-            }
-        )
+        raise ValueError("Profile not found")
 
     if not profile.weightKg or not profile.heightCm or not profile.gender or not profile.activityLevel:
-        profile = await prisma.profile.update(
-            where={"userId": user_id},
-            data={
-                "gender": profile.gender or "male",
-                "weightKg": profile.weightKg or 70.0,
-                "heightCm": profile.heightCm or 170.0,
-                "activityLevel": profile.activityLevel or "Moderate",
-                "goal": profile.goal or "Maintain",
-            }
-        )
+        raise ValueError("Profile incomplete")
 
     # Use the most recent health-log weight if available (more accurate than profile's initial weight)
     current_weight = profile.weightKg
@@ -1820,34 +1796,10 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
     """Generate a 7-day meal plan efficiently."""
     profile = await prisma.profile.find_unique(where={"userId": user_id})
     if not profile:
-        profile = await prisma.profile.create(
-            data={
-                "userId": user_id,
-                "nameEn": "Pusti User",
-                "nameBn": "পুষ্টি ব্যবহারকারী",
-                "age": 30,
-                "gender": "male",
-                "weightKg": 70.0,
-                "heightCm": 170.0,
-                "activityLevel": "Moderate",
-                "goal": "Maintain",
-                "medicalConditions": "[]",
-                "preferredFoods": "[]",
-                "dislikedFoods": "[]",
-            }
-        )
+        raise ValueError("Profile not found")
 
     if not profile.weightKg or not profile.heightCm or not profile.gender or not profile.activityLevel:
-        profile = await prisma.profile.update(
-            where={"userId": user_id},
-            data={
-                "gender": profile.gender or "male",
-                "weightKg": profile.weightKg or 70.0,
-                "heightCm": profile.heightCm or 170.0,
-                "activityLevel": profile.activityLevel or "Moderate",
-                "goal": profile.goal or "Maintain",
-            }
-        )
+        raise ValueError("Profile incomplete")
 
     current_weight = profile.weightKg
     latest_log = await prisma.healthlog.find_first(
