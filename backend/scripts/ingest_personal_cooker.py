@@ -65,6 +65,53 @@ def init_pinecone_index(pc):
         logger.error("Failed to initialize Pinecone index: %s", e)
         raise e
 
+import re
+import numpy as np
+
+def split_into_sentences(text: str) -> list:
+    """Split text into individual sentences using punctuation boundaries."""
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    return [s.strip() for s in sentences if s.strip()]
+
+def get_cosine_similarity(v1, v2) -> float:
+    """Compute cosine similarity between two vectors."""
+    dot = np.dot(v1, v2)
+    norm1 = np.linalg.norm(v1)
+    norm2 = np.linalg.norm(v2)
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    return float(dot / (norm1 * norm2))
+
+def semantic_chunking(text: str, model, threshold: float = 0.65, max_chars: int = 1000) -> list:
+    """Group sentences into variable-length chunks based on semantic cosine similarity."""
+    sentences = split_into_sentences(text)
+    if not sentences:
+        return []
+
+    # Embed all sentences
+    embeddings = list(model.embed(sentences))
+    
+    chunks = []
+    current_chunk = [sentences[0]]
+    current_length = len(sentences[0])
+
+    for i in range(1, len(sentences)):
+        sim = get_cosine_similarity(embeddings[i-1], embeddings[i])
+        
+        # If semantic gap is too wide or length limit is exceeded, start a new chunk
+        if sim < threshold or current_length + len(sentences[i]) > max_chars:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [sentences[i]]
+            current_length = len(sentences[i])
+        else:
+            current_chunk.append(sentences[i])
+            current_length += len(sentences[i]) + 1  # count space
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+        
+    return chunks
+
 def generate_chunk_context(condition: str, category: str) -> str:
     """Generate global document context prefix (Anthropic-style Contextual RAG)."""
     clean_condition = condition.replace("**", "").strip() if condition else "general health"
@@ -75,9 +122,9 @@ def generate_chunk_context(condition: str, category: str) -> str:
         f"for individuals managing the condition: \"{clean_condition}\" within the category of \"{clean_category}\"."
     )
 
-def parse_contextual_chunks(file_path: str) -> list:
-    """Parse Ragdata.md file and return contextualized chunks."""
-    logger.info("Parsing RAG data file from %s...", file_path)
+def parse_contextual_chunks(file_path: str, model) -> list:
+    """Parse Ragdata.md file and return contextualized chunks using semantic split."""
+    logger.info("Parsing RAG data file from %s with Semantic Chunking...", file_path)
     if not os.path.exists(file_path):
         logger.error("File not found: %s", file_path)
         return []
@@ -107,23 +154,28 @@ def parse_contextual_chunks(file_path: str) -> list:
                 content_lines.append(line)
 
         original_text = "\n".join(content_lines)
-        context_prefix = generate_chunk_context(condition, category)
         
-        # Anthropic Contextual RAG structure
-        contextualized_text = f"<context>\n{context_prefix}\n</context>\n\n{original_text}"
+        # Apply variable/semantic chunking on the original block text
+        sub_chunks = semantic_chunking(original_text, model, threshold=0.65, max_chars=1000)
+        
+        for sub_idx, sub_chunk in enumerate(sub_chunks):
+            context_prefix = generate_chunk_context(condition, category)
+            contextualized_text = f"<context>\n{context_prefix}\n</context>\n\n{sub_chunk}"
+            
+            sub_id = f"{chunk_id}-sub-{sub_idx}" if len(sub_chunks) > 1 else chunk_id
+            
+            chunks.append({
+                "id": sub_id,
+                "text": contextualized_text,
+                "metadata": {
+                    "condition": condition,
+                    "category": category,
+                    "context": context_prefix,
+                    "source": "Ragdata.md"
+                }
+            })
 
-        chunks.append({
-            "id": chunk_id,
-            "text": contextualized_text,
-            "metadata": {
-                "condition": condition,
-                "category": category,
-                "context": context_prefix,
-                "source": "Ragdata.md"
-            }
-        })
-
-    logger.info("Parsed %d chunks from Ragdata.md", len(chunks))
+    logger.info("Parsed and semantically split into %d chunks from Ragdata.md", len(chunks))
     return chunks
 
 def parse_disease_csv(file_path: str) -> list:
@@ -216,7 +268,7 @@ def main():
         embed_and_upsert(index, model, csv_chunks)
 
     # Ingest Ragdata.md
-    rag_chunks = parse_contextual_chunks(rag_path)
+    rag_chunks = parse_contextual_chunks(rag_path, model)
     if rag_chunks:
         embed_and_upsert(index, model, rag_chunks)
 
