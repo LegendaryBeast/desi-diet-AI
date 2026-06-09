@@ -18,7 +18,7 @@ export const Footer = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 lg:w-2/3">
           <div>
-            <h4 className="text-[0.6rem] lg:text-[0.65rem] tracking-[0.15em] uppercase text-white/40 mb-3 font-body">Product</h4>
+            <h4 className="text-[0.6rem] lg:text-[0.65rem] tracking-[0.15em] uppercase text-white/40 mb-3 font-body">প্রোডাক্ট</h4>
             <ul className="flex flex-col gap-2">
               <li><a href="#features" className="font-bn text-[0.8rem] text-white/60 hover:text-white transition-colors">বৈশিষ্ট্য</a></li>
               <li><Link to="/meal-plan" className="font-bn text-[0.8rem] text-white/60 hover:text-white transition-colors">খাবার পরিকল্পনা</Link></li>
@@ -29,7 +29,7 @@ export const Footer = () => {
           </div>
 
           <div>
-            <h4 className="text-[0.6rem] lg:text-[0.65rem] tracking-[0.15em] uppercase text-white/40 mb-3 font-body">Science</h4>
+            <h4 className="text-[0.6rem] lg:text-[0.65rem] tracking-[0.15em] uppercase text-white/40 mb-3 font-body">বিজ্ঞান</h4>
             <ul className="flex flex-col gap-2">
               <li><a href="#" className="font-bn text-[0.8rem] text-white/60 hover:text-white transition-colors">NDG 2025</a></li>
               <li><a href="#" className="font-bn text-[0.8rem] text-white/60 hover:text-white transition-colors">GraphRAG</a></li>
@@ -39,7 +39,7 @@ export const Footer = () => {
           </div>
 
           <div>
-            <h4 className="text-[0.6rem] lg:text-[0.65rem] tracking-[0.15em] uppercase text-white/40 mb-3 font-body">Contact</h4>
+            <h4 className="text-[0.6rem] lg:text-[0.65rem] tracking-[0.15em] uppercase text-white/40 mb-3 font-body">যোগাযোগ</h4>
             <ul className="flex flex-col gap-2">
               <li><a href="#" className="font-bn text-[0.8rem] text-white/60 hover:text-white transition-colors">সাপোর্ট</a></li>
               <li><a href="#" className="font-bn text-[0.8rem] text-white/60 hover:text-white transition-colors">API</a></li>
