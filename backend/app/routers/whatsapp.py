@@ -219,12 +219,15 @@ async def whatsapp_incoming(
     handles user lookup / RAG / DB persistence, and returns the reply text.
     """
     # Authorize the caller
-    if not settings.whatsapp_service_api_key:
+    service_key = (settings.whatsapp_service_api_key or "").strip()
+    if not service_key:
         raise HTTPException(
             status_code=501,
             detail="Standalone WhatsApp service integration is not configured.",
         )
-    if x_whatsapp_service_key != settings.whatsapp_service_api_key:
+    
+    caller_key = (x_whatsapp_service_key or "").strip()
+    if caller_key != service_key:
         raise HTTPException(status_code=401, detail="Invalid service key.")
 
     result = await _handle_incoming_message(payload.phone, payload.message)
@@ -293,15 +296,17 @@ async def whatsapp_optin(current_user=Depends(get_current_user)):
     )
 
     # If standalone service is configured, forward the request to it
-    if settings.whatsapp_service_url:
+    service_url = (settings.whatsapp_service_url or "").strip()
+    if service_url:
         try:
             async with httpx.AsyncClient() as client:
                 headers = {}
-                if settings.whatsapp_service_api_key:
-                    headers["X-WhatsApp-Service-Key"] = settings.whatsapp_service_api_key
+                service_key = (settings.whatsapp_service_api_key or "").strip()
+                if service_key:
+                    headers["X-WhatsApp-Service-Key"] = service_key
 
                 response = await client.post(
-                    f"{settings.whatsapp_service_url.rstrip('/')}/send-message",
+                    f"{service_url.rstrip('/')}/send-message",
                     headers=headers,
                     json={
                         "to": phone_raw,
@@ -316,6 +321,8 @@ async def whatsapp_optin(current_user=Depends(get_current_user)):
                         detail="Failed to delegate message via external WhatsApp service."
                     )
                 return {"status": "success", "phone": current_user.phone, "delegated": True}
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"Error calling external WhatsApp service: {e}")
             raise HTTPException(
