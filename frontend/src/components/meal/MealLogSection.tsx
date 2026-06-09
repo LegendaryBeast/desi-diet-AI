@@ -484,7 +484,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
             <div className="bg-cream/50 border border-ink/10 rounded-2xl p-4 min-h-[80px]">
               <div className="font-bn text-sm text-ink whitespace-pre-wrap min-h-[40px]">
                 {text || (
-                  <span className="text-ink-faint italic">
+                  <span className="text-ink-faint">
                     {isRecording ? '🔴 Recording…' : isTranscribing ? 'Transcribing…' : 'Tap the mic and describe what you ate.'}
                   </span>
                 )}

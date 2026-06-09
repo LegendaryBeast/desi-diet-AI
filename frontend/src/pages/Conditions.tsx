@@ -125,7 +125,7 @@ export const Conditions = () => {
         >
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-accent to-gold" />
           <FileText size={40} className="mx-auto mb-6 text-accent opacity-20" />
-          <p className="font-bn text-ink-muted text-sm max-w-xl mx-auto italic mb-8">
+          <p className="font-bn text-ink-muted text-sm max-w-xl mx-auto mb-8">
             {isBn 
               ? 'আমরা চাই বাংলাদেশের প্রতিটি মানুষ সচেতনভাবে স্বাস্থ্যকর জীবনযাপন করুক। সঠিক তথ্যের সাথে চিকিৎসকের পরামর্শই সুস্থতার আসল চাবিকাঠি।'
               : 'We want every person in Bangladesh to lead a healthy lifestyle consciously. Correct information combined with medical advice is the key to true well-being.'}

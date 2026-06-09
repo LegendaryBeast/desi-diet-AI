@@ -89,7 +89,7 @@ export const DiseasesGrid = () => {
               viewport={{ once: true }}
               className="font-display text-[clamp(2.5rem,5vw,4.5rem)] font-black leading-[0.95] tracking-tighter text-ink"
             >
-              ৭০টিরও বেশি <em className="italic text-accent">রোগের জন্য</em><br />সঠিক ডায়েট প্রোটোকল
+              ৭০টিরও বেশি <span className="text-accent">রোগের জন্য</span><br />সঠিক ডায়েট প্রোটোকল
             </motion.h2>
           </div>
           <motion.div 

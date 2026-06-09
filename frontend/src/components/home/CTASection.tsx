@@ -20,8 +20,8 @@ export const CTASection = () => {
           viewport={{ once: true }}
           className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-ink/5 shadow-sm rounded-full mb-8"
         >
-          <div className="flex -space-x-1">
-            {[1,2,3,4,5].map(i => <Star key={i} size={10} className="text-gold fill-gold" />)}
+          <div className="flex gap-0.5">
+            {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-gold fill-gold" />)}
           </div>
           <span className="font-bn text-[0.7rem] font-bold text-ink">১০০% বৈজ্ঞানিক ও নিরাপদ</span>
         </motion.div>
@@ -34,7 +34,7 @@ export const CTASection = () => {
           className="font-display text-[clamp(2.5rem,6vw,5.5rem)] font-black leading-[0.95] tracking-tight mb-8 text-ink"
         >
           আপনার স্বাস্থ্যের<br />
-          <span className="font-bn text-[clamp(2rem,5vw,4.5rem)] font-bold text-accent italic">নতুন অধ্যায়</span> শুরু করুন
+          <span className="font-bn text-[clamp(2rem,5vw,4.5rem)] font-bold text-accent">নতুন অধ্যায়</span> শুরু করুন
         </motion.h2>
         
         <motion.p 

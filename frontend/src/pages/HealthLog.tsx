@@ -182,7 +182,7 @@ export const HealthLog = () => {
                 <h3 className="font-bn font-bold text-sm text-ink flex items-center gap-2">
                   <Activity className="w-4 h-4 text-accent" /> নতুন স্বাস্থ্য রেকর্ড
                 </h3>
-                <span className="text-[0.6rem] text-ink-muted italic">যেকোনো একটি তথ্য দিন</span>
+                <span className="text-[0.6rem] text-ink-muted">যেকোনো একটি তথ্য দিন</span>
               </div>
 
               {/* Date */}
@@ -317,7 +317,7 @@ export const HealthLog = () => {
                     <p className="font-bn text-[0.62rem] text-ink-muted mt-2">লক্ষণ: {log.symptoms.join(', ')}</p>
                   )}
                   {log.notes && (
-                    <p className="font-bn text-[0.62rem] text-ink-faint italic mt-1">{log.notes}</p>
+                    <p className="font-bn text-[0.62rem] text-ink-faint mt-1">{log.notes}</p>
                   )}
                 </motion.div>
               ))}

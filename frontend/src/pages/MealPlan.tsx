@@ -1172,8 +1172,9 @@ export const MealPlan = () => {
 
       <div className="max-w-4xl mx-auto space-y-4 pb-20">
         {/* Tab Selector */}
-        <div className="flex justify-center">
-          <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
+        <div className="w-full overflow-x-auto pb-2 mb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex justify-start md:justify-center min-w-max px-2 md:px-0">
+            <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
             {[
               { id: 'today' as Tab, label: 'আজকের', icon: Flame, locked: false },
               { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
@@ -1206,6 +1207,7 @@ export const MealPlan = () => {
             ))}
           </div>
         </div>
+      </div>
 
         {/* Error */}
         {error && (
@@ -1405,7 +1407,7 @@ export const MealPlan = () => {
                                               {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
                                             </button>
                                           ) : (
-                                            <span className="text-[0.62rem] text-ink-faint font-bn italic shrink-0">খাওয়া শুরু হয়নি</span>
+                                            <span className="text-[0.62rem] text-ink-faint font-bn shrink-0">খাওয়া শুরু হয়নি</span>
                                           )}
                                         </div>
                                       </div>

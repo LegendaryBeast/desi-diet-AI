@@ -30,7 +30,7 @@ export const AboutHero = () => {
         >
           <h1 className="font-display text-[clamp(3rem,12vw,10rem)] font-black leading-[0.85] tracking-tight text-cream uppercase mb-8">
             {t('about_hero.title_1')} <br />
-            <span className="italic text-accent-light">{t('about_hero.title_2')}</span>
+            <span className="text-accent-light">{t('about_hero.title_2')}</span>
           </h1>
           
           <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 mt-12">

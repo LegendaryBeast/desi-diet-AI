@@ -239,7 +239,7 @@ export const MealTracking = () => {
                   </div>
                 ))}
               </div>
-              {preview.ai_feedback && <p className="font-bn text-[0.68rem] text-ink-muted italic">{preview.ai_feedback}</p>}
+              {preview.ai_feedback && <p className="font-bn text-[0.68rem] text-ink-muted">{preview.ai_feedback}</p>}
               <button onClick={handleConfirm} disabled={submitting}
                 className="w-full py-3 bg-[#e6a89c] text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#d94a38] transition-all disabled:opacity-60"
               >

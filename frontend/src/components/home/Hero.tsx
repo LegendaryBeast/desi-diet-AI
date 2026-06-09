@@ -52,7 +52,7 @@ export const Hero = () => {
                 বাংলাদেশের প্রথম AI-চালিত পুষ্টি সহকারী
               </span>
               <h1 className="font-body text-[clamp(3rem,8vw,7rem)] font-black leading-[0.9] tracking-tight text-ink">
-                Desi<em className="italic text-accent">Diet</em>
+                Desi<span className="text-accent">Diet</span>
                 <span className="block font-bn text-[clamp(1.8rem,5vw,4rem)] font-bold text-ink mt-2 leading-tight">
                   আপনার স্বাস্থ্য, <br className="hidden sm:block" />আপনার পরিকল্পনা।
                 </span>
@@ -168,7 +168,7 @@ export const Hero = () => {
             <motion.div 
               animate={{ y: [-10, 10, -10] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -right-6 top-20 bg-white border border-ink/5 p-3 rounded-xl shadow-xl flex items-center gap-2"
+              className="absolute -left-8 top-28 bg-white border border-ink/5 p-3 rounded-xl shadow-xl flex items-center gap-2 z-10"
             >
                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                  <ShieldCheck size={12} />

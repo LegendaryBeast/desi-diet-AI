@@ -317,7 +317,7 @@ export const MealBuilder = () => {
                   ))}
                 </ul>
               )}
-              {result.condition_safety.note && <p className="font-bn text-[0.68rem] text-ink-muted mt-1 italic">{result.condition_safety.note}</p>}
+              {result.condition_safety.note && <p className="font-bn text-[0.68rem] text-ink-muted mt-1">{result.condition_safety.note}</p>}
             </div>
 
             {/* Comparison (swap result) */}
@@ -340,7 +340,7 @@ export const MealBuilder = () => {
                     ))}
                   </div>
                 </div>
-                <p className="font-bn text-[0.68rem] text-ink-muted italic">{result.comparison.verdict}</p>
+                <p className="font-bn text-[0.68rem] text-ink-muted">{result.comparison.verdict}</p>
               </div>
             )}
 

@@ -221,7 +221,7 @@ export const MedicinePage = () => {
                             </span>
                           ))}
                         </div>
-                        {med.notes && <p className="text-[0.62rem] text-ink-faint font-bn mt-1 italic">{med.notes}</p>}
+                        {med.notes && <p className="text-[0.62rem] text-ink-faint font-bn mt-1">{med.notes}</p>}
                       </div>
                     ))}
                   </div>
@@ -273,7 +273,7 @@ export const MedicinePage = () => {
                             <span className={`text-[0.55rem] font-bold px-1 rounded ${r.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                               {r.with_food ? '🍽️ খাবারের সাথে' : '💊 খালি পেটে'}
                             </span>
-                            {r.notes && <span className="text-[0.62rem] text-ink-faint font-bn italic truncate">{r.notes}</span>}
+                            {r.notes && <span className="text-[0.62rem] text-ink-faint font-bn truncate">{r.notes}</span>}
                           </div>
                         </div>
                       </div>

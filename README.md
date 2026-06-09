@@ -31,6 +31,20 @@ The platform ingests the National Dietary Guidelines of Bangladesh (NDG 2025) an
 
 ---
 
+## Screenshots
+
+| Dashboard Overview | AI Diet Assistant |
+|:---:|:---:|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![AI Assistant](docs/screenshots/ai_assistant.png) |
+| **Personalized Meal Plan** | **Grocery Price Compare** |
+| ![Meal Plan](docs/screenshots/meal_plan.png) | ![Grocery Compare](docs/screenshots/grocery_compare.png) |
+| **Medicine Reminders** | **Food Database** |
+| ![Medicine Reminders](docs/screenshots/medicine_reminders.png) | ![Food Database](docs/screenshots/food_database.png) |
+| **Comprehensive Health Report** | |
+| ![Health Report](docs/screenshots/health_report.png) | |
+
+---
+
 ## Key Features
 
 **Personalized Meal Planning**

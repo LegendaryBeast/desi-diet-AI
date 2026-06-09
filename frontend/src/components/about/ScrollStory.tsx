@@ -111,7 +111,7 @@ const ChapterText = ({ chapter, index, scrollYProgress, total }: { chapter: any,
         <h2 className="font-display text-[clamp(2.5rem,4vw,4.5rem)] font-black text-ink leading-[0.85] mb-6 uppercase tracking-tighter break-words hyphens-auto">
           {chapter.title.split(' ').map((word: string, i: number) => (
             <React.Fragment key={i}>
-              {i === 1 ? <span className="italic text-accent">{word}</span> : word}{' '}
+              {i === 1 ? <span className="text-accent">{word}</span> : word}{' '}
               {i === 0 && <br />}
             </React.Fragment>
           ))}
@@ -194,7 +194,7 @@ export const ScrollStory = () => {
       {/* Mobile Grid View - Optimized */}
       <div className="lg:hidden py-12 px-4 bg-cream">
         <h2 className="font-display text-4xl font-black text-ink mb-8 text-center uppercase tracking-tighter">
-          Our <span className="italic text-accent">Story</span>
+          Our <span className="text-accent">Story</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {chapters.map((chapter, i) => (

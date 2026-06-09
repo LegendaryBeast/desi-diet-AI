@@ -48,11 +48,11 @@ const features = [
 ];
 
 const guidelines = [
-  { code: 'NDG', full: 'National Dietary Guidelines', country: 'বাংলাদেশ ২০২৫', color: 'bg-forest/10 text-forest border-forest/20' },
-  { code: 'WHO', full: 'World Health Organization', country: 'আন্তর্জাতিক', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { code: 'ICMR', full: 'Indian Council of Medical Research', country: 'দক্ষিণ এশিয়া', color: 'bg-orange-50 text-orange-700 border-orange-200' },
-  { code: 'ADA', full: 'American Diabetes Association', country: 'ডায়াবেটিস', color: 'bg-red-50 text-red-600 border-red-200' },
-  { code: 'DASH', full: 'Dietary Approaches to Stop Hypertension', country: 'উচ্চরক্তচাপ', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { code: 'NDG', full: 'National Dietary Guidelines', country: 'বাংলাদেশ ২০২৫', color: 'bg-[#E9EDE4] text-[#2C5530]' },
+  { code: 'WHO', full: 'World Health Organization', country: 'আন্তর্জাতিক', color: 'bg-blue-50 text-blue-700' },
+  { code: 'ICMR', full: 'Indian Council of Medical Research', country: 'দক্ষিণ এশিয়া', color: 'bg-orange-50 text-orange-700' },
+  { code: 'ADA', full: 'American Diabetes Association', country: 'ডায়াবেটিস', color: 'bg-red-50 text-red-700' },
+  { code: 'DASH', full: 'Dietary Approaches to Stop Hypertension', country: 'উচ্চরক্তচাপ', color: 'bg-purple-50 text-purple-700' },
 ];
 
 export const FeaturesSection = () => {
@@ -76,7 +76,7 @@ export const FeaturesSection = () => {
             transition={{ delay: 0.1 }}
             className="font-display text-[clamp(2.2rem,5vw,3.8rem)] font-black leading-[1] tracking-tight text-ink"
           >
-            একটি অ্যাপে সম্পূর্ণ <em className="italic text-accent">পুষ্টি ব্যবস্থাপনা</em>
+            একটি অ্যাপে সম্পূর্ণ <span className="text-accent">পুষ্টি ব্যবস্থাপনা</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
@@ -136,19 +136,20 @@ export const FeaturesSection = () => {
                 আমাদের সকল ডায়েট পরামর্শ এই নির্ভরযোগ্য আন্তর্জাতিক পুষ্টি নির্দেশিকার ভিত্তিতে তৈরি।
               </p>
             </div>
-            <div className="flex flex-wrap gap-3 flex-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 flex-1 w-full">
               {guidelines.map((g, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.07 }}
-                  className={`border rounded-2xl px-5 py-4 ${g.color} flex flex-col min-w-[140px]`}
+                  transition={{ delay: i * 0.05 }}
+                  className={`group relative overflow-hidden rounded-2xl p-4 md:p-5 ${g.color} flex flex-col hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}
                 >
-                  <span className="font-display font-black text-xl mb-0.5">{g.code}</span>
-                  <span className="font-bn text-[0.62rem] leading-tight opacity-80">{g.full}</span>
-                  <span className="font-body text-[0.58rem] tracking-wider uppercase opacity-60 mt-1">{g.country}</span>
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-current opacity-40 to-transparent scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500" />
+                  <span className="font-display font-black text-lg md:text-xl mb-0.5 md:mb-1">{g.code}</span>
+                  <span className="font-bn text-[0.62rem] md:text-[0.68rem] leading-tight opacity-80">{g.full}</span>
+                  <span className="mt-auto pt-3 font-body text-[0.55rem] tracking-wider uppercase font-bold opacity-60">{g.country}</span>
                 </motion.div>
               ))}
             </div>
