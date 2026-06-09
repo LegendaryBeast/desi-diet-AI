@@ -1,10 +1,12 @@
-# DesiDiet — Pusti AI
+# **DesiDiet — Pusti AI** 
 
 ![DesiDiet AI UI Preview](docs/homepage_preview.png)
 
-Pusti AI is a personalized nutrition and diet planning platform designed for Bangladeshi users. It combines a Graph-RAG (Retrieval-Augmented Generation) food knowledge graph with an OpenAI-compatible large language model to deliver clinically grounded, culturally relevant meal plans, dietary guidance, and health tracking in both Bengali and English.
+> **Proudly Built for Infinity AI Buildfest 2026 @ BRAC University**
 
-The project was built for the Infinity AI Buildfest 2026 competition.
+**Pusti AI** is a next-generation, culturally-aware, personalized nutrition and diet planning platform specifically engineered for Bangladeshi users. 
+
+By unifying a powerful **Graph-RAG (Retrieval-Augmented Generation)** food knowledge graph with advanced **Large Language Models**, Pusti AI delivers clinically grounded, culturally relevant meal plans, real-time dietary guidance, and comprehensive health tracking seamlessly in both **Bengali and English**.
 
 ---
 
