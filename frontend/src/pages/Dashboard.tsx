@@ -309,15 +309,15 @@ export const Dashboard = () => {
               <div className="flex justify-between mt-2">
                 <div className="text-left">
                   <div className="font-extrabold text-lg text-ink">{Math.round(consumedCarbs)} <span className="text-[10px] text-ink-muted font-normal">g</span></div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">Carbs</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">শর্করা</div>
                 </div>
                 <div className="text-center">
                   <div className="font-extrabold text-lg text-ink">{Math.round(consumedProtein)} <span className="text-[10px] text-ink-muted font-normal">g</span></div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">Proteins</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">আমিষ</div>
                 </div>
                 <div className="text-right">
                   <div className="font-extrabold text-lg text-ink">{Math.round(consumedFat)} <span className="text-[10px] text-ink-muted font-normal">g</span></div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">Fats</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">চর্বি</div>
                 </div>
               </div>
             </Link>

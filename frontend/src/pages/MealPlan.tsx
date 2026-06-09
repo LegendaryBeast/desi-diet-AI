@@ -900,14 +900,14 @@ export const MealPlan = () => {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleSwapRequest((slot.items || []).map((i) => i.name_bn || i.name_en || ''))}
-                          className="p-1.5 rounded-md bg-cream text-accent hover:bg-accent hover:text-white transition-all border border-transparent hover:border-accent/10"
+                          className="p-1.5 rounded-xl bg-cream text-accent hover:bg-accent hover:text-white transition-all border border-transparent hover:border-accent/10"
                           title="এই স্লটের খাবারের বিকল্প খুঁজুন"
                         >
                           <ArrowLeftRight className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => toggleSlotForPlan(p, slot.slot)}
-                          className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-md transition-all ${isDone
+                          className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-xl transition-all ${isDone
                               ? 'bg-green-500 text-white hover:bg-red-400'
                               : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                             }`}
@@ -926,7 +926,7 @@ export const MealPlan = () => {
                         <div className="flex items-center justify-between p-2 bg-cream/20 hover:bg-cream/30 rounded-lg border border-ink/5 transition-all group/item">
                           {/* Left: Food Info */}
                           <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
-                            <span className="text-base w-7 h-7 flex items-center justify-center bg-white rounded-md shrink-0 border border-ink/5" aria-hidden>
+                            <span className="text-base w-7 h-7 flex items-center justify-center bg-white rounded-xl shrink-0 border border-ink/5" aria-hidden>
                               {food.emoji || '🍽️'}
                             </span>
                             <div className="min-w-0">

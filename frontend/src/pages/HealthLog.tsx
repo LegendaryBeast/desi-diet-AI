@@ -197,13 +197,13 @@ export const HealthLog = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bn text-[0.65rem] font-bold text-ink-faint uppercase tracking-wider mb-1 block">ওজন (kg)</label>
-                  <input type="number" step="0.1" placeholder="70.5" value={weight} onChange={e => setWeight(e.target.value)}
+                  <input type="number" step="0.1" min="10" max="300" placeholder="70.5" value={weight} onChange={e => setWeight(e.target.value)}
                     className="w-full bg-cream/40 border border-ink/10 rounded-xl py-2 px-3 font-bn text-xs outline-none focus:border-accent/40"
                   />
                 </div>
                 <div>
                   <label className="font-bn text-[0.65rem] font-bold text-ink-faint uppercase tracking-wider mb-1 block">রক্তে শর্করা (mg/dL)</label>
-                  <input type="number" step="0.1" placeholder="120" value={sugar} onChange={e => setSugar(e.target.value)}
+                  <input type="number" step="0.1" min="20" max="600" placeholder="120" value={sugar} onChange={e => setSugar(e.target.value)}
                     className="w-full bg-cream/40 border border-ink/10 rounded-xl py-2 px-3 font-bn text-xs outline-none focus:border-accent/40"
                   />
                 </div>
@@ -213,13 +213,13 @@ export const HealthLog = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bn text-[0.65rem] font-bold text-ink-faint uppercase tracking-wider mb-1 block">রক্তচাপ সিস্টোলিক</label>
-                  <input type="number" placeholder="120" value={bpSys} onChange={e => setBpSys(e.target.value)}
+                  <input type="number" min="60" max="250" placeholder="120" value={bpSys} onChange={e => setBpSys(e.target.value)}
                     className="w-full bg-cream/40 border border-ink/10 rounded-xl py-2 px-3 font-bn text-xs outline-none focus:border-accent/40"
                   />
                 </div>
                 <div>
                   <label className="font-bn text-[0.65rem] font-bold text-ink-faint uppercase tracking-wider mb-1 block">রক্তচাপ ডায়াস্টোলিক</label>
-                  <input type="number" placeholder="80" value={bpDia} onChange={e => setBpDia(e.target.value)}
+                  <input type="number" min="40" max="150" placeholder="80" value={bpDia} onChange={e => setBpDia(e.target.value)}
                     className="w-full bg-cream/40 border border-ink/10 rounded-xl py-2 px-3 font-bn text-xs outline-none focus:border-accent/40"
                   />
                 </div>
@@ -228,7 +228,7 @@ export const HealthLog = () => {
               {/* HbA1c */}
               <div>
                 <label className="font-bn text-[0.65rem] font-bold text-ink-faint uppercase tracking-wider mb-1 block">HbA1c (%)</label>
-                <input type="number" step="0.1" placeholder="5.7" value={hba1c} onChange={e => setHba1c(e.target.value)}
+                <input type="number" step="0.1" min="3" max="15" placeholder="5.7" value={hba1c} onChange={e => setHba1c(e.target.value)}
                   className="w-full bg-cream/40 border border-ink/10 rounded-xl py-2 px-3 font-bn text-xs outline-none focus:border-accent/40"
                 />
               </div>
