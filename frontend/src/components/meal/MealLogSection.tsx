@@ -27,11 +27,11 @@ import {
   type MealTrackingListItem,
 } from '../../lib/api';
 
-const SLOT_OPTIONS: Array<{ value: string; label: string; icon: any }> = [
-  { value: 'breakfast', label: 'Breakfast', icon: Coffee },
-  { value: 'lunch', label: 'Lunch', icon: Utensils },
-  { value: 'snack', label: 'Snack', icon: Apple },
-  { value: 'dinner', label: 'Dinner', icon: Moon },
+const SLOT_OPTIONS: Array<{ value: string; label: string; labelBn: string; icon: any }> = [
+  { value: 'breakfast', label: 'Breakfast', labelBn: 'সকালের নাস্তা', icon: Coffee },
+  { value: 'lunch', label: 'Lunch', labelBn: 'দুপুরের খাবার', icon: Utensils },
+  { value: 'snack', label: 'Snack', labelBn: 'স্ন্যাক', icon: Apple },
+  { value: 'dinner', label: 'Dinner', labelBn: 'রাতের খাবার', icon: Moon },
 ];
 
 type Mode = 'text' | 'voice' | 'photo';
@@ -392,25 +392,25 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
           <div className="w-1.5 h-5 bg-accent rounded-full" />
           <div>
             <h2 className="font-display text-lg md:text-xl font-black text-ink">
-              আজ আপনি কী খেয়েছেন? <span className="text-ink-muted font-body text-sm">(Log a meal)</span>
+              আজ আপনি কী খেয়েছেন?
             </h2>
             <p className="text-[0.7rem] uppercase tracking-widest text-ink-faint font-body font-bold mt-1">
-              Type · Speak · Snap a photo
+              {lang === 'bn' ? 'টাইপ · কথা বলুন · ছবি তুলুন' : 'Type · Speak · Snap a photo'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-ink-muted font-body">
           <Sparkles className="w-3.5 h-3.5 text-accent" />
-          <span className="font-bold uppercase tracking-widest text-[0.6rem]">AI parsed</span>
+          <span className="font-bold uppercase tracking-widest text-[0.6rem]">{lang === 'bn' ? 'এআই বিশ্লেষিত' : 'AI parsed'}</span>
         </div>
       </div>
 
       {/* Mode tabs */}
       <div className="flex gap-2 p-1 bg-cream/50 rounded-2xl">
         {([
-          { id: 'text', label: 'Text', icon: Plus, comingSoon: false },
-          { id: 'voice', label: 'Voice 🚧', icon: Mic, comingSoon: true },
-          { id: 'photo', label: 'Photo 🚧', icon: Camera, comingSoon: true },
+          { id: 'text', label: lang === 'bn' ? 'টেক্সট' : 'Text', icon: Plus, comingSoon: false },
+          { id: 'voice', label: lang === 'bn' ? 'ভয়েস 🚧' : 'Voice 🚧', icon: Mic, comingSoon: true },
+          { id: 'photo', label: lang === 'bn' ? 'ছবি 🚧' : 'Photo 🚧', icon: Camera, comingSoon: true },
         ] as Array<{ id: Mode; label: string; icon: any; comingSoon: boolean }>).map((opt) => {
           const active = mode === opt.id;
           const Icon = opt.icon;
@@ -451,7 +451,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
               }`}
             >
               <Icon size={14} />
-              {s.label}
+              {lang === 'bn' ? s.labelBn : s.label}
             </button>
           );
         })}
@@ -775,13 +775,13 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                 const suffixEn = isCompleted ? ' (fully)' : ' (partial)';
 
                 const SLOT_LABELS_BN: Record<string, string> = {
-                  breakfast: `sokaler nasta${suffix}`,
-                  lunch: `dupurer khabar${suffix}`,
-                  snack: `snack${suffix}`,
-                  dinner: `rater khabar${suffix}`,
-                  morning_snack: `sokaler nasta${suffix}`,
-                  evening_snack: `bikelir nasta${suffix}`,
-                  other: `other${suffix}`,
+                  breakfast: `সকালের নাস্তা${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
+                  lunch: `দুপুরের খাবার${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
+                  snack: `স্ন্যাক${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
+                  dinner: `রাতের খাবার${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
+                  morning_snack: `সকালের নাস্তা${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
+                  evening_snack: `বিকেলের নাস্তা${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
+                  other: `অন্যান্য${suffix === '(fully)' ? ' (সম্পূর্ণ)' : ' (আংশিক)'}`,
                 };
                 const SLOT_LABELS_EN: Record<string, string> = {
                   breakfast: `Breakfast${suffixEn}`,

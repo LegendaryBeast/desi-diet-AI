@@ -487,13 +487,13 @@ export const ReportPage = () => {
                                     key={p}
                                     onClick={() => setPeriod(p)}
                                     disabled={loading}
-                                    className={`relative px-3 py-1.5 rounded-md font-display font-bold text-[0.68rem] transition-all duration-200 z-10 ${period === p ? 'text-cream font-extrabold' : 'text-ink-muted hover:text-ink'
+                                    className={`relative px-3 py-1.5 rounded-xl font-display font-bold text-[0.68rem] transition-all duration-200 z-10 ${period === p ? 'text-cream font-extrabold' : 'text-ink-muted hover:text-ink'
                                         }`}
                                 >
                                     {period === p && (
                                         <motion.div
                                             layoutId="activePeriodTab"
-                                            className="absolute inset-0 bg-accent rounded-md -z-10"
+                                            className="absolute inset-0 bg-accent rounded-xl -z-10"
                                             transition={{ type: "spring", stiffness: 380, damping: 30 }}
                                         />
                                     )}
@@ -579,7 +579,7 @@ export const ReportPage = () => {
                                                     <p className="text-[0.52rem] font-bn text-ink-faint leading-none mt-0.5">PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত</p>
                                                 </div>
                                             </div>
-                                            <p className="font-bn text-[0.68rem] text-ink/90 leading-relaxed font-medium pl-2 border-l-2 border-accent/40 bg-cream/10 py-1 pr-1.5 rounded">
+                                            <p className="font-bn text-[0.68rem] text-ink/90 leading-relaxed font-medium pl-2 border-l-2 border-accent/40 bg-cream/10 py-1 pr-1.5 rounded-xl">
                                                 "{report.ai_verdict}"
                                             </p>
                                             <div className="flex items-center justify-between text-[0.52rem] font-bn text-ink-faint pt-1 border-t border-ink/5">
