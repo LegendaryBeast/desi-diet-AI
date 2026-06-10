@@ -26,74 +26,8 @@ DesiDiet introduces a **5-Layer AI Reference Architecture** powered by a dual-ag
 
 DesiDiet is designed around an AI-Native 5-Layer model that decouples integration, business logic, semantic optimization, and knowledge databases:
 
-```mermaid
-graph TB
-    classDef l5 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
-    classDef l4 fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
-    classDef l3 fill:#ffeeba,stroke:#fd7e14,stroke-width:2px,color:#854004;
-    classDef l2 fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
-    classDef l1 fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
-    classDef pillar fill:#fdfdfe,stroke:#6c757d,stroke-width:2px,stroke-dasharray: 4 4;
-    classDef interface fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#004085;
+![DesiDiet System Architecture](docs/architecture_diagram.png)
 
-    subgraph Clients [User Interfaces]
-        direction LR
-        C1(Web App):::interface --- C2(Mobile App):::interface --- C3(WhatsApp Bot):::interface --- C4(Business & System Dashboards):::interface
-    end
-
-    subgraph L5 [#5 Integration Layer]
-        direction LR
-        I1[FastAPI Gateway] --- I2[WhatsApp Microservice Node.js] --- I3[SSE Chat Streaming]
-    end
-
-    subgraph L4 [#4 AI Runtime & Orchestration Layer]
-        direction LR
-        O1[LangGraph Master Agent]
-        O2[Pusti AI Clinical Node]
-        O3[NutriSaathi Cooking Node]
-        O4[Tool & Skill Registry]
-        O1 --> O2 & O3
-        O2 & O3 --> O4
-    end
-
-    subgraph L3 [#3 Adaptability Layer]
-        direction LR
-        A1[Redis Semantic Cache] --- A2[Sliding History Window]
-        A3[Jaccard Context Pruning] --- A4[Prisma Session Memory]
-    end
-
-    subgraph L2 [#2 Knowledge Layer]
-        direction LR
-        K1[(Neo4j Knowledge Graph)] --- K2[(Pinecone Vector DB)]
-        K3[(PostgreSQL + Prisma)] --- K4[Unstructured Cooking Manuals]
-    end
-
-    subgraph L1 [#1 Foundational AI Layer]
-        direction LR
-        F1[Core LLMs: GPT-4o / Claude] --- F2[Fastembed: all-MiniLM-L6-v2]
-        F3[Local Exact Match MD5 Cache] --- F1
-    end
-
-    Clients --> L5 --> L4 --> L3 --> L2 --> L1
-
-    subgraph LeftPillar [Security & Observability]
-        direction TB
-        S1[LangSmith LLM API Monitoring]
-        S2[DB Context Isolation]
-        S3[Validation Suite]
-    end
-
-    subgraph RightPillar [Global Policies & Guardrails]
-        direction TB
-        G1[SafetyGuardNode]
-        G2[PII Cache Protection]
-        G3[BIRDEM / WHO Guidelines]
-    end
-
-    L5 -.-> LeftPillar
-    L4 -.-> RightPillar
-    L3 -.-> RightPillar
-```
 
 ### 1. Hybrid RAG Architecture
 *   **Graph RAG (Neo4j):** Houses the structured food composition database, medical compatibility constraints, and clinical relationships. Allows querying safe foods, calorie targets, and dietary combinations with zero LLM hallucination.
