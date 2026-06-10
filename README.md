@@ -17,9 +17,9 @@ Traditional nutrition applications fail in South Asia. They do not comprehend re
 ### Our Solution
 DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent framework (**Pusti AI** & **NutriSaathi**) orchestrated via **LangGraph**. The platform enforces strict medical compliance by grounding Large Language Models using a state-of-the-art **Hybrid RAG** engine backed by three core clinical data sources: the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), the [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and the clinical structures of the [Explainable GraphRAG Framework](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
 
-| | |
-|:---:|:---:|
-| **Target Audience**<br><img src="docs/screenshots/target_audience.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **Vision — Freemium & B2B Model**<br><img src="docs/screenshots/vision_freemium_b2b.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| |
+|:---:|
+| **Target Audience**<br><img src="docs/screenshots/target_audience.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 
 ---
 
@@ -42,10 +42,10 @@ Our mobile-first web app is designed for accessibility on the go, bringing intel
 
 | | |
 |:---:|:---:|
-| **1. Mobile Dashboard**<br><img src="docs/screenshots/app_home.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. Daily Meal Tracking**<br><img src="docs/screenshots/app_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **3. Pushti-AI Assistant**<br><img src="docs/screenshots/app_pushti_ai.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. Target Goals & BMI**<br><img src="docs/screenshots/app_target_goals.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **5. Health & Disease Setup**<br><img src="docs/screenshots/app_disease_selection.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. User Profile & Metrics**<br><img src="docs/screenshots/app_profile.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **7. Pro Upgrade Flow**<br><img src="docs/screenshots/app_pro_upgrade.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Health PDF Reports**<br><img src="docs/screenshots/app_health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **1. Mobile Dashboard**<br><br><img src="docs/screenshots/app_home.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. Daily Meal Tracking**<br><br><img src="docs/screenshots/app_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **3. Pushti-AI Assistant**<br><br><img src="docs/screenshots/app_pushti_ai.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. Target Goals & BMI**<br><br><img src="docs/screenshots/app_target_goals.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **5. Health & Disease Setup**<br><br><img src="docs/screenshots/app_disease_selection.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. User Profile & Metrics**<br><br><img src="docs/screenshots/app_profile.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **7. Pro Upgrade Flow**<br><br><img src="docs/screenshots/app_pro_upgrade.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Health PDF Reports**<br><br><img src="docs/screenshots/app_health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 
 ---
 
@@ -55,8 +55,8 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
 
 | | |
 |:---:|:---:|
-| **1. WhatsApp Meal Plans**<br><img src="docs/screenshots/whatsapp_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. WhatsApp Meal Logs**<br><img src="docs/screenshots/whatsapp_meal_log.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **3. WhatsApp Nutrition Info**<br><img src="docs/screenshots/whatsapp_nutrition_info.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. WhatsApp Health Advice**<br><img src="docs/screenshots/whatsapp_advice.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **1. WhatsApp Meal Plans**<br><br><img src="docs/screenshots/whatsapp_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. WhatsApp Meal Logs**<br><br><img src="docs/screenshots/whatsapp_meal_log.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **3. WhatsApp Nutrition Info**<br><br><img src="docs/screenshots/whatsapp_nutrition_info.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. WhatsApp Health Advice**<br><br><img src="docs/screenshots/whatsapp_advice.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 
 ---
 
@@ -69,6 +69,7 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
 | **5. Brand Performance Deep Dive**<br>Granular metrics for individual partner brands including revenue history, new customers, and product rating distribution.<br><br><img src="docs/screenshots/business_brand_performance.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. Advanced Analytics & Cohorts**<br>Analyze user acquisition channels, cohort retention matrices, and customer lifetime value (LTV).<br><br><img src="docs/screenshots/business_analytics.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 | **7. AI Usage & Cost Forecasting**<br>Monitor daily LLM token consumption, estimated costs, and API request volume by feature.<br><br><img src="docs/screenshots/business_ai_usage_overview.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Token Quotas & Top Consumers**<br>Track highest token consumers and manage automatic quota alerts for heavy users.<br><br><img src="docs/screenshots/business_ai_consumers.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 | **9. Subscription Tier Management**<br>Manage free, basic, and premium pricing tiers while tracking MRR contribution and payment mix.<br><br><img src="docs/screenshots/business_subscriptions.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **10. Churn Risk & Win-back Campaigns**<br>Identify cancellation reasons, predict user churn risk, and trigger automated win-back emails.<br><br><img src="docs/screenshots/business_churn.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **11. Vision — Freemium & B2B Model**<br>7-day free trial + ৳300/month Pro plan (Shwapno, Chaldal, Foodpanda B2B grocery sourcing integrations).<br><br><img src="docs/screenshots/vision_freemium_b2b.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | *(More B2B Integrations Coming Soon)* |
 
 ## Dataset & Integration Sources
 
