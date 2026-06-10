@@ -40,7 +40,7 @@ When a user signs up, our **South-Asian Adjusted Calorie Engine** calculates the
 
 Next, the **Food Compatibility Engine** recommends balanced regional meal plans—like Rice, Dal, fish, and greens—vetting them for nutritional complementarity and medical safety. 
 
-Users can log meals in Bengali or English. It cross-references them against our Neo4j database. hallucinated LLM values are blocked; only verified nutritional metrics are logged. 
+Users can log meals in Bengali or English. It cross-references them against our Neo4j database. Hallucinated LLM values are blocked; only verified nutritional metrics are logged. 
 
 Finally, to make healthy eating accessible, our **Grocery Compare** tool automatically finds and displays ingredient suggestions from local shops, sorted by nearest location and lowest price.
 
@@ -66,7 +66,7 @@ Third, to keep operations fast and cost-effective, we implement token optimizati
 
 Our business model relies on two strategies: First, B2B collaboration, where we promote direct food sourcing from partner grocery stores. Second, a user freemium model, offering basic tracking for free while unlocking advanced clinical and planner tools in the premium tier.
 
-Moving forward, our next release will introduce a dedicated clinical maternal health and family planning module to address pregnancy-specific dietary needs, and helping hand to the mother/cooking lead for his family wise nutrition companion. 
+Moving forward, our next release will introduce a dedicated clinical maternal health and family planning module to address pregnancy-specific dietary needs, serving as a helping hand to family cooks and mothers as a household nutrition companion. 
 
 DesiDiet is not just another tracker—it is a production-ready, clinical-grade companion democratizing healthy living across Bangladesh. 
 
