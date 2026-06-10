@@ -1,208 +1,134 @@
-# **DesiDiet — AI-Native Clinical Nutrition & Meal Planning** 
+# DesiDiet — AI-Native Clinical Nutrition & Meal Planning
 
 > **Proudly Built for Infinity AI Buildfest 2026 @ BRAC University**
-> **Web Application:** Deployed at Vercel & Railway.
+> Deployed at Vercel & Railway.
 
 ![DesiDiet System Infographic](docs/infografic.jpeg)
 
 ---
 
 ## Executive Summary & Core Innovation
-
-**DesiDiet** is an enterprise-grade, culturally grounded, clinical nutrition and meal planning ecosystem engineered to solve the unique dietary health challenges of the Bangladeshi and South Asian population. 
-
-### The Problem
-Traditional nutrition applications fail in South Asia. They do not comprehend regional foods (e.g., *Shak*, *Ruti*, *Dal*, regional fish), nor do they clinically account for the high genetic predisposition to metabolic conditions like Type-2 Diabetes, Hypertension, and Micronutrient Deficiency (Anemia) prevalent in Bangladesh.
-
-### Our Solution
-DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent framework (**Pusti AI** & **NutriSaathi**) orchestrated via **LangGraph**. The platform enforces strict medical compliance by grounding Large Language Models using a state-of-the-art **Hybrid RAG** engine backed by three core clinical data sources: the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), the [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and the clinical structures of the [Explainable GraphRAG Framework](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
+DesiDiet is an enterprise-grade, culturally grounded, clinical nutrition ecosystem for South Asian dietary profiles. It implements a 5-layer AI architecture using **Pusti AI** and **NutriSaathi** agents orchestrated via **LangGraph** and grounded in clinical nutrition datasets.
 
 ---
 
 ## Key Features
-
-*   **Personalized Meal Planning:** AI-generated daily and weekly meal plans based on user profile, medical conditions, activity level, and dietary goals. Plans are built from verified food database entries and comply with NDG 2025 macronutrient distribution targets.
-*   **Conversational AI Diet Assistant:** A streaming SSE chat interface powered by an OpenAI-compatible LLM. The assistant has full access to the user's profile, today's meal plan, recent meal logs, and health history as in-context data. It is strictly scoped to food and nutrition topics and refuses all unrelated queries.
-*   **Meal Logging via Natural Language and Vision:** Users can log meals by typing descriptions in Bengali or English, or by uploading a food photograph. The system uses the LLM to identify food items and quantities, then looks up verified nutritional data from Neo4j before saving the log. LLM-generated nutrition values are never used; only database values are accepted.
-*   **Health Log and Trend Tracking:** Users record weight, blood pressure, blood sugar, and HbA1c readings over time. The system surfaces trends and integrates this data into personalized LLM context.
-*   **Food Knowledge Browser:** Users can search the food database by name (Bengali or English), view full macronutrient and micronutrient profiles, and receive condition-aware safety ratings (safe / caution / avoid) based on their medical profile.
-*   **Health and Nutrition Reports:** The report engine aggregates calorie adherence, macro consumption, weight history, and condition-specific clinical insights over configurable time windows. Reports can be sent by email.
-*   **Medicine Reminder Parsing:** Users describe their medicine schedule in natural language and the system extracts structured reminders (name, dose, times, food pairing instructions).
-*   **Meal Builder:** An interactive tool for constructing custom meals by selecting and weighing individual food items. The system evaluates the assembled meal against the user's nutrition targets and condition constraints, returning an AI-generated insight.
-*   **NutriSaathi / Personal Cooker:** A condition-specific personalized cooking assistant that generates culturally grounded Bangladeshi recipes, suggests ingredient alternatives, and performs medical-profile-based safety checks for users with chronic conditions.
-*   **Bilingual Interface:** All user-facing content, meal plan data, and AI responses are delivered in Bengali (default) or English depending on user preference.
-*   **Voice Input and Realtime Session:** The chat interface supports audio recording transcribed via OpenAI Whisper. A WebRTC-based realtime voice session endpoint is also available for live conversational interaction.
-*   **Grocery Price and Location Sourcing:** Recommends local ingredients and food sources sorted by lowest price and nearest geographical location using cached GPS coordinates.
+*   **Personalized Meal Planning:** AI daily/weekly plans matching user profile, medical conditions, and NDG 2025 guidelines.
+*   **Conversational AI Diet Assistant:** Real-time streaming SSE chat with full user profile context.
+*   **Meal Logging via Speech & Vision:** Bilingual voice (Whisper) or photo food logging verified via Neo4j database lookups.
+*   **Health Log & Trend Tracking:** Progress mapping for weight, blood pressure, blood sugar, and HbA1c.
+*   **Food Knowledge Browser:** Multilingual search showing nutrient breakdowns and condition safety ratings (safe/avoid).
+*   **Health & Nutrition Reports:** PDF email reports analyzing calorie trends, macros, and clinical insights.
+*   **Medicine Reminder Parsing:** Extracts schedule details from natural language to set structured reminders.
+*   **Interactive Meal Builder:** Interactive meal calculator with target matching and AI feedback.
+*   **NutriSaathi Cooking Guide:** Personalized cooking assistant generating local recipes with health substitutions.
+*   **Bilingual Interface:** Entire application fully localized in Bengali and English.
+*   **Voice & Real-time Session:** Whisper audio transcription and WebRTC live voice streaming chat.
+*   **Grocery Sourcing & Price Compare:** Price-sorted local ingredient recommendations from nearest shops via GPS.
 
 ---
 
-
 ## Dataset & Integration Sources
-
-DesiDiet is powered by a diverse ingestion layer combining peer-reviewed data sources, relational inputs, and validated synthetic sets:
-
-*   **Open Datasets:** Grounded in the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and clinical schemas adapted from the peer-reviewed study, [An Explainable GraphRAG Framework for Personalized Nutrition Recommendation](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
-*   **External APIs:** OpenAI API (used for Whispering voice inputs and chat orchestration) and Pinecone Vector Database (hosting indexed recipe data).
-*   **Internal Systems:** PostgreSQL relational database (via Prisma ORM) storing user profiles, logs, and targets, and a Neo4j Graph Database mapping complex food, nutrient, and disease relationships.
-*   **Synthetic Data:** Automatically generated and updated food compatibility/pairing matrices, validated programmatically via AST structures.
+*   **Open Datasets:** [National Dietary Guidelines (2025)](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and clinical schemas from [GraphRAG study](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
+*   **External APIs:** OpenAI API (Whisper/GPT orchestration) and Pinecone Vector Database.
+*   **Internal Systems:** PostgreSQL (via Prisma ORM) for user metrics and Neo4j for clinical relation graphs.
+*   **Synthetic Data:** Automatically generated pairing matrices validated programmatically via AST.
 
 ---
 
 ## System Methodology & Scientific Grounding
 
-DesiDiet uses native South Asian nutritional formulas, structured compatibility rules, and a multi-stage workflow:
-
-### South-Asian Adjusted Calorie Engine
-*   **Basal Metabolic Rate (BMR) Formulas (Mifflin-St Jeor Equation):**
-    *   *Male:* `BMR = (10 * Weight) + (6.25 * Height) - (5 * Age) + 5`
-    *   *Female:* `BMR = (10 * Weight) + (6.25 * Height) - (5 * Age) - 161`
-*   **Total Daily Energy Expenditure (TDEE):** `TDEE = BMR * Activity Factor`
-*   **Adjusted South-Asian BMI Categories:**
-    *   *Underweight:* `< 18.5`
-    *   *Normal Weight:* `18.5 - 22.9`
-    *   *Overweight:* `23.0 - 27.4`
-    *   *Obese:* `>= 27.5`
-*   **Goal Tuning:**
-    *   *Loss:* `TDEE - 350 kcal`
-    *   *Maintain:* `TDEE`
-    *   *Gain:* `TDEE + 300 kcal`
-*   **Target Macro Split (Energy):** 55% Carbohydrates | 15% Protein | 30% Fats
-*   **Daily Essentials:** Fiber target of `25g/day`, Water intake target of `33 ml/kg IBW` (Ideal Body Weight)
+### Mifflin-St Jeor Calorie Engine
+*   *Male:* `BMR = 10W + 6.25H - 5A + 5` | *Female:* `BMR = 10W + 6.25H - 5A - 161`
+*   *TDEE:* `BMR * Activity Factor`
+*   *South-Asian BMI:* Underweight `<18.5`, Normal `18.5-22.9`, Overweight `23.0-27.4`, Obese `>=27.5`
+*   *Target Macro Split:* 55% Carbs | 15% Protein | 30% Fats. Fiber target: `25g/day`. Water: `33ml/kg`.
 
 ### Food Compatibility Engine
-*   **Structured Meal Assembly:** Combines local staples (Rice, Dal, Vegetables, Salad, and Fish/Meat) to suggest culturally meaningful meals rather than arbitrary ingredient lists.
-*   **Compatibility Parameters:** Evaluated across six vectors: *Nutrient Complementarity, Traditional Co-occurrence, Digestibility & GI Impact, Condition Safety, Taste & Cultural Preference, and Affordability & Availability*.
+*   **Traditional Assembly:** Suggests balanced regional plates (Rice, Dal, Veg, Salad, Meat/Fish) instead of random items.
+*   **Vetting Parameters:** Complementarity, traditional co-occurrence, GI impact, condition safety, cultural preference, cost.
 
-### System Intelligence Pipeline
-The system processes all user interactions via a 6-stage sequential workflow:
-1.  **Ask / Log:** Ingress of user queries via text, voice recordings (Whisper), or food images.
-2.  **Smart Routing:** The state router performs cache hits and security screening before downstream evaluation.
-3.  **Data Retrieval:** Fetches real-time relational SQL data, Pinecone recipe vectors, and Neo4j graph nodes.
-4.  **AI Reasoning:** LangGraph coordinates Pusti AI and NutriSaathi execution paths.
-5.  **Response:** Emits real-time language-matched feedback (Bangla/English).
-6.  **Learn & Improve:** Stores response characteristics for regression validation testing.
+### Processing Workflow
+1. **Ask/Log** (Voice/Vision/Text) $\rightarrow$ 2. **Smart Routing** (Cache/Safety checks) $\rightarrow$ 3. **Data Retrieval** (SQL/Neo4j/Pinecone) $\rightarrow$ 4. **AI Reasoning** (LangGraph agents) $\rightarrow$ 5. **Response** (Bilingual streaming) $\rightarrow$ 6. **Improvement** (Validation checks).
 
 ---
 
 ## Technical Execution & System Architecture
 
-DesiDiet is designed around an AI-Native 5-Layer model that decouples integration, business logic, semantic optimization, and knowledge databases:
-
 ![DesiDiet System Architecture](docs/architecture_diagram.png)
 
 ### Production-Ready Features
-*   **High Performance:** Sub-50ms latency for cached queries, supported by real-time streaming SSE chat.
-*   **Robust Session Memory:** Uses Prisma connected to a reliable PostgreSQL instance for strict database schema verification and data integrity.
-*   **Audio/Vision Input Verification:** Users can submit voice recordings (transcribed via Whisper) or food images. The system maps raw LLM visual tags back to database-verified food items—ensuring that only verified food codes are logged to the PostgreSQL database, blocking hallucinated food logs entirely.
-*   **Upcoming Version Roadmap:** A clinical family planning and maternal health module is slated for the upcoming release to offer targeted nutritional plans for mother and child health.
-
+*   **Latency:** SSE streaming chat responses resolved under 50ms for cached queries.
+*   **Integrity:** Relational session storage in PostgreSQL with type-safe schema validation via Prisma.
+*   **Verification:** Image/voice tags mapped to database codes prior to logging (blocks hallucinated inputs).
+*   **Roadmap:** Maternal health and family planning module slated for the upcoming version.
 
 ---
 
 ## Database Schema
-
-The system relies on a dual-schema storage design:
-*   **PostgreSQL Relational Schema:** Details user profiles, daily calorie targets, weight charts, and meal tracking logs.
-*   **Neo4j Graph Database Schema:** Models direct relationships between diseases, micro/macro nutrients, and local food items, serving as the source of truth for safe food verification.
-
-Refer to the database visualization files in the `docs/` directory for full entity-relationship layouts.
+*   **PostgreSQL:** Stores user profiles, calorie targets, weight charts, and meal logs.
+*   **Neo4j:** Stores nodes and relations for clinical constraints, diseases, and food composition specs.
 
 ---
 
 ## Token Optimization Techniques
-
-Strict token budget management is enforced across the application to ensure low latency and reduced LLM API costs:
-
-1.  **Redis-Backed Semantic Caching:** Caches embeddings and responses for general queries to resolve similar questions instantly under 50ms with zero API cost.
-2.  **Local Exact Match Check:** Pre-hashes query strings using MD5 to check for exact cache hits, bypassing embedding and LLM API calls completely.
-3.  **Sliding History Window & Summarization:** Limits active conversational history to the last 6 turns and routes older messages to a lightweight model (`gpt-4o-mini`) to build a single concise context summary.
-4.  **Local Context Pruning:** Uses a lightweight Jaccard token overlap algorithm to trim long RAG food contexts and profile details locally to fit within strict prompt token budgets.
+1.  **Redis Semantic Caching:** Returns sub-50ms responses for similar semantic queries.
+2.  **MD5 Exact Match Check:** Pre-hashes input queries to resolve greetings/recurrent queries instantly.
+3.  **Sliding Window & Summarization:** Houses active history (6 turns) and condenses old turns via `gpt-4o-mini`.
+4.  **Local Context Pruning:** Jaccard overlap algorithm trims RAG food contexts locally to fit prompt limits.
 
 ---
 
 ## RAG Architecture Details
-
-The system employs a dual-RAG approach to handle both structured clinical data and unstructured cooking manuals:
-
-1.  **Vector RAG (Pinecone / NutriSaathi Cooking Assistant):**
-    *   **Data Source:** Unstructured dietary/cooking manuals (`ragdata.md`).
-    *   **Chunking:** Cosine similarity-based Semantic Chunking (0.65 threshold, max 1000 chars) prepended with Anthropic-style Contextual RAG summaries.
-    *   **Embeddings:** Local embedding generation using `all-MiniLM-L6-v2`.
-2.  **Graph RAG (Neo4j / Pusti AI Clinical Diet Logic):**
-    *   **Data Source:** Structured food composition tables and clinical nutrition databases.
-    *   **Chunking:** None (data is mapped directly into discrete entity nodes and relations in the Knowledge Graph).
-    *   **Embeddings:** Entity-based property matching and graph traversal. Evaluates RDA and micronutrient similarity scores natively using graph algorithms.
+1.  **Vector RAG (Pinecone):** Indices unstructured cooking manual (`ragdata.md`) using Semantic Chunking (0.65 threshold) with Contextual RAG summaries. Local embeddings generated via `all-MiniLM-L6-v2`.
+2.  **Graph RAG (Neo4j):** Traverses structured food-disease entity node relations directly in database (no chunking/embeddings needed).
 
 ---
 
 ## Agent Frameworks & Orchestration
-
-The system uses **LangGraph (StateGraph)** to orchestrate two specialized sub-agents:
-1.  **Pusti AI:** Clinical agent implementing clinical diet guidelines.
-2.  **NutriSaathi:** Cooking agent offering step-by-step culinary guidance.
-
-The architecture features a conditional router, memory condensation (Redis summaries), and full tool-calling support enabling the agents to:
-*   Manage meal tracking and fetch daily/weekly meal plans.
-*   Update user profiles and log health metrics (weight, blood sugar, BP).
-*   Compile comprehensive nutrition reports and set medicine reminders.
-*   Check food safety and trigger in-app page navigation.
+**LangGraph (StateGraph)** coordinates:
+*   **Pusti AI:** Clinical nutrition agent.
+*   **NutriSaathi:** Localized cooking assistant.
+Includes conditional routing, memory condensation, and tools for meal tracking, logging, health reports, reminders, safety checking, and UI navigation.
 
 ---
 
-## Prompt Usage & Engineering
-
-To guarantee reliable outputs and restrict model behavior, we enforce:
-
-1.  **Role-Play & Persona Definitions:** Distinct clinical roles guide response tone and boundaries ("Pusti AI" as a warm health intake specialist, "NutriSaathi" as a culturally grounded cooking guide).
-2.  **Unicode Banners & Section Blocks:** Prompt templates are structured with explicit unicode banners (e.g., `CORE RULES`, `CONTEXT BLOCK`) to logically separate instructions, retrieved medical RAG contexts, and user profile data.
-3.  **Strict Code-switching Rules:** Prompts enforce language-matching logic (returning Bengali script responses for Bengali input, and English/Banglish instructions otherwise).
-4.  **Structured Markers & JSON Outputs:** Instructions direct the models to return strictly formatted JSON matching Pydantic targets or terminate intake collection with special string markers (e.g., `##DIET_DATA_COMPLETE##`) followed by a serialized dictionary.
+## Prompt Engineering & Usage
+1.  **Role Play:** Scopes agent personas strictly to warm intake specialist or cultural chef.
+2.  **Unicode Banners:** Explicit banner sections (e.g. `CORE RULES`, `CONTEXT BLOCK`) isolate rules from data.
+3.  **Code-switching:** Matches Bengali or English based on user input.
+4.  **JSON Targets:** Directs model outputs to structured JSON or triggers completion tags (`##DIET_DATA_COMPLETE##`).
 
 ---
 
-## Optimization & Building Approach
-
-The repository structure and building mechanisms were created and accelerated using:
-*   **Graphify:** Automatically maps codebase relations to analyze architectural dependencies.
-*   **Kiro / AWS Kiro:** Steering configuration management to automate workspace rules and code alignment.
-
----
-
-## System Monitoring & Observability
-
-We employ enterprise tools to oversee prompt performance and application health:
-*   **LangSmith:** Used for LLM API monitoring, trace observability, and prompt execution tracking.
-*   **Custom Business & System Monitoring Dashboards:** Provides real-time metrics on user engagement, meal plans generated, and cache hit rates.
+## Build & Monitoring Approach
+*   **Build Optimization:** Automated codebase analysis using **Graphify** and config management via **Kiro / AWS Kiro**.
+*   **Monitoring:** Trace/prompt testing via **LangSmith** and Custom Business/System status dashboards.
 
 ---
 
 ## Guardrails, Safety & Privacy
-
-1.  **Pre-routing Safety Guardrail:** A dedicated LangGraph `SafetyGuardNode` evaluates all incoming messages using structured JSON outputs to detect and refuse prompt injection, jailbreaks, clinical diagnoses, and drug prescription queries before downstream routing.
-2.  **Database Context Isolation:** Out-of-scope queries trigger immediate exit states, completely bypassing Vector (Pinecone) and Graph (Neo4j) database connections to prevent unauthorized data access/leaks.
-3.  **Cache PII Protection:** The `TokenOptimizer.is_cacheable` logic parses query words to prevent user-specific metrics or personal details from entering the shared Redis semantic cache.
+1.  **Pre-routing safety:** `SafetyGuardNode` detects/refuses jailbreaks and drug inquiries before agent routing.
+2.  **Context Isolation:** Out-of-scope inputs bypass Pinecone/Neo4j endpoints completely.
+3.  **PII Protection:** Caching filter checks prevent personal parameters from entering the Redis cache.
 
 ---
 
-## Open Source Tools & Libraries
-
-*   **LangGraph:** Multi-agent state management and execution graph orchestration.
-*   **Fastembed (Qdrant):** Local `all-MiniLM-L6-v2` vector embeddings.
-*   **Neo4j:** Clinical Knowledge Graph queries.
-*   **Pinecone:** Recipe vector storage.
-*   **Redis:** Semantic caching and conversational summaries.
-*   **Prisma Client:** Database ORM for relational queries.
-*   **FastAPI:** Server endpoints and Server-Sent Events (SSE) chat streaming.
+## Open Source Stack
+*   **LangGraph:** Multi-agent state orchestration.
+*   **Fastembed:** Local all-MiniLM-L6-v2 vector embeddings.
+*   **Neo4j & Pinecone:** Graph and vector search engines.
+*   **Redis & PostgreSQL:** Cache and transaction persistence.
+*   **FastAPI & Prisma:** Web endpoint streaming and relational ORM.
 
 ---
 
 ## Evaluation & Quality Measurement
-
-A custom validation suite executes regression checks:
-1.  **Recommendation Stability:** Verifies personalization variance among various demographic groups (Age/Gender/RDA keys).
-2.  **Nutrient Coverage:** Confirms top recommendations meet clinical RDA targets.
-3.  **Regression Testing:** Measures token optimization metrics including semantic cache hit rates, Jaccard-based context pruning overlaps, and latency distribution.
-4.  **Manual Safety Audits:** Ensures clinical constraints are strictly grounded in BIRDEM/WHO guidelines.
+Custom validation suite runs checks for:
+1.  **Stability:** Personalization variance check across demographic groups.
+2.  **Nutrient Coverage:** RDA target compliance test.
+3.  **Token/Latency:** Semantic cache hit-rate and latency regression checks.
+4.  **Safety Audits:** Grounds advice in BIRDEM/WHO guidelines.
 
 ---
 
@@ -211,7 +137,7 @@ A custom validation suite executes regression checks:
 | Dashboard Overview | AI Diet Assistant |
 |:---:|:---:|
 | ![Dashboard](docs/screenshots/dashboard.png) | ![AI Assistant](docs/screenshots/ai_assistant.png) |
-| **Personalized Meal Plan** | **Grocery Price Compare** |
+| **Personalized Meal Plan** | **Grocery Compare** |
 | ![Meal Plan](docs/screenshots/meal_plan.png) | ![Grocery Compare](docs/screenshots/grocery_compare.png) |
 | **Medicine Reminders** | **Food Database** |
 | ![Medicine Reminders](docs/screenshots/medicine_reminders.png) | ![Food Database](docs/screenshots/food_database.png) |
@@ -223,39 +149,27 @@ A custom validation suite executes regression checks:
 ## Quick Start
 
 ### Prerequisites
-*   Python 3.11+
-*   Node.js 18+
-*   PostgreSQL & Redis
-*   Neo4j instance (Local or AuraDB)
-*   OpenAI API Key
+*   Python 3.11+, Node.js 18+, PostgreSQL, Redis, Neo4j, OpenAI API Key.
 
-### Backend Ingress
+### Backend
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
-
-# Install and init ORM
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-python -m prisma generate
-python -m prisma db push
-
-# Start Server
+python -m prisma generate && python -m prisma db push
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend Web Build
+### Frontend
 ```bash
 cd frontend
-npm install
-echo "VITE_API_URL=http://localhost:8000" > .env
+npm install && echo "VITE_API_URL=http://localhost:8000" > .env
 npm run dev
 ```
 
-### WhatsApp Microservice
+### WhatsApp microservice
 ```bash
 cd whatsapp-service
-npm install
-npm run dev
+npm install && npm run dev
 ```
