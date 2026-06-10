@@ -32,6 +32,30 @@ DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent 
 
 ---
 
+## Mobile App Experience
+
+Our mobile-first web app is designed for accessibility on the go, bringing intelligent nutrition straight to the palm of your hand. 
+
+| | |
+|:---:|:---:|
+| **1. Mobile Dashboard**<br><img src="docs/screenshots/app_home.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. Daily Meal Tracking**<br><img src="docs/screenshots/app_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **3. Pushti-AI Assistant**<br><img src="docs/screenshots/app_pushti_ai.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. Target Goals & BMI**<br><img src="docs/screenshots/app_target_goals.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **5. Health & Disease Setup**<br><img src="docs/screenshots/app_disease_selection.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. User Profile & Metrics**<br><img src="docs/screenshots/app_profile.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **7. Pro Upgrade Flow**<br><img src="docs/screenshots/app_pro_upgrade.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Health PDF Reports**<br><img src="docs/screenshots/app_health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+
+---
+
+## WhatsApp Bot Integration
+
+Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, ask for advice, and get full dietary planning right from your favorite messaging app.
+
+| | |
+|:---:|:---:|
+| **1. WhatsApp Meal Plans**<br><img src="docs/screenshots/whatsapp_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. WhatsApp Meal Logs**<br><img src="docs/screenshots/whatsapp_meal_log.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **3. WhatsApp Nutrition Info**<br><img src="docs/screenshots/whatsapp_nutrition_info.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. WhatsApp Health Advice**<br><img src="docs/screenshots/whatsapp_advice.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+
+---
+
 ## DesiDiet Business (B2B Admin Portal)
 
 | | |
@@ -176,8 +200,12 @@ The repository structure and building mechanisms were created and accelerated us
 ## System Monitoring & Observability
 
 We employ enterprise tools to oversee prompt performance and application health:
-*   **LangSmith:** Used for LLM API monitoring, trace observability, and prompt execution tracking.
+*   **LangSmith:** Used for LLM API monitoring, trace observability, and prompt execution tracking — covering Trace Count, Trace Latency (P50/P99), and real-time Error Rate.
 *   **Custom Business & System Monitoring Dashboards:** Provides real-time metrics on user engagement, meal plans generated, and cache hit rates.
+
+| |
+|:---:|
+| **LangSmith API Monitoring — Trace Count, Latency & Error Rate**<br><br><img src="docs/screenshots/langsmith_monitoring.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/> |
 
 ---
 
