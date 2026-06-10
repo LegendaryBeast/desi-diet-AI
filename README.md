@@ -39,6 +39,8 @@ DesiDiet is designed around an AI-Native 5-Layer model that decouples integratio
 *   **High Performance:** Sub-50ms latency for cached queries, supported by real-time streaming SSE chat.
 *   **Robust Session Memory:** Uses Prisma connected to a reliable PostgreSQL instance for strict database schema verification and data integrity.
 *   **Audio/Vision Input Verification:** Users can submit voice recordings (transcribed via Whisper) or food images. The system maps raw LLM visual tags back to database-verified food items—ensuring that only verified food codes are logged to the PostgreSQL database, blocking hallucinated food logs entirely.
+*   **Upcoming Version Roadmap:** A clinical family planning and maternal health module is slated for the upcoming release to offer targeted nutritional plans for mother and child health.
+
 
 ---
 
