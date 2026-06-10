@@ -1104,7 +1104,11 @@ CRITICAL RULES:
   This makes the meal plan highly practical and realistic for daily eating.
 16. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
 17. NO DUPLICATE FOODS: Within a single meal slot (breakfast / lunch / dinner), every item MUST have a UNIQUE `food_code`. Do NOT repeat the same food code twice in the same meal. For example, if breakfast already has A019 (Atta Roti), the next item must be a different code like M004 (Egg) or B013 (Dal).
-18. ONLINE PLATFORM SUGGESTIONS: At the end of the meal plan, add a short "Shopping Tips" section. For each main ingredient category, suggest where to buy it online in Bangladesh:
+18. MICRONUTRIENT PORTION SAFETY & TOXICITY PREVENTION: Some micronutrients can become toxic if overconsumed. To prevent toxicity and safely manage upper intake limits:
+  - Limit the portion of any single dark leafy green (e.g. Spinach/Palang Shak) to a maximum of 100g.
+  - Do not use liver or organ meat exceeding 75g in a day.
+  - Balance out vitamins/minerals by including a diverse variety of minor food categories (grains, pulses, proteins, dairy/fruits, vegetables) in moderate amounts.
+19. ONLINE PLATFORM SUGGESTIONS: At the end of the meal plan, add a short "Shopping Tips" section. For each main ingredient category, suggest where to buy it online in Bangladesh:
   - Fresh vegetables, fish, meat, dairy, rice, dal, atta → Chaldal (chaldal.com)
   - Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
   - Organic / farm-fresh items → Khaas Food (khaasfood.com)
@@ -1320,7 +1324,15 @@ CRITICAL RULES:
   This makes the meal plan highly practical and realistic for daily eating.
 18. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
 19. NO DUPLICATE FOODS: Within a single meal slot on any given day, every item MUST have a UNIQUE `food_code`. Do NOT repeat the same food code twice in the same meal.
-20. ONLINE PLATFORM SUGGESTIONS: At the end of the meal plan, add a short "Shopping Tips" section. For each main ingredient category, suggest where to buy it online in Bangladesh:
+20. WEEKLY MICRONUTRIENT CYCLING (CRITICAL): To achieve 100% of all required micronutrients across the 7-day period without exceeding daily calorie limits, you must cycle key nutrient-dense categories across the days:
+  - Days 1, 3, and 5: Prioritize dark leafy greens (Spinach, Lal Shak, Pui Shak) to satisfy Folate, Iron, and Calcium needs.
+  - Days 2, 4, and 6: Prioritize orange/yellow vegetables and fresh fruits (Carrot, Sweet Pumpkin, Guava) to satisfy Vitamin A and Vitamin C needs.
+  - Day 7: Include dairy/nuts/seeds to cover Calcium, Zinc, and Vitamin E needs.
+21. TOXICITY & OVER-INTAKE PREVENTION (CRITICAL): High intake of certain micronutrients (e.g., Vitamin A, Vitamin D, Iron) can be toxic. To ensure safety:
+  - Never include liver or organ meats more than once in the entire 7-day plan, capped at 75g.
+  - Limit individual portions of concentrated greens (e.g., Spinach) to a maximum of 100g in a single meal.
+  - Do not repeat the exact same high-micronutrient therapeutic food on consecutive days. Maintain a diverse food rotation.
+22. ONLINE PLATFORM SUGGESTIONS: At the end of the meal plan, add a short "Shopping Tips" section. For each main ingredient category, suggest where to buy it online in Bangladesh:
   - Fresh vegetables, fish, meat, dairy, rice, dal, atta → Chaldal (chaldal.com)
   - Groceries, cooking oil, spices, daily essentials → Shwapno (shwapno.com) or Meena Click (meenaclick.com)
   - Organic / farm-fresh items → Khaas Food (khaasfood.com)
