@@ -17,6 +17,10 @@ Traditional nutrition applications fail in South Asia. They do not comprehend re
 ### Our Solution
 DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent framework (**Pusti AI** & **NutriSaathi**) orchestrated via **LangGraph**. The platform enforces strict medical compliance by grounding Large Language Models using a state-of-the-art **Hybrid RAG** engine backed by three core clinical data sources: the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), the [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and the clinical structures of the [Explainable GraphRAG Framework](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
 
+| | |
+|:---:|:---:|
+| **Target Audience**<br><img src="docs/screenshots/target_audience.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **Vision — Freemium & B2B Model**<br><img src="docs/screenshots/vision_freemium_b2b.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+
 ---
 
 ## Platform Key Features & Screenshots
@@ -28,7 +32,7 @@ DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent 
 | **5. Food Knowledge Browser**<br>Multilingual search displaying full nutrition specs and medical safety warnings.<br><br><img src="docs/screenshots/food_database.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. Health & Nutrition Reports**<br>PDF email reports analyzing calorie trends, macros, and clinical insights.<br><br><img src="docs/screenshots/health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 | **7. Medicine Reminder Parsing**<br>Converts natural language descriptions of prescriptions into structured in-app reminders.<br><br><img src="docs/screenshots/medicine_reminders.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Interactive Meal Builder**<br>Interactive meal calculator with target matching and AI feedback.<br><br><img src="docs/screenshots/meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 | **9. NutriSaathi Cooking Guide**<br>Personalized cooking assistant generating local recipes with health substitutions.<br><br><img src="docs/screenshots/ai_assistant.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **10. Bilingual Interface**<br>Entire application fully localized in Bengali and English.<br><br><img src="docs/screenshots/dashboard.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **11. Grocery Sourcing & Price Compare**<br>Price-sorted local ingredient recommendations from nearest shops via GPS.<br><br><img src="docs/screenshots/grocery_compare.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **12.  AI Chatbot**<br>Interactive conversational agent for instant nutrition tracking and dietary advice.<br><br><img src="docs/screenshots/ai_assistant.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **11. Grocery Sourcing & Price Compare**<br>Price-sorted local ingredient recommendations from nearest shops via GPS with live price comparison.<br><br><img src="docs/screenshots/grocery_sourcing_web.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **12. AI Chatbot**<br>Interactive conversational agent for instant nutrition tracking and dietary advice.<br><br><img src="docs/screenshots/ai_assistant.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 
 ---
 
@@ -205,7 +209,7 @@ We employ enterprise tools to oversee prompt performance and application health:
 
 | |
 |:---:|
-| **LangSmith API Monitoring — Trace Count, Latency & Error Rate**<br><br><img src="docs/screenshots/langsmith_monitoring.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/> |
+| **LangSmith API Monitoring**<br><br><img src="docs/screenshots/langsmith_monitoring.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/> |
 
 ---
 
