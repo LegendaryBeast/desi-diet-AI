@@ -33,7 +33,7 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useChatActions } from '../../contexts/ChatActionContext';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import { ProModal } from '../ui/ProModal';
-import { WhatsAppConnectModal } from '../whatsapp/WhatsAppConnectModal';
+
 import { chatApi, type ChatHistoryItem, isAuthenticated, type MealTrackingResponse } from '../../lib/api';
 
 interface Message {
@@ -99,7 +99,7 @@ export const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+
   // Image attached to the next outgoing message (base64 data-URL + filename)
   const [pendingImage, setPendingImage] = useState<{ dataUrl: string; name: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -584,7 +584,11 @@ export const ChatWindow = () => {
       headerActions={(
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowWhatsAppModal(true)}
+            onClick={() => {
+              const phone = '8801410249676';
+              const message = encodeURIComponent('হ্যালো PushtiAI! আমি পুষ্টি সম্পর্কে জানতে চাই।');
+              window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+            }}
             className="p-2 md:p-3 bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm"
             title="Chat on WhatsApp"
           >
@@ -611,9 +615,6 @@ export const ChatWindow = () => {
     >
       {/* Pro Upgrade Modal */}
       <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger="chat_limit" />
-
-      {/* WhatsApp Connect Modal */}
-      <WhatsAppConnectModal isOpen={showWhatsAppModal} onClose={() => setShowWhatsAppModal(false)} />
 
       <div className="flex-1 flex flex-col relative max-w-4xl mx-auto w-full min-h-0">
         {/* Soft Background Glows */}
