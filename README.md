@@ -10,7 +10,7 @@
 
 ---
 
-## 🚀 Executive Summary & Core Innovation
+## Executive Summary & Core Innovation
 
 **DesiDiet** is an enterprise-grade, culturally grounded, clinical nutrition and meal planning ecosystem engineered to solve the unique dietary health challenges of the Bangladeshi and broader South Asian population. 
 
@@ -22,7 +22,7 @@ DesiDiet introduces a **5-Layer AI Reference Architecture** powered by a dual-ag
 
 ---
 
-## 🛠️ Technical Execution & System Architecture
+## Technical Execution & System Architecture
 
 DesiDiet is designed around an AI-Native 5-Layer model that decouples integration, business logic, semantic optimization, and knowledge databases:
 
@@ -46,7 +46,7 @@ To bypass standard LLM latency and API costs, we implemented:
 
 ---
 
-## 📈 Business Model & Market Viability
+## Business Model & Market Viability
 
 DesiDiet is constructed to be a sustainable, market-ready enterprise, not just a hackathon prototype.
 
@@ -56,7 +56,7 @@ DesiDiet is constructed to be a sustainable, market-ready enterprise, not just a
 
 ---
 
-## 🛡️ Real-World Impact & Clinical Guardrails
+## Real-World Impact & Clinical Guardrails
 
 ### Clinical Grounding & Toxicity Prevention
 We implemented deep, rule-based clinical safeguards on top of model inferences:
@@ -67,7 +67,7 @@ We implemented deep, rule-based clinical safeguards on top of model inferences:
 
 ---
 
-## 🌐 Production Readiness & Scalability
+## Production Readiness & Scalability
 
 DesiDiet is split into fully decoupled, containerized services:
 *   **Backend REST/SSE API:** FastAPI running async workflows, easily scaleable horizontally behind a load balancer.
@@ -76,7 +76,7 @@ DesiDiet is split into fully decoupled, containerized services:
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 | Dashboard Overview | AI Diet Assistant |
 |:---:|:---:|
@@ -90,7 +90,7 @@ DesiDiet is split into fully decoupled, containerized services:
 
 ---
 
-## ⚙️ Quick Start
+## Quick Start
 
 ### Prerequisites
 *   Python 3.11+
@@ -132,7 +132,7 @@ npm run dev
 
 ---
 
-## 🧪 Evaluation & Quality Measurement
+## Evaluation & Quality Measurement
 
 Our custom validation suite regularly runs regression checks:
 1.  **Recommendation Stability:** Verifies personalization variance among various demographic groups (Age/Gender/RDA keys).
