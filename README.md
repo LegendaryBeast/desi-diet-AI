@@ -3,6 +3,8 @@
 > **Proudly Built for Infinity AI Buildfest 2026 @ BRAC University**
 > **Web Application:** Deployed at Vercel & Railway.
 
+![DesiDiet System Infographic](docs/infografic.jpeg)
+
 ---
 
 ## Executive Summary & Core Innovation
@@ -42,6 +44,42 @@ DesiDiet is powered by a diverse ingestion layer combining peer-reviewed data so
 *   **External APIs:** OpenAI API (used for Whispering voice inputs and chat orchestration) and Pinecone Vector Database (hosting indexed recipe data).
 *   **Internal Systems:** PostgreSQL relational database (via Prisma ORM) storing user profiles, logs, and targets, and a Neo4j Graph Database mapping complex food, nutrient, and disease relationships.
 *   **Synthetic Data:** Automatically generated and updated food compatibility/pairing matrices, validated programmatically via AST structures.
+
+---
+
+## System Methodology & Scientific Grounding
+
+DesiDiet uses native South Asian nutritional formulas, structured compatibility rules, and a multi-stage workflow:
+
+### South-Asian Adjusted Calorie Engine
+*   **Basal Metabolic Rate (BMR) Formulas:**
+    *   *Male:* `BMR = (10 * Weight) + (6.25 * Height) - (5 * Age) + 5`
+    *   *Female:* `BMR = (10 * Weight) + (6.25 * Height) - (5 * Age) - 161`
+*   **Total Daily Energy Expenditure (TDEE):** `TDEE = BMR * Activity Factor`
+*   **Adjusted South-Asian BMI Categories:**
+    *   *Underweight:* `< 18.5`
+    *   *Normal Weight:* `18.5 - 22.9`
+    *   *Overweight:* `23.0 - 27.4`
+    *   *Obese:* `>= 27.5`
+*   **Goal Tuning:**
+    *   *Loss:* `TDEE - 350 kcal`
+    *   *Maintain:* `TDEE`
+    *   *Gain:* `TDEE + 300 kcal`
+*   **Target Macro Split (Energy):** 55% Carbohydrates | 15% Protein | 30% Fats
+*   **Daily Essentials:** Fiber target of `25g/day`, Water intake target of `33 ml/kg IBW` (Ideal Body Weight)
+
+### Food Compatibility Engine
+*   **Structured Meal Assembly:** Combines local staples (Rice, Dal, Vegetables, Salad, and Fish/Meat) to suggest culturally meaningful meals rather than arbitrary ingredient lists.
+*   **Compatibility Parameters:** Evaluated across six vectors: *Nutrient Complementarity, Traditional Co-occurrence, Digestibility & GI Impact, Condition Safety, Taste & Cultural Preference, and Affordability & Availability*.
+
+### System Intelligence Pipeline
+The system processes all user interactions via a 6-stage sequential workflow:
+1.  **Ask / Log:** Ingress of user queries via text, voice recordings (Whisper), or food images.
+2.  **Smart Routing:** The state router performs cache hits and security screening before downstream evaluation.
+3.  **Data Retrieval:** Fetches real-time relational SQL data, Pinecone recipe vectors, and Neo4j graph nodes.
+4.  **AI Reasoning:** LangGraph coordinates Pusti AI and NutriSaathi execution paths.
+5.  **Response:** Emits real-time language-matched feedback (Bangla/English).
+6.  **Learn & Improve:** Stores response characteristics for regression validation testing.
 
 ---
 
