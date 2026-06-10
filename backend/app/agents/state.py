@@ -11,17 +11,18 @@ class AgentState(TypedDict):
 
     Fields
     ------
-    user_id     : Authenticated user's DB id.
-    message     : The latest user message text.
-    language    : "bn" | "en"
-    history     : Last N turns [{role, content}, ...]
-    intent      : Classified intent string (set by RouterNode).
-    condition   : Medical condition string used by NutriSaathi.
-    session_id  : NutriSaathi session key.
-    reply       : Final text reply accumulated by the active sub-agent.
-    tool_calls  : Optional list of tool call dicts from Pusti AI.
-    sse_chunks  : Accumulated SSE-ready text chunks for streaming.
-    error       : Error message if something went wrong.
+    user_id             : Authenticated user's DB id.
+    message             : The latest user message text.
+    language            : "bn" | "en"
+    history             : Last N turns [{role, content}, ...]
+    intent              : Classified intent string (set by RouterNode).
+    condition           : Medical condition string used by NutriSaathi.
+    session_id          : NutriSaathi session continuity key.
+    reply               : Final text reply accumulated by the active sub-agent.
+    tool_calls          : Optional list of tool call dicts from Pusti AI.
+    sse_chunks          : Accumulated SSE-ready text chunks for streaming.
+    error               : Error message if something went wrong.
+    include_groceries   : Optional flag controlling grocery suggestions.
     """
     user_id:    str
     message:    str
@@ -35,3 +36,4 @@ class AgentState(TypedDict):
     sse_chunks: Annotated[List[str], operator.add]   # accumulate across nodes
     error:      Optional[str]
     early_history_summary: Optional[str]
+    include_groceries: Optional[bool]

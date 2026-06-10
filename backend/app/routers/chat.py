@@ -1030,18 +1030,19 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
 
             # ── Grocery Suggestions (compute BEFORE saving so we can persist them) ──
             grocery_result = None
-            try:
-                grocery_result = suggest_groceries_from_chat(
-                    chat_text=req.message,
-                    user_lat=req.lat,
-                    user_lng=req.lng,
-                    parsed_food_items=None,
-                    assistant_response=assistant_response,
-                )
-                if grocery_result and grocery_result.get("total_items", 0) > 0:
-                    yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
-            except Exception as e:
-                logger.warning("Grocery suggestion failed in chat: %s", e)
+            if req.include_groceries is not False:
+                try:
+                    grocery_result = suggest_groceries_from_chat(
+                        chat_text=req.message,
+                        user_lat=req.lat,
+                        user_lng=req.lng,
+                        parsed_food_items=None,
+                        assistant_response=assistant_response,
+                    )
+                    if grocery_result and grocery_result.get("total_items", 0) > 0:
+                        yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
+                except Exception as e:
+                    logger.warning("Grocery suggestion failed in chat: %s", e)
 
             # 6. Save messages to the database
             if req.message:
@@ -1105,18 +1106,19 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                 pass
 
             # Also try to send grocery suggestions even on fallback
-            try:
-                grocery_result = suggest_groceries_from_chat(
-                    chat_text=req.message,
-                    user_lat=req.lat,
-                    user_lng=req.lng,
-                    parsed_food_items=None,
-                    assistant_response=fallback,
-                )
-                if grocery_result and grocery_result.get("total_items", 0) > 0:
-                    yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
-            except Exception:
-                pass
+            if req.include_groceries is not False:
+                try:
+                    grocery_result = suggest_groceries_from_chat(
+                        chat_text=req.message,
+                        user_lat=req.lat,
+                        user_lng=req.lng,
+                        parsed_food_items=None,
+                        assistant_response=fallback,
+                    )
+                    if grocery_result and grocery_result.get("total_items", 0) > 0:
+                        yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
+                except Exception:
+                    pass
 
         yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -1203,26 +1205,27 @@ async def diet_plan_session(req: DietPlanChatRequest, current_user=Depends(get_c
                 yield f"data: {json.dumps({'plan_ready': response_data.model_dump()})}\n\n"
 
                 # Also send grocery suggestions for the generated plan
-                try:
-                    plan_data = plan_result.get("plan_data", {})
-                    food_names = []
-                    for meal in plan_data.get("meals", []):
-                        for item in meal.get("items", []):
-                            name = item.get("name_bn") or item.get("name_en")
-                            if name:
-                                food_names.append(name)
-                    if food_names:
-                        from app.services.grocery_service import suggest_groceries_for_foods
-                        grocery_result = suggest_groceries_for_foods(
-                            food_names,
-                            user_lat=getattr(req, 'lat', None) or 23.8103,
-                            user_lng=getattr(req, 'lng', None) or 90.4125,
-                            limit_per_food=1,
-                        )
-                        if grocery_result and grocery_result.get("total_items", 0) > 0:
-                            yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
-                except Exception as e:
-                    logger.warning("Grocery suggestion failed in diet plan session: %s", e)
+                if req.include_groceries is not False:
+                    try:
+                        plan_data = plan_result.get("plan_data", {})
+                        food_names = []
+                        for meal in plan_data.get("meals", []):
+                            for item in meal.get("items", []):
+                                name = item.get("name_bn") or item.get("name_en")
+                                if name:
+                                    food_names.append(name)
+                        if food_names:
+                            from app.services.grocery_service import suggest_groceries_for_foods
+                            grocery_result = suggest_groceries_for_foods(
+                                food_names,
+                                user_lat=getattr(req, 'lat', None) or 23.8103,
+                                user_lng=getattr(req, 'lng', None) or 90.4125,
+                                limit_per_food=1,
+                            )
+                            if grocery_result and grocery_result.get("total_items", 0) > 0:
+                                yield f"data: {json.dumps({'grocery_suggestions': grocery_result})}\n\n"
+                    except Exception as e:
+                        logger.warning("Grocery suggestion failed in diet plan session: %s", e)
             except Exception as e:
                 err_msg = "পরিকল্পনা তৈরি করতে সমস্যা হয়েছে।" if req.language == "bn" else "Failed to generate plan."
                 yield f"data: {json.dumps({'error': err_msg})}\n\n"
@@ -1438,6 +1441,7 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
         "sse_chunks": [],
         "error":      None,
         "early_history_summary": early_summary,
+        "include_groceries": getattr(req, "include_groceries", None),
     }
 
     try:

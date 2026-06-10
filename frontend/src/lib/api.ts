@@ -517,22 +517,27 @@ export const chatApi = {
     language: string,
     history: ChatHistoryItem[],
     condition: string = "",
-    sessionId: string = "unified"
+    sessionId: string = "unified",
+    includeGroceries?: boolean
   ): Promise<{ reply: string; intent: string; tool_calls: any[] | null; error: string | null }> => {
     const token = getToken();
+    const body: Record<string, any> = {
+      message,
+      language,
+      history,
+      condition,
+      session_id: sessionId,
+    };
+    if (includeGroceries !== undefined) {
+      body.include_groceries = includeGroceries;
+    }
     const res = await fetch(`${BASE_URL}/chat/unified`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({
-        message,
-        language,
-        history,
-        condition,
-        session_id: sessionId
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       throw new Error('Failed to connect to agent');

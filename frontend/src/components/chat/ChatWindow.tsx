@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { GroceryCard } from '../grocery/GroceryCard';
+import { GroceryPromptCard } from './GroceryPromptCard';
 import { ToolResultCard } from './ToolResultCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -34,7 +35,7 @@ import { useChatActions } from '../../contexts/ChatActionContext';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import { ProModal } from '../ui/ProModal';
 
-import { chatApi, type ChatHistoryItem, isAuthenticated, type MealTrackingResponse } from '../../lib/api';
+import { chatApi, groceryApi, type ChatHistoryItem, isAuthenticated, type MealTrackingResponse } from '../../lib/api';
 
 interface Message {
   id: number;
@@ -47,6 +48,27 @@ interface Message {
   grocerySuggestions?: Record<string, unknown>;
   toolResult?: Record<string, unknown>;
   intent?: 'pusti_ai' | 'nutrisaathi';
+  showGroceryPrompt?: boolean;
+}
+
+/**
+ * Simple heuristic to decide whether an AI response about food should offer
+ * grocery suggestions. Triggers for recipe/cooking intent (nutrisaathi) or
+ * when the user's question contains meal/food keywords.
+ */
+const FOOD_QUERY_KEYWORDS = [
+  // English
+  'eat', 'meal', 'food', 'recipe', 'cook', 'breakfast', 'lunch', 'dinner',
+  'snack', 'plan', 'diet', 'ingredient', 'groceries', 'hungry',
+  // Bengali
+  'খাবার', 'ভাত', 'মাছ', 'মাংস', 'ডাল', 'সবজি', 'রান্না', 'রেসিপি',
+  'নাস্তা', 'দুপুর', 'রাত', 'খেতে', 'খাই', 'খাওয়া', 'খাও', 'ডায়েট',
+];
+
+function isFoodRelatedQuery(text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return FOOD_QUERY_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()));
 }
 
 const renderFormattedText = (text: string) => {
@@ -107,6 +129,10 @@ export const ChatWindow = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [loadingGroceryPrompts, setLoadingGroceryPrompts] = useState<Set<number>>(new Set());
+
+  // Language helper used across handlers and render
+  const isBn = i18n.language === 'bn';
 
   // localStorage key for offline grocery cache
   const GROCERY_LS_KEY = 'desidiet_grocery_cache';
@@ -465,6 +491,14 @@ export const ChatWindow = () => {
       .then((res) => {
         setIsStreaming(false);
 
+        // Decide whether to offer the grocery prompt for this response.
+        const shouldOfferGroceryPrompt =
+          !res.error &&
+          res.reply &&
+          (res.intent === 'nutrisaathi' ||
+            isFoodRelatedQuery(textToSend || '') ||
+            isFoodRelatedQuery(res.reply || ''));
+
         // Update the AI message text and intent
         setMessages((prev) =>
           prev.map((m) =>
@@ -473,6 +507,7 @@ export const ChatWindow = () => {
                   ...m,
                   text: res.reply || '',
                   intent: res.intent as 'pusti_ai' | 'nutrisaathi',
+                  showGroceryPrompt: !!shouldOfferGroceryPrompt,
                 }
               : m
           )
@@ -560,9 +595,44 @@ export const ChatWindow = () => {
     setPendingImage({ dataUrl, name: file.name });
   }, []);
 
+  // Handlers for the inline grocery-suggestion prompt
+  const handleGroceryYes = useCallback(async (msgId: number) => {
+    const msg = messages.find((m) => m.id === msgId);
+    if (!msg || !msg.text) return;
+
+    setLoadingGroceryPrompts((prev) => new Set(prev).add(msgId));
+    try {
+      const result = await groceryApi.fromChat({
+        chat_text: msg.text,
+        lat: userLocation?.lat,
+        lng: userLocation?.lng,
+      });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId
+            ? { ...m, grocerySuggestions: result as unknown as Record<string, unknown>, showGroceryPrompt: false }
+            : m
+        )
+      );
+    } catch (e) {
+      showToast(isBn ? 'গ্রোসারি তথ্য আনতে সমস্যা হয়েছে' : 'Could not load grocery info', 'error');
+    } finally {
+      setLoadingGroceryPrompts((prev) => {
+        const next = new Set(prev);
+        next.delete(msgId);
+        return next;
+      });
+    }
+  }, [messages, userLocation, isBn, showToast]);
+
+  const handleGroceryNo = useCallback((msgId: number) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, showGroceryPrompt: false } : m))
+    );
+  }, []);
+
   const { user } = useAuth();
   const profile = profileData?.profile;
-  const isBn = i18n.language === 'bn';
   
   const displayName = isBn
     ? (profile?.name_bn || profile?.name_en || user?.email?.split('@')[0] || user?.phone || 'ব্যবহারকারী')
@@ -890,6 +960,15 @@ export const ChatWindow = () => {
                             )
                           )
                         }
+                      />
+                    )}
+                    {/* Grocery Prompt Card */}
+                    {msg.type === 'ai' && msg.showGroceryPrompt && !msg.grocerySuggestions && (
+                      <GroceryPromptCard
+                        isBn={isBn}
+                        isLoading={loadingGroceryPrompts.has(msg.id)}
+                        onYes={() => handleGroceryYes(msg.id)}
+                        onNo={() => handleGroceryNo(msg.id)}
                       />
                     )}
                     {/* Tool Result Card */}

@@ -168,6 +168,10 @@ class ChatRequest(BaseModel):
     )
     lat: Optional[float] = Field(default=None, description="User latitude for nearest grocery shop lookup")
     lng: Optional[float] = Field(default=None, description="User longitude for nearest grocery shop lookup")
+    include_groceries: Optional[bool] = Field(
+        default=None,
+        description="If False, skip grocery suggestions and avoid grocery-related mentions in the reply. None/True keeps default behavior.",
+    )
 
 
 class DietPlanChatRequest(BaseModel):
@@ -180,6 +184,10 @@ class DietPlanChatRequest(BaseModel):
         description="Fields confirmed so far: age, gender, height_cm, weight_kg, activity_level, goal, medical_conditions")
     lat: Optional[float] = None
     lng: Optional[float] = None
+    include_groceries: Optional[bool] = Field(
+        default=None,
+        description="If False, skip grocery suggestions for the generated plan.",
+    )
 
 
 class DietPlanChatResponse(BaseModel):

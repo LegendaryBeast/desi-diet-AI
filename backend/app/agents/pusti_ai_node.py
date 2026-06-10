@@ -126,6 +126,10 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
         rag_food_context=rag_food_context,
     )
 
+    # If user explicitly opted out of grocery suggestions, tell the model not to mention them.
+    if state.get("include_groceries") is False:
+        system_msg += "\n\n=== GROCERY PREFERENCE ===\nThe user has chosen NOT to see grocery suggestions. DO NOT mention grocery shopping, prices, store locations, or where to buy ingredients in your response."
+
     messages: List[Dict[str, Any]] = [{"role": "system", "content": system_msg}]
     for turn in history[-10:]:
         if turn.get("role") in ("user", "assistant") and turn.get("content"):
