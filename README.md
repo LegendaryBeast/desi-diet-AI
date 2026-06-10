@@ -53,7 +53,7 @@ DesiDiet is powered by a diverse ingestion layer combining peer-reviewed data so
 DesiDiet uses native South Asian nutritional formulas, structured compatibility rules, and a multi-stage workflow:
 
 ### South-Asian Adjusted Calorie Engine
-*   **Basal Metabolic Rate (BMR) Formulas:**
+*   **Basal Metabolic Rate (BMR) Formulas (Mifflin-St Jeor Equation):**
     *   *Male:* `BMR = (10 * Weight) + (6.25 * Height) - (5 * Age) + 5`
     *   *Female:* `BMR = (10 * Weight) + (6.25 * Height) - (5 * Age) - 161`
 *   **Total Daily Energy Expenditure (TDEE):** `TDEE = BMR * Activity Factor`
