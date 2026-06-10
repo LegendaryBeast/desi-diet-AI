@@ -19,22 +19,16 @@ DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent 
 
 ---
 
-## Key Features
+## Platform Key Features & Screenshots
 
-*   **Personalized Meal Planning:** AI-generated daily/weekly plans matching user profile, health status, and NDG 2025 targets.
-*   **Conversational AI Diet Assistant:** Real-time streaming SSE chat with full user profile context.
-*   **Meal Logging via Speech & Vision:** Multi-lingual voice, text, or image food logging grounded in Neo4j (no LLM hallucination).
-*   **Health Log & Trend Tracking:** Progress logging for weight, BP, blood sugar, and HbA1c with context injection.
-*   **Food Knowledge Browser:** Multilingual search displaying full nutrition specs and medical safety warnings.
-*   **Health & Nutrition Reports:** PDF email reports analyzing calorie trends, macros, and clinical insights.
-*   **Medicine Reminder Parsing:** Converts natural language descriptions of prescriptions into structured in-app reminders.
-*   **Interactive Meal Builder:** Interactive meal calculator with target matching and AI feedback.
-*   **NutriSaathi Cooking Guide:** Personalized cooking assistant generating local recipes with health substitutions.
-*   **Bilingual Interface:** Entire application fully localized in Bengali and English.
-*   **Grocery Sourcing & Price Compare:** Price-sorted local ingredient recommendations from nearest shops via GPS.
-
----
-
+| | |
+|:---:|:---:|
+| **1. Personalized Meal Planning**<br>AI-generated daily/weekly plans matching user profile, health status, and NDG 2025 targets.<br><br><img src="docs/screenshots/meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. Conversational AI Diet Assistant**<br>Real-time streaming SSE chat with full user profile context.<br><br><img src="docs/screenshots/ai_assistant.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **3. Meal Logging via Speech & Vision**<br>Multi-lingual voice, text, or image food logging grounded in Neo4j.<br><br><img src="docs/screenshots/dashboard.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. Health Log & Trend Tracking**<br>Progress logging for weight, BP, blood sugar, and HbA1c with context injection.<br><br><img src="docs/screenshots/health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **5. Food Knowledge Browser**<br>Multilingual search displaying full nutrition specs and medical safety warnings.<br><br><img src="docs/screenshots/food_database.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. Health & Nutrition Reports**<br>PDF email reports analyzing calorie trends, macros, and clinical insights.<br><br><img src="docs/screenshots/health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **7. Medicine Reminder Parsing**<br>Converts natural language descriptions of prescriptions into structured in-app reminders.<br><br><img src="docs/screenshots/medicine_reminders.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Interactive Meal Builder**<br>Interactive meal calculator with target matching and AI feedback.<br><br><img src="docs/screenshots/meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **9. NutriSaathi Cooking Guide**<br>Personalized cooking assistant generating local recipes with health substitutions.<br><br><img src="docs/screenshots/ai_assistant.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **10. Bilingual Interface**<br>Entire application fully localized in Bengali and English.<br><br><img src="docs/screenshots/dashboard.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **11. Grocery Sourcing & Price Compare**<br>Price-sorted local ingredient recommendations from nearest shops via GPS.<br><br><img src="docs/screenshots/grocery_compare.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | *Ready for Infinity AI Buildfest 2026* <br><br> (More features coming soon!) |
 
 ## Dataset & Integration Sources
 
@@ -202,20 +196,6 @@ A custom validation suite executes regression checks:
 2.  **Nutrient Coverage:** Confirms top recommendations meet clinical RDA targets.
 3.  **Regression Testing:** Measures token optimization metrics including semantic cache hit rates, Jaccard-based context pruning overlaps, and latency distribution.
 4.  **Manual Safety Audits:** Ensures clinical constraints are strictly grounded in BIRDEM/WHO guidelines.
-
----
-
-## Screenshots
-
-| Dashboard Overview | AI Diet Assistant |
-|:---:|:---:|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![AI Assistant](docs/screenshots/ai_assistant.png) |
-| **Personalized Meal Plan** | **Grocery Price Compare** |
-| ![Meal Plan](docs/screenshots/meal_plan.png) | ![Grocery Compare](docs/screenshots/grocery_compare.png) |
-| **Medicine Reminders** | **Food Database** |
-| ![Medicine Reminders](docs/screenshots/medicine_reminders.png) | ![Food Database](docs/screenshots/food_database.png) |
-| **Comprehensive Health Report** | |
-| ![Health Report](docs/screenshots/health_report.png) | |
 
 ---
 
