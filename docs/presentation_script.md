@@ -40,7 +40,7 @@ When a user signs up, our **South-Asian Adjusted Calorie Engine** calculates the
 
 Next, the **Food Compatibility Engine** recommends balanced regional meal plans—like Rice, Dal, fish, and greens—vetting them for nutritional complementarity and medical safety. 
 
-Users can log meals in Bengali or English, or simply by uploading a photo. The system extracts food items using vision, but here is the key difference: it cross-references them against our Neo4j database. hallucinated LLM values are blocked; only verified nutritional metrics are logged. 
+Users can log meals in Bengali or English. It cross-references them against our Neo4j database. hallucinated LLM values are blocked; only verified nutritional metrics are logged. 
 
 Finally, to make healthy eating accessible, our **Grocery Compare** tool automatically finds and displays ingredient suggestions from local shops, sorted by nearest location and lowest price.
 
@@ -64,9 +64,9 @@ Third, to keep operations fast and cost-effective, we implement token optimizati
 
 **[Slide: Business Model & Roadmap]**
 
-Our business model targets two streams: B2B licensing for local medical clinics and diagnostic centers, and B2C premium memberships for personalized meal planner features. We also generate affiliate channels by integrating directly with local grocery delivery APIs like Chaldal. 
+Our business model relies on two strategies: First, B2B collaboration, where we promote direct food sourcing from partner grocery stores. Second, a user freemium model, offering basic tracking for free while unlocking advanced clinical and planner tools in the premium tier.
 
-Moving forward, our next release will introduce a dedicated clinical maternal health and family planning module to address pregnancy-specific dietary needs. 
+Moving forward, our next release will introduce a dedicated clinical maternal health and family planning module to address pregnancy-specific dietary needs, and helping hand to the mother/cooking lead for his family wise nutrition companion. 
 
 DesiDiet is not just another tracker—it is a production-ready, clinical-grade companion democratizing healthy living across Bangladesh. 
 
