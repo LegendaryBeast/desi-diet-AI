@@ -15,8 +15,24 @@ Traditional nutrition applications fail in South Asia. They do not comprehend re
 ### Our Solution
 DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent framework (**Pusti AI** & **NutriSaathi**) orchestrated via **LangGraph**. The platform enforces strict medical compliance by grounding Large Language Models using a state-of-the-art **Hybrid RAG** engine backed by three core clinical data sources: the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), the [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and the clinical structures of the [Explainable GraphRAG Framework](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
 
+---
+
+## Key Features
+
+*   **Personalized Meal Planning:** AI-generated daily and weekly meal plans based on user profile, medical conditions, activity level, and dietary goals. Plans are built from verified food database entries and comply with NDG 2025 macronutrient distribution targets.
+*   **Conversational AI Diet Assistant:** A streaming SSE chat interface powered by an OpenAI-compatible LLM. The assistant has full access to the user's profile, today's meal plan, recent meal logs, and health history as in-context data. It is strictly scoped to food and nutrition topics and refuses all unrelated queries.
+*   **Meal Logging via Natural Language and Vision:** Users can log meals by typing descriptions in Bengali or English, or by uploading a food photograph. The system uses the LLM to identify food items and quantities, then looks up verified nutritional data from Neo4j before saving the log. LLM-generated nutrition values are never used; only database values are accepted.
+*   **Health Log and Trend Tracking:** Users record weight, blood pressure, blood sugar, and HbA1c readings over time. The system surfaces trends and integrates this data into personalized LLM context.
+*   **Food Knowledge Browser:** Users can search the food database by name (Bengali or English), view full macronutrient and micronutrient profiles, and receive condition-aware safety ratings (safe / caution / avoid) based on their medical profile.
+*   **Health and Nutrition Reports:** The report engine aggregates calorie adherence, macro consumption, weight history, and condition-specific clinical insights over configurable time windows. Reports can be sent by email.
+*   **Medicine Reminder Parsing:** Users describe their medicine schedule in natural language and the system extracts structured reminders (name, dose, times, food pairing instructions).
+*   **Meal Builder:** An interactive tool for constructing custom meals by selecting and weighing individual food items. The system evaluates the assembled meal against the user's nutrition targets and condition constraints, returning an AI-generated insight.
+*   **NutriSaathi / Personal Cooker:** A condition-specific personalized cooking assistant that generates culturally grounded Bangladeshi recipes, suggests ingredient alternatives, and performs medical-profile-based safety checks for users with chronic conditions.
+*   **Bilingual Interface:** All user-facing content, meal plan data, and AI responses are delivered in Bengali (default) or English depending on user preference.
+*   **Voice Input and Realtime Session:** The chat interface supports audio recording transcribed via OpenAI Whisper. A WebRTC-based realtime voice session endpoint is also available for live conversational interaction.
 
 ---
+
 
 ## Dataset & Integration Sources
 
