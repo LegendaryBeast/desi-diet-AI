@@ -32,6 +32,7 @@ DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent 
 *   **NutriSaathi / Personal Cooker:** A condition-specific personalized cooking assistant that generates culturally grounded Bangladeshi recipes, suggests ingredient alternatives, and performs medical-profile-based safety checks for users with chronic conditions.
 *   **Bilingual Interface:** All user-facing content, meal plan data, and AI responses are delivered in Bengali (default) or English depending on user preference.
 *   **Voice Input and Realtime Session:** The chat interface supports audio recording transcribed via OpenAI Whisper. A WebRTC-based realtime voice session endpoint is also available for live conversational interaction.
+*   **Grocery Price and Location Sourcing:** Recommends local ingredients and food sources sorted by lowest price and nearest geographical location using cached GPS coordinates.
 
 ---
 
