@@ -23,7 +23,6 @@ DesiDiet is an enterprise-grade, culturally grounded, clinical nutrition ecosyst
 *   **Interactive Meal Builder:** Interactive meal calculator with target matching and AI feedback.
 *   **NutriSaathi Cooking Guide:** Personalized cooking assistant generating local recipes with health substitutions.
 *   **Bilingual Interface:** Entire application fully localized in Bengali and English.
-*   **Voice & Real-time Session:** Whisper audio transcription and WebRTC live voice streaming chat.
 *   **Grocery Sourcing & Price Compare:** Price-sorted local ingredient recommendations from nearest shops via GPS.
 
 ---
