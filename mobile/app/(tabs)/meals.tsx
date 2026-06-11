@@ -104,6 +104,48 @@ export default function MealsScreen() {
   const [idsToDelete, setIdsToDelete] = useState<string[] | null>(null);
   const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
 
+  const estimatePortion = (foodGroup: string, nameEn: string, amountG: number): { bn: string; en: string } => {
+    const nameLower = nameEn.toLowerCase();
+    
+    if (nameLower.includes("egg") || nameLower.includes("ডিম") || foodGroup === "Eggs" || foodGroup === "Egg and Egg Products") {
+      const count = Math.max(1, Math.round(amountG / 50.0));
+      return { bn: `${count} টি`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (nameLower.includes("roti") || nameLower.includes("paratha") || nameLower.includes("chapati") || nameLower.includes("রুটি") || nameLower.includes("পরোটা")) {
+      const count = Math.max(1, Math.round(amountG / 35.0));
+      return { bn: `${count} টি`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (nameLower.includes("banana") || nameLower.includes("apple") || nameLower.includes("pear") || nameLower.includes("কলা") || nameLower.includes("আপেল")) {
+      const count = Math.max(1, Math.round(amountG / 120.0));
+      return { bn: `${count} টি`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (nameLower.includes("rice") || nameLower.includes("khichuri") || nameLower.includes("ভাত") || nameLower.includes("খিচুড়ি") || foodGroup === "Rice Staples") {
+      return amountG >= 200 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    if (nameLower.includes("dal") || nameLower.includes("lentil") || nameLower.includes("ডাল")) {
+      return amountG >= 120 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    if (nameLower.includes("milk") || nameLower.includes("tea") || nameLower.includes("yogurt") || nameLower.includes("দুধ") || nameLower.includes("চা") || nameLower.includes("দই")) {
+      return amountG >= 200 ? { bn: "১ গ্লাস", en: "1 glass" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    if (nameLower.includes("chicken") || nameLower.includes("beef") || nameLower.includes("mutton") || nameLower.includes("fish") || nameLower.includes("meat") || nameLower.includes("মুরগি") || nameLower.includes("গরু") || nameLower.includes("খাসি") || nameLower.includes("মাছ")) {
+      const count = Math.max(1, Math.round(amountG / 60.0));
+      return { bn: `${count} পিস`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (["Vegetables", "Other Vegetables", "Leafy Vegetables", "Green Leafy Vegetables", "Roots and Tubers"].includes(foodGroup)) {
+      return amountG >= 150 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    return amountG >= 150 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+  };
+
   const handleAutoSwap = async (meal: any, item: any, itemIndex: number) => {
     const key = `${meal.slot}-${itemIndex}`;
     setLoadingSwapKey(key);
@@ -172,11 +214,12 @@ export default function MealsScreen() {
         replacementItem = originalItem;
       } else {
         const scale = amount / 100.0;
+        const est = estimatePortion(nextAlt.food_group || '', nextAlt.name_en || '', amount);
         replacementItem = {
           code: nextAlt.code,
           food_code: nextAlt.code,
-          name_bn: nextAlt.name_bn,
-          name_en: nextAlt.name_en,
+          name_bn: nextAlt.name_bn.includes(est.bn) ? nextAlt.name_bn : `${nextAlt.name_bn} ${est.bn}`,
+          name_en: nextAlt.name_en.includes(est.en) ? nextAlt.name_en : `${nextAlt.name_en} (${est.en})`,
           amount_g: amount,
           calories: Math.round((nextAlt.calories || 0) * scale),
           protein: Math.round((nextAlt.protein || 0) * scale),
@@ -589,7 +632,9 @@ export default function MealsScreen() {
                       style={[styles.webFoodInfoBtn, justifications[foodKey] && { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}
                       onPress={() => toggleFoodJustification(foodKey, foodName)}
                     >
-                      <Text style={[styles.webFoodInfoText, justifications[foodKey] && { color: colors.accent }]}>ⓘ</Text>
+                      <Text style={[styles.webFoodInfoText, justifications[foodKey] && { color: colors.accent }]}>
+                        ⓘ {language === 'bn' ? 'কেন খাবেন' : 'Why'}
+                      </Text>
                     </TouchableOpacity>
 
                     {/* Swap Item Button */}
@@ -1365,8 +1410,8 @@ export default function MealsScreen() {
         animationType="fade"
         onRequestClose={() => setDeleteConfirmVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={styles.deleteConfirmOverlay}>
+          <View style={styles.deleteConfirmContent}>
             <Text style={styles.modalTitle}>{isBn ? 'খাবারটি ডিলিট করতে চান?' : 'Delete logged food?'}</Text>
             <Text style={styles.modalMessage}>{isBn ? 'এই রেকর্ডটি আপনার আজকের ডায়েরি থেকে মুছে ফেলা হবে।' : 'This record will be permanently deleted from today\'s journal.'}</Text>
             <View style={styles.modalButtons}>
@@ -1779,7 +1824,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     paddingHorizontal: 6,
     paddingVertical: 3,
-    borderRadius: radius.xs,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.03)',
   },
@@ -1789,21 +1834,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   webFoodInfoBtn: {
-    width: 22,
+    paddingHorizontal: 6,
     height: 22,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
     backgroundColor: colors.white,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   webFoodInfoText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 11,
+    fontFamily: fonts.bn,
+    fontSize: 9,
+    fontWeight: 'bold',
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 13,
   },
   webFoodCheckBtn: {
     width: 22,
@@ -2283,14 +2329,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.primary,
   },
-  modalOverlay: {
+  deleteConfirmOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
-  modalContent: {
+  deleteConfirmContent: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 24,

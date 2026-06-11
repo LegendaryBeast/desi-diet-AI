@@ -1205,7 +1205,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(252, 251, 247, 0.4)',
     paddingVertical: spacing.xs,
     paddingRight: spacing.xs,
-    borderRadius: radius.xs,
+    borderRadius: 4,
   },
   verdictFooter: {
     flexDirection: 'row',
