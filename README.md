@@ -17,6 +17,11 @@ Traditional nutrition applications fail in South Asia. They do not comprehend re
 ### Our Solution
 DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent framework (**Pusti AI** & **NutriSaathi**) orchestrated via **LangGraph**. The platform enforces strict medical compliance by grounding Large Language Models using a state-of-the-art **Hybrid RAG** engine backed by three core clinical data sources: the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), the [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and the clinical structures of the [Explainable GraphRAG Framework](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
 
+### Expected Impact
+DesiDiet addresses the critical shortage of practicing nutritionists in Bangladesh by providing scalable, expert-grounded clinical guidance. The platform aims to improve regional nutrition awareness, prevent metabolic diseases, and expand accessibility to personalized dietary support both locally and beyond borders.
+
+<img src="docs/expected_impact.jpg" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>
+
 | |
 |:---:|
 | **Target Audience**<br><img src="docs/screenshots/target_audience.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
