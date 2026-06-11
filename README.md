@@ -59,9 +59,9 @@ Our mobile-first web app is designed for accessibility on the go, bringing intel
 
 | **1. Mobile Dashboard** | **2. Daily Meal Tracking** | **3. Pushti-AI Assistant** | **4. Target Goals & BMI** |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/app_home.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_meal_plan.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_pushti_ai.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_target_goals.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+| <img src="docs/screenshots/app_home.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_meal_plan.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_pushti_ai.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_target_goals.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
 | **5. Health & Disease Setup** | **6. User Profile & Metrics** | **7. Pro Upgrade Flow** | **8. Health PDF Reports** |
-| <img src="docs/screenshots/app_disease_selection.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_profile.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_pro_upgrade.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_health_report.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+| <img src="docs/screenshots/app_disease_selection.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_profile.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_pro_upgrade.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_health_report.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
 
 ---
 
@@ -71,7 +71,8 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
 
 | **1. WhatsApp Meal Plans** | **2. WhatsApp Meal Logs** | **3. WhatsApp Nutrition Info** | **4. WhatsApp Health Advice** |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/whatsapp_meal_plan.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_meal_log.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_nutrition_info.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_advice.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+| <img src="docs/screenshots/whatsapp_meal_plan.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_meal_log.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_nutrition_info.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_advice.png" style="height: 400px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+
 
 
 ---
