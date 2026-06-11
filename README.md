@@ -50,7 +50,8 @@ DesiDiet addresses the critical shortage of practicing nutritionists in Banglade
 DesiDiet is designed around an AI-Native 5-Layer model that decouples integration, business logic, semantic optimization, and knowledge databases:
 
 ![DesiDiet System Architecture](docs/architecture_diagram.png)
-![Poster Presentation](docs/poster1.jpeg)
+
+<img src="docs/Poster.jpeg" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>
 
 
 ## Dataset & Integration Sources
@@ -338,7 +339,10 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
     </td>
   </tr>
 </table>
-![Business Infographic](docs/Scalable_Nutrition_Business_Strategy_Roadmap.png)
+
+
+<img src="docs/Scalable_Nutrition_Business_Strategy_Roadmap.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>
+
 
 
 
