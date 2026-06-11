@@ -93,16 +93,39 @@ def suggest_groceries_for_foods(
 
 
 def extract_food_names_from_text(text: str) -> List[str]:
-    """Scan text against grocery catalog keywords and return all matched food names."""
+    """Scan text against grocery catalog keywords and return all matched food names.
+
+    Short single-word keywords (≤4 chars) are matched as whole words only
+    to avoid false positives like "nutrition" → "nut", "price" → "rice",
+    "exercise" → "rice", "soil" → "oil", "beggar" → "egg", etc.
+    Multi-word keywords still use substring matching.
+    """
     if not text:
         return []
     text_lower = text.lower()
+    import re
+    # Build a set of whole words from the text (Unicode-aware)
+    text_words = set(re.findall(r"\b\w+\b", text_lower))
     matched = set()
     for item in GROCERY_ITEMS:
         for kw in item["keywords"]:
-            if kw.lower() in text_lower:
-                matched.add(kw)
-                break
+            kw_lower = kw.lower()
+            # Multi-word keywords: safe to use substring match
+            if " " in kw_lower:
+                if kw_lower in text_lower:
+                    matched.add(kw)
+                    break
+            # Short single-word keywords (≤4 chars): prone to false positives
+            # Require exact whole-word match
+            elif len(kw_lower) <= 4:
+                if kw_lower in text_words:
+                    matched.add(kw)
+                    break
+            # Longer single-word keywords: substring match is safe enough
+            else:
+                if kw_lower in text_lower:
+                    matched.add(kw)
+                    break
     return list(matched)
 
 
