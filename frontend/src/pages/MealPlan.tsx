@@ -1004,13 +1004,14 @@ export const MealPlan = () => {
                               {!isEditing && (
                                 <button
                                   onClick={() => toggleFoodJustification(food.food_code || food.code || food.name_en || food.name_bn || '', food.name_bn || food.name_en || '')}
-                                  className={`p-1 rounded border transition-all ${justifications[food.food_code || food.code || food.name_en || food.name_bn || '']
+                                  className={`px-1.5 py-0.5 text-[0.62rem] font-bold rounded border transition-all flex items-center gap-0.5 ${justifications[food.food_code || food.code || food.name_en || food.name_bn || '']
                                       ? 'bg-accent/10 text-accent border-accent/25'
-                                      : 'bg-white hover:bg-accent/5 text-ink-faint hover:text-accent border-ink/5'
+                                      : 'bg-white hover:bg-accent/5 text-ink-muted hover:text-accent border-ink/5'
                                     }`}
                                   title="কেন এই খাবার?"
                                 >
-                                  <Info className="w-3 h-3" />
+                                  <Info className="w-2.5 h-2.5" />
+                                  <span className="font-bn">কেন খাবেন</span>
                                 </button>
                               )}
 
