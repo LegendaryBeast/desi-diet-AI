@@ -2348,4 +2348,13 @@ async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any]
                 "language": language,
             }
         )
+
+    # Cache in Redis
+    if plan_type == "daily":
+        try:
+            from app.services.meal_plan_cache import set_cached_meal_plan
+            await set_cached_meal_plan(user_id, target_date, plan)
+        except Exception as e:
+            print(f"Failed to cache meal plan: {e}")
+
     return plan

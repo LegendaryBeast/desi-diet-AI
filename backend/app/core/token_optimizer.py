@@ -44,9 +44,16 @@ _PERSONAL_KEYWORDS = [
     "খাইছি", "খেয়েছি", "পরিকল্পনা", "রিপোর্ট", "remind", "reminder",
     "medicine", "ওষুধ", "ট্যাবলেট", "ডোজ", "পাসওয়ার্ড", "password",
     # Meal-plan / report keywords — prevent caching user-specific responses
-    "breakfast", "lunch", "dinner", "snack", "meal",
+    "breakfast", "lunch", "dinner", "snack", "meal", "meals", "food", "foods",
     "report", "summary", "progress", "log",
     "খাবার", "আজকের", "খেয়েছি", "খাইছি",
+    # Transliterated Bengali & Script keywords for food/diet queries
+    "khabo", "khabo?", "khai", "khacchi", "khacche", "khelam", "khaichi",
+    "ajke", "ajker", "shokal", "shokale", "nasta", "dupur", "dupure", "rat", "rate", "rater",
+    "খাবো", "খাব", "খাব?", "খাবো?", "খাই", "আজকে", "আজকের", "সকাল", "সকালের",
+    "নাস্তা", "দুপুর", "দুপুরের", "রাত", "রাতের", "খাবো কি", "কি খাবো",
+    "today", "todays", "tomorrow", "tomorrows", "yesterday", "yesterdays",
+    "diet", "dietplan", "plan", "planning", "daily",
 ]
 
 

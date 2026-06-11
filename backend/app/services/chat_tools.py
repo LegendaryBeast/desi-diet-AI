@@ -60,6 +60,11 @@ async def _invalidate_todays_meal_plan(user_id: str) -> None:
                 "planDate": {"gte": today, "lt": today + timedelta(days=1)},
             }
         )
+        try:
+            from app.services.meal_plan_cache import delete_cached_meal_plan
+            await delete_cached_meal_plan(user_id, today)
+        except Exception as ec:
+            logger.warning("Failed to delete meal plan cache in invalidation: %s", ec)
     except Exception as e:
         logger.warning("Failed to invalidate today's meal plan: %s", e)
 
@@ -115,14 +120,31 @@ async def tool_update_profile(user_id: str, args: Dict[str, Any]) -> Dict[str, A
 async def tool_get_meal_plan(user_id: str, args: Dict[str, Any] = None) -> Dict[str, Any]:
     bd_tz = ZoneInfo("Asia/Dhaka")
     today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-    plan = await prisma.mealplan.find_first(
-        where={
-            "userId": user_id,
-            "planType": "daily",
-            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
-        },
-        order={"createdAt": "desc"},
-    )
+    
+    # 1. Try Cache
+    plan = None
+    try:
+        from app.services.meal_plan_cache import get_cached_meal_plan, set_cached_meal_plan
+        plan = await get_cached_meal_plan(user_id, today)
+    except Exception as e:
+        logger.warning("Failed to fetch meal plan from cache in tool_get_meal_plan: %s", e)
+
+    # 2. Database fallback
+    if not plan:
+        plan = await prisma.mealplan.find_first(
+            where={
+                "userId": user_id,
+                "planType": "daily",
+                "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+            },
+            order={"createdAt": "desc"},
+        )
+        if plan:
+            try:
+                await set_cached_meal_plan(user_id, today, plan)
+            except Exception as ec:
+                logger.warning("Failed to set cache on miss in tool_get_meal_plan: %s", ec)
+
     if not plan or not plan.planData:
         return _err("No meal plan found for today")
     try:
@@ -166,10 +188,15 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
         completed_slots.remove(slot)
 
     try:
-        await prisma.mealplan.update(
+        updated = await prisma.mealplan.update(
             where={"planId": plan.planId},
             data={"completedSlots": to_json_string(completed_slots)},
         )
+        try:
+            from app.services.meal_plan_cache import set_cached_meal_plan
+            await set_cached_meal_plan(user_id, today, updated)
+        except Exception as ec:
+            logger.warning("Failed to update cache in tool_mark_meal_complete: %s", ec)
         return _ok({"slot": slot, "completed": completed, "plan_id": plan.planId})
     except Exception as e:
         return _err(f"Failed to update meal completion: {e}")

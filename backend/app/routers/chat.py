@@ -134,16 +134,28 @@ Return ONLY valid JSON:
         from app.utils import from_json_string
         from zoneinfo import ZoneInfo
         today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-        today_plan = await prisma.mealplan.find_first(
-            where={
-                "userId":   user_id,
-                "planType": "daily",
-                "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-            },
-            order={"createdAt": "desc"},
-        )
+        today_plan = None
+        try:
+            from app.services.meal_plan_cache import get_cached_meal_plan, set_cached_meal_plan
+            today_plan = await get_cached_meal_plan(user_id, today_start)
+        except Exception:
+            pass
+        if not today_plan:
+            today_plan = await prisma.mealplan.find_first(
+                where={
+                    "userId":   user_id,
+                    "planType": "daily",
+                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
+                },
+                order={"createdAt": "desc"},
+            )
+            if today_plan:
+                try:
+                    await set_cached_meal_plan(user_id, today_start, today_plan)
+                except Exception:
+                    pass
         if today_plan and today_plan.planData:
-            p_data = from_json_string(today_plan.planData)
+            p_data = from_json_string(today_plan.planData) if isinstance(today_plan.planData, str) else today_plan.planData
             for m in p_data.get("meals", []):
                 planned_items.extend(m.get("items", []))
     except Exception:
@@ -308,16 +320,28 @@ Return ONLY valid JSON:
         slot_scores = {"breakfast": 0, "lunch": 0, "dinner": 0, "snack": 0}
         try:
             today_start = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-            today_plan = await prisma.mealplan.find_first(
-                where={
-                    "userId":   user_id,
-                    "planType": "daily",
-                    "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-                },
-                order={"createdAt": "desc"},
-            )
+            today_plan = None
+            try:
+                from app.services.meal_plan_cache import get_cached_meal_plan, set_cached_meal_plan
+                today_plan = await get_cached_meal_plan(user_id, today_start)
+            except Exception:
+                pass
+            if not today_plan:
+                today_plan = await prisma.mealplan.find_first(
+                    where={
+                        "userId":   user_id,
+                        "planType": "daily",
+                        "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
+                    },
+                    order={"createdAt": "desc"},
+                )
+                if today_plan:
+                    try:
+                        await set_cached_meal_plan(user_id, today_start, today_plan)
+                    except Exception:
+                        pass
             if today_plan and today_plan.planData:
-                p_data = from_json_string(today_plan.planData)
+                p_data = from_json_string(today_plan.planData) if isinstance(today_plan.planData, str) else today_plan.planData
                 for m in p_data.get("meals", []):
                     slot = m.get("slot")
                     if slot in slot_scores:
@@ -436,14 +460,28 @@ async def _build_user_context(current_user_id: str) -> str:
 
     # ── Today's Meal Plan ─────────────────────────────────────────────────────
     today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-    today_plan = await prisma.mealplan.find_first(
-        where={
-            "userId": current_user_id,
-            "planType": "daily",
-            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
-        },
-        order={"createdAt": "desc"},
-    )
+    today_plan = None
+    try:
+        from app.services.meal_plan_cache import get_cached_meal_plan, set_cached_meal_plan
+        today_plan = await get_cached_meal_plan(current_user_id, today)
+    except Exception as e:
+        logger.warning("Failed to fetch today's meal plan from cache: %s", e)
+
+    if not today_plan:
+        today_plan = await prisma.mealplan.find_first(
+            where={
+                "userId": current_user_id,
+                "planType": "daily",
+                "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+            },
+            order={"createdAt": "desc"},
+        )
+        if today_plan:
+            try:
+                await set_cached_meal_plan(current_user_id, today, today_plan)
+            except Exception as ec:
+                logger.warning("Failed to cache today's meal plan: %s", ec)
+
     if today_plan and today_plan.planData:
         try:
             plan_data = json.loads(today_plan.planData) if isinstance(today_plan.planData, str) else today_plan.planData
@@ -463,14 +501,28 @@ async def _build_user_context(current_user_id: str) -> str:
             pass
 
     # ── Tomorrow's Meal Plan ──────────────────────────────────────────────────
-    tomorrow_plan = await prisma.mealplan.find_first(
-        where={
-            "userId": current_user_id,
-            "planType": "daily",
-            "planDate": {"gte": today + timedelta(days=1), "lt": today + timedelta(days=2)},
-        },
-        order={"createdAt": "desc"},
-    )
+    tomorrow_plan = None
+    try:
+        from app.services.meal_plan_cache import get_cached_meal_plan, set_cached_meal_plan
+        tomorrow_plan = await get_cached_meal_plan(current_user_id, today + timedelta(days=1))
+    except Exception as e:
+        logger.warning("Failed to fetch tomorrow's meal plan from cache: %s", e)
+
+    if not tomorrow_plan:
+        tomorrow_plan = await prisma.mealplan.find_first(
+            where={
+                "userId": current_user_id,
+                "planType": "daily",
+                "planDate": {"gte": today + timedelta(days=1), "lt": today + timedelta(days=2)},
+            },
+            order={"createdAt": "desc"},
+        )
+        if tomorrow_plan:
+            try:
+                await set_cached_meal_plan(current_user_id, today + timedelta(days=1), tomorrow_plan)
+            except Exception as ec:
+                logger.warning("Failed to cache tomorrow's meal plan: %s", ec)
+
     if tomorrow_plan and tomorrow_plan.planData:
         try:
             plan_data = json.loads(tomorrow_plan.planData) if isinstance(tomorrow_plan.planData, str) else tomorrow_plan.planData

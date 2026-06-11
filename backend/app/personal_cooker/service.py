@@ -276,14 +276,26 @@ class PersonalCookerService:
         try:
             from zoneinfo import ZoneInfo
             today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-            today_plan = await prisma.mealplan.find_first(
-                where={
-                    "userId": user_id,
-                    "planType": "daily",
-                    "planDate": {"gte": today, "lt": today + timedelta(days=1)},
-                },
-                order={"createdAt": "desc"},
-            )
+            today_plan = None
+            try:
+                from app.services.meal_plan_cache import get_cached_meal_plan, set_cached_meal_plan
+                today_plan = await get_cached_meal_plan(user_id, today)
+            except Exception:
+                pass
+            if not today_plan:
+                today_plan = await prisma.mealplan.find_first(
+                    where={
+                        "userId": user_id,
+                        "planType": "daily",
+                        "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+                    },
+                    order={"createdAt": "desc"},
+                )
+                if today_plan:
+                    try:
+                        await set_cached_meal_plan(user_id, today, today_plan)
+                    except Exception:
+                        pass
             if today_plan and today_plan.planData:
                 import json
                 plan_data = json.loads(today_plan.planData) if isinstance(today_plan.planData, str) else today_plan.planData

@@ -279,6 +279,15 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
     """Generate AI meal plan for today or future day."""
     target_date = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc) + timedelta(days=offset)
 
+    if not force:
+        try:
+            from app.services.meal_plan_cache import get_cached_meal_plan
+            cached = await get_cached_meal_plan(current_user.id, target_date)
+            if cached:
+                return await _plan_to_response(cached)
+        except Exception as e:
+            print(f"Failed to fetch from meal plan cache: {e}")
+
     existing = await prisma.mealplan.find_first(
         where={
             "userId": current_user.id,
@@ -289,6 +298,11 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
     )
 
     if existing and not force:
+        try:
+            from app.services.meal_plan_cache import set_cached_meal_plan
+            await set_cached_meal_plan(current_user.id, target_date, existing)
+        except Exception as e:
+            print(f"Failed to cache meal plan: {e}")
         return await _plan_to_response(existing)
 
     completed_slots = []
@@ -298,6 +312,12 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
         existing_plan_data = safe_dict(existing.planData)
 
     if force:
+        try:
+            from app.services.meal_plan_cache import delete_cached_meal_plan
+            await delete_cached_meal_plan(current_user.id, target_date)
+        except Exception as e:
+            print(f"Failed to delete meal plan cache: {e}")
+
         if not completed_slots:
             # If no slots are completed, it's safe to delete and start completely fresh
             await prisma.mealplan.delete_many(
@@ -404,6 +424,14 @@ async def submit_feedback(plan_id: str, req: MealPlanFeedbackRequest, current_us
         where={"planId": plan_id},
         data={"feedback": req.feedback},
     )
+
+    if updated and updated.planType == "daily":
+        try:
+            from app.services.meal_plan_cache import set_cached_meal_plan
+            await set_cached_meal_plan(current_user.id, updated.planDate, updated)
+        except Exception as e:
+            print(f"Failed to update cache on feedback: {e}")
+
     return {"message": "Feedback submitted", "feedback": updated.feedback}
 
 
@@ -426,6 +454,13 @@ async def mark_slot_complete(plan_id: str, req: MarkSlotCompleteRequest, current
         data={"completedSlots": to_json_string(completed_slots)},
     )
     
+    if updated and updated.planType == "daily":
+        try:
+            from app.services.meal_plan_cache import set_cached_meal_plan
+            await set_cached_meal_plan(current_user.id, updated.planDate, updated)
+        except Exception as e:
+            print(f"Failed to update cache on slot completion: {e}")
+
     return await _plan_to_response(updated)
 
 
@@ -443,4 +478,12 @@ async def edit_meal_plan(plan_id: str, req: EditMealPlanRequest, current_user=De
             "userChoiceCal": req.user_choice_cal,
         },
     )
+
+    if updated and updated.planType == "daily":
+        try:
+            from app.services.meal_plan_cache import set_cached_meal_plan
+            await set_cached_meal_plan(current_user.id, updated.planDate, updated)
+        except Exception as e:
+            print(f"Failed to update cache on edit: {e}")
+
     return await _plan_to_response(updated)
