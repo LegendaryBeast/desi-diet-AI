@@ -336,6 +336,64 @@ def _find_closest_food_by_name(driver, name_en: str, name_bn: str) -> Optional[D
         print(f"⚠️ Failed to match food by name en={name_en}, bn={name_bn}: {e}")
     return None
 
+def _estimate_portion(food_group: str, food_name_en: str, amount_g: float) -> tuple[str, str]:
+    """Estimate a traditional portion size based on food group, name, and weight."""
+    name_lower = food_name_en.lower()
+    
+    # 1. Eggs
+    if "egg" in name_lower or "ডিম" in name_lower or food_group in ["Eggs", "Egg and Egg Products"]:
+        count = max(1, round(amount_g / 50.0))
+        return f"{count} টি", f"{count} piece" if count == 1 else f"{count} pieces"
+        
+    # 2. Roti / Paratha / Chapati
+    if "roti" in name_lower or "paratha" in name_lower or "chapati" in name_lower or "রুটি" in name_lower or "পরোটা" in name_lower:
+        count = max(1, round(amount_g / 35.0))
+        return f"{count} টি", f"{count} piece" if count == 1 else f"{count} pieces"
+
+    # 3. Fruits (banana, apple, etc.)
+    if "banana" in name_lower or "apple" in name_lower or "pear" in name_lower or "কলা" in name_lower or "আপেল" in name_lower:
+        count = max(1, round(amount_g / 120.0))
+        return f"{count} টি", f"{count} piece" if count == 1 else f"{count} pieces"
+        
+    # 4. Rice / Khichuri / Rice Staples
+    if "rice" in name_lower or "khichuri" in name_lower or "ভাত" in name_lower or "খিচুড়ি" in name_lower or food_group == "Rice Staples":
+        if amount_g >= 200:
+            return "১ বাটি", "1 bowl"
+        else:
+            return "১ কাপ", "1 cup"
+            
+    # 5. Dal / Lentils / Soups
+    if "dal" in name_lower or "lentil" in name_lower or "ডাল" in name_lower:
+        if amount_g >= 120:
+            return "১ বাটি", "1 bowl"
+        else:
+            return "১ কাপ", "1 cup"
+
+    # 6. Milk / Tea / Yogurt
+    if "milk" in name_lower or "tea" in name_lower or "yogurt" in name_lower or "দুধ" in name_lower or "চা" in name_lower or "দই" in name_lower:
+        if amount_g >= 200:
+            return "১ গ্লাস", "1 glass"
+        else:
+            return "১ কাপ", "1 cup"
+
+    # 7. Chicken / Beef / Mutton / Fish / Meat
+    if any(k in name_lower for k in ["chicken", "beef", "mutton", "fish", "meat", "মুরগি", "গরু", "খাসি", "মাছ"]):
+        count = max(1, round(amount_g / 60.0))
+        return f"{count} পিস", f"{count} piece" if count == 1 else f"{count} pieces"
+
+    # 8. Vegetables / Curries / Salad
+    if food_group in ["Vegetables", "Other Vegetables", "Leafy Vegetables", "Green Leafy Vegetables", "Roots and Tubers"]:
+        if amount_g >= 150:
+            return "১ বাটি", "1 bowl"
+        else:
+            return "১ কাপ", "1 cup"
+
+    # Default fallback based on amount_g
+    if amount_g >= 150:
+        return "১ বাটি", "1 bowl"
+    else:
+        return "১ কাপ", "1 cup"
+
 
 def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods: List[Dict[str, Any]], driver, slot_pools: Dict[str, List[str]] = None) -> Dict[str, Any]:
     """
@@ -482,8 +540,39 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
             raw_en = db_food.get("name_en") or ""
             raw_group = db_food.get("food_group") or ""
             cooked_bn, cooked_en = _get_cooked_name(raw_bn, raw_en, raw_group)
-            item["name_en"] = cooked_en
-            item["name_bn"] = cooked_bn
+            
+            portion_bn = item.get("portion_bn") or ""
+            portion_en = item.get("portion_en") or ""
+            
+            if not portion_bn or not portion_en:
+                est_bn, est_en = _estimate_portion(raw_group, cooked_en, amount_g)
+                if not portion_bn:
+                    portion_bn = est_bn
+                if not portion_en:
+                    portion_en = est_en
+            
+            if portion_bn:
+                p_clean = portion_bn.replace("(", "").replace(")", "").strip()
+                if p_clean and p_clean not in cooked_bn:
+                    item["name_bn"] = f"{cooked_bn} {p_clean}"
+                else:
+                    item["name_bn"] = cooked_bn
+            else:
+                item["name_bn"] = cooked_bn
+
+            if portion_en:
+                p_clean = portion_en.replace("(", "").replace(")", "").strip()
+                if p_clean and p_clean not in cooked_en:
+                    item["name_en"] = f"{cooked_en} ({p_clean})"
+                else:
+                    item["name_en"] = cooked_en
+            else:
+                item["name_en"] = cooked_en
+
+            # Also store portion in the items so it is persisted and retrievable
+            item["portion_bn"] = portion_bn
+            item["portion_en"] = portion_en
+
             item["calories"] = item_calories
             item["protein_g"] = item_protein
             item["carbs_g"] = item_carbs
@@ -1416,6 +1505,10 @@ CRITICAL RULES:
   This makes the meal plan highly practical and realistic for daily eating.
 16. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
 17. NO DUPLICATE FOODS: Within a single meal slot (breakfast / lunch / dinner), every item MUST have a UNIQUE `food_code`. Do NOT repeat the same food code twice in the same meal. For example, if breakfast already has A019 (Atta Roti), the next item must be a different code like M004 (Egg) or B013 (Dal).
+17b. TRADITIONAL QUANTITY/PORTION SIZES (CRITICAL): Beside the exact gram value in `amount_g`, you MUST reason about a traditional household/food quantifying description for each item that matches the gram weight. Include two extra string fields for each food item:
+  - `portion_bn`: Traditional Bengali portion (e.g., "২ টি" for roti/egg, "১ বাটি" or "১ কাপ" for rice/dal/vegetables, "১ গ্লাস" or "১ কাপ" for milk/tea, "২ পিস" or "২ টুকরো" for chicken/fish, "১টি মাঝারি" or "একটি" for banana/egg).
+  - `portion_en`: Traditional English portion (e.g., "2 pieces", "1 bowl", "1 cup", "1 glass", "2 pieces", "1 medium", "one").
+  Ensure that if `amount_g` changes, the portion matches it (e.g. 60g roti = 2 pieces, 250g rice = 1 bowl, 100g egg = 2 eggs).
 18. MICRONUTRIENT PORTION SAFETY & TOXICITY PREVENTION: Some micronutrients can become toxic if overconsumed. To prevent toxicity and safely manage upper intake limits:
   - Limit the portion of any single dark leafy green (e.g. Spinach/Palang Shak) to a maximum of 100g.
   - Do not use liver or organ meat exceeding 75g in a day.
@@ -1484,6 +1577,8 @@ RESPONSE FORMAT (strict JSON, no text outside JSON):
           "food_code": "code_from_list",
           "name_bn": "বাংলা নাম",
           "name_en": "English Name",
+          "portion_bn": "২ টি",
+          "portion_en": "2 pieces",
           "amount_g": 200,
           "calories": {round(356*2)},
           "emoji": "🍚",
@@ -1636,6 +1731,10 @@ CRITICAL RULES:
   This makes the meal plan highly practical and realistic for daily eating.
 18. FOOD CODE REQUIREMENT: The `food_code` field for every item MUST be an exact code from the provided food lists (e.g. "A019", "B013", "M004"). Never invent codes. Every item must trace back to a real food in the dataset.
 19. NO DUPLICATE FOODS: Within a single meal slot on any given day, every item MUST have a UNIQUE `food_code`. Do NOT repeat the same food code twice in the same meal.
+19b. TRADITIONAL QUANTITY/PORTION SIZES (CRITICAL): Beside the exact gram value in `amount_g`, you MUST reason about a traditional household/food quantifying description for each item that matches the gram weight. Include two extra string fields for each food item:
+  - `portion_bn`: Traditional Bengali portion (e.g., "২ টি" for roti/egg, "১ বাটি" or "১ কাপ" for rice/dal/vegetables, "১ গ্লাস" or "১ কাপ" for milk/tea, "২ পিস" or "২ টুকরো" for chicken/fish, "১টি মাঝারি" or "একটি" for banana/egg).
+  - `portion_en`: Traditional English portion (e.g., "2 pieces", "1 bowl", "1 cup", "1 glass", "2 pieces", "1 medium", "one").
+  Ensure that if `amount_g` changes, the portion matches it (e.g. 60g roti = 2 pieces, 250g rice = 1 bowl, 100g egg = 2 eggs).
 20. WEEKLY MICRONUTRIENT CYCLING (CRITICAL): To achieve 100% of all required micronutrients across the 7-day period without exceeding daily calorie limits, you must cycle key nutrient-dense categories across the days:
   - Days 1, 3, and 5: Prioritize dark leafy greens (Spinach, Lal Shak, Pui Shak) to satisfy Folate, Iron, and Calcium needs.
   - Days 2, 4, and 6: Prioritize orange/yellow vegetables and fresh fruits (Carrot, Sweet Pumpkin, Guava) to satisfy Vitamin A and Vitamin C needs.
@@ -1711,6 +1810,8 @@ RESPONSE FORMAT (strict JSON, follow exactly):
               "food_code": "code_or_name",
               "name_bn": "বাংলা নাম",
               "name_en": "English Name",
+              "portion_bn": "১ বাটি",
+              "portion_en": "1 bowl",
               "amount_g": 150,
               "calories": 195,
               "emoji": "🍚",

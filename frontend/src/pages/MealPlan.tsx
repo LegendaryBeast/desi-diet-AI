@@ -254,6 +254,48 @@ export const MealPlan = () => {
     navigate('/chat', { state: { prefill: `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।` } });
   };
 
+  const estimatePortion = (foodGroup: string, nameEn: string, amountG: number): { bn: string; en: string } => {
+    const nameLower = nameEn.toLowerCase();
+    
+    if (nameLower.includes("egg") || nameLower.includes("ডিম") || foodGroup === "Eggs" || foodGroup === "Egg and Egg Products") {
+      const count = Math.max(1, Math.round(amountG / 50.0));
+      return { bn: `${count} টি`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (nameLower.includes("roti") || nameLower.includes("paratha") || nameLower.includes("chapati") || nameLower.includes("রুটি") || nameLower.includes("পরোটা")) {
+      const count = Math.max(1, Math.round(amountG / 35.0));
+      return { bn: `${count} টি`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (nameLower.includes("banana") || nameLower.includes("apple") || nameLower.includes("pear") || nameLower.includes("কলা") || nameLower.includes("আপেল")) {
+      const count = Math.max(1, Math.round(amountG / 120.0));
+      return { bn: `${count} টি`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (nameLower.includes("rice") || nameLower.includes("khichuri") || nameLower.includes("ভাত") || nameLower.includes("খিচুড়ি") || foodGroup === "Rice Staples") {
+      return amountG >= 200 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    if (nameLower.includes("dal") || nameLower.includes("lentil") || nameLower.includes("ডাল")) {
+      return amountG >= 120 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    if (nameLower.includes("milk") || nameLower.includes("tea") || nameLower.includes("yogurt") || nameLower.includes("দুধ") || nameLower.includes("চা") || nameLower.includes("দই")) {
+      return amountG >= 200 ? { bn: "১ গ্লাস", en: "1 glass" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    if (nameLower.includes("chicken") || nameLower.includes("beef") || nameLower.includes("mutton") || nameLower.includes("fish") || nameLower.includes("meat") || nameLower.includes("মুরগি") || nameLower.includes("গরু") || nameLower.includes("খাসি") || nameLower.includes("মাছ")) {
+      const count = Math.max(1, Math.round(amountG / 60.0));
+      return { bn: `${count} পিস`, en: count === 1 ? `${count} piece` : `${count} pieces` };
+    }
+    
+    if (["Vegetables", "Other Vegetables", "Leafy Vegetables", "Green Leafy Vegetables", "Roots and Tubers"].includes(foodGroup)) {
+      return amountG >= 150 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+    }
+    
+    return amountG >= 150 ? { bn: "১ বাটি", en: "1 bowl" } : { bn: "১ কাপ", en: "1 cup" };
+  };
+
   const handleAutoSwap = async (targetPlan: MealPlanResponse, mealSlot: string, item: any, itemIndex: number) => {
     const key = `${mealSlot}-${itemIndex}`;
     setLoadingSwapKey(key);
@@ -316,11 +358,12 @@ export const MealPlan = () => {
         replacementItem = originalItem;
       } else {
         const scale = amount / 100.0;
+        const est = estimatePortion(nextAlt.food_group || '', nextAlt.name_en || '', amount);
         replacementItem = {
           code: nextAlt.code,
           food_code: nextAlt.code,
-          name_bn: nextAlt.name_bn,
-          name_en: nextAlt.name_en,
+          name_bn: nextAlt.name_bn.includes(est.bn) ? nextAlt.name_bn : `${nextAlt.name_bn} ${est.bn}`,
+          name_en: nextAlt.name_en.includes(est.en) ? nextAlt.name_en : `${nextAlt.name_en} (${est.en})`,
           amount_g: amount,
           calories: Math.round((nextAlt.calories || 0) * scale),
           protein_g: Math.round((nextAlt.protein || 0) * scale),
