@@ -88,12 +88,13 @@ export default function MealPlanView({ onSwapRequest, onChatRequest }: Props) {
                 input: inputStr,
                 meal_slot: backendSlot,
                 language: 'bn',
-                direct_calories: food.calories ? Number(food.calories) : undefined,
-                direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
-                direct_carbs: undefined,
-                direct_fat: undefined,
+                direct_code: food.food_code || food.code || undefined,
+                direct_calories: food.calories != null ? Number(food.calories) : undefined,
+                direct_protein: food.protein_g != null ? Number(food.protein_g) : (food.protein != null ? Number(food.protein) : undefined),
+                direct_carbs: food.carbs_g != null ? Number(food.carbs_g) : (food.carbs != null ? Number(food.carbs) : undefined),
+                direct_fat: food.fat_g != null ? Number(food.fat_g) : (food.fat != null ? Number(food.fat) : undefined),
                 direct_name: food.name_en || food.name_bn || undefined,
-                direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
+                direct_amount_g: food.amount_g != null ? Number(food.amount_g) : (food.amount != null ? Number(food.amount) : undefined),
               });
             }
           });

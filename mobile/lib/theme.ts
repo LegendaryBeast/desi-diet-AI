@@ -28,8 +28,8 @@ export const fonts = {
   body: 'Inter_400Regular',
   bodyMedium: 'Inter_500Medium',
   bodyBold: 'Inter_700Bold',
-  bn: 'NotoSansBengali_400Regular',
-  bnBold: 'NotoSansBengali_700Bold',
+  bn: 'AnekBangla_400Regular',
+  bnBold: 'AnekBangla_700Bold',
 };
 
 export const spacing = {

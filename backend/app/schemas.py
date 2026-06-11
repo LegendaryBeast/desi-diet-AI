@@ -290,6 +290,7 @@ class MealTrackingListItem(BaseModel):
     input_text: str
     total_calories: int
     macros: Dict[str, float]
+    parsed_items: Optional[List[Dict]] = None
     meal_slot: Optional[str]
     logged_at: datetime
 

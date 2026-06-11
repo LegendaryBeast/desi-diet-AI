@@ -7,9 +7,9 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import {
-  NotoSansBengali_400Regular,
-  NotoSansBengali_700Bold,
-} from '@expo-google-fonts/noto-sans-bengali';
+  AnekBangla_400Regular,
+  AnekBangla_700Bold,
+} from '@expo-google-fonts/anek-bangla';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../lib/query-client';
 import { useAuthStore } from '../store/auth-store';
@@ -22,8 +22,8 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_500Medium,
     Inter_700Bold,
-    NotoSansBengali_400Regular,
-    NotoSansBengali_700Bold,
+    AnekBangla_400Regular,
+    AnekBangla_700Bold,
   });
 
   const hydrateAuth = useAuthStore((state) => state.hydrate);

@@ -19,6 +19,8 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import ProModal from '../../components/ui/ProModal';
 import EventSource from '../../lib/EventSource';
 import { useTranslation } from '../../lib/translations';
+import WhatsAppConnectModal from '../../components/chat/WhatsAppConnectModal';
+import { FontAwesome } from '@expo/vector-icons';
 
 let Audio: any = null;
 const getImagePicker = () => {
@@ -82,6 +84,7 @@ export default function ChatScreen() {
   const { isPro, canSendMessage, messageCount, incrementMessageCount, FREE_MESSAGE_LIMIT } = useSubscription();
   const [showProModal, setShowProModal] = useState(false);
   const [proTrigger, setProTrigger] = useState<'chat_limit' | 'regenerate' | 'tomorrow' | 'general'>('general');
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   // Media attachment states
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -720,6 +723,13 @@ export default function ChatScreen() {
           </TouchableOpacity>
         )}
         <TouchableOpacity
+          onPress={() => { haptics.light(); setShowWhatsAppModal(true); }}
+          style={styles.whatsappHeaderBtn}
+        >
+          <FontAwesome name="whatsapp" size={16} color="#128C7E" />
+          <Text style={styles.whatsappHeaderBtnText}>WhatsApp</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={() => {
             Alert.alert(
               language === 'bn' ? 'চ্যাট মুছুন' : 'Clear Chat',
@@ -885,6 +895,13 @@ export default function ChatScreen() {
         onClose={() => setShowProModal(false)}
         trigger={proTrigger}
       />
+
+      {/* WhatsApp Opt-in Modal */}
+      <WhatsAppConnectModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        language={language}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -916,6 +933,22 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: fonts.bnBold, fontSize: 18, color: colors.textPrimary },
   headerSub: { fontFamily: fonts.bn, fontSize: 13, color: colors.textSecondary },
+  whatsappHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(37, 211, 102, 0.1)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(18, 140, 126, 0.2)',
+  },
+  whatsappHeaderBtnText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 12,
+    color: '#128C7E',
+  },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',

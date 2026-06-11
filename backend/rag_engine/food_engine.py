@@ -67,6 +67,8 @@ class Neo4jFoodEngine:
                f.name_bn AS name_bn,
                f.energy_kcal AS calories,
                f.protein_g AS protein,
+               f.fat_g AS fat,
+               f.carbohydrate_g AS carbs,
                f.fiber_g AS fiber,
                fg.name_en AS food_group,
                preference_score
@@ -102,6 +104,8 @@ class Neo4jFoodEngine:
                f.name_bn AS name_bn,
                f.energy_kcal AS calories,
                f.protein_g AS protein,
+               f.fat_g AS fat,
+               f.carbohydrate_g AS carbs,
                f.fiber_g AS fiber,
                fg.name_en AS food_group,
                preference_score

@@ -58,8 +58,15 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
         direct_protein = req.direct_protein
         direct_calories = req.direct_calories
 
-        # If macros are missing, scale them from the Graph-RAG database (by code first, then name)
-        if (direct_protein is None or direct_carbs is None or direct_fat is None or direct_calories is None) and (req.direct_code or req.direct_name or req.input):
+        # Re-fetch from Graph-RAG if any macro is None, OR if carbs/fat are 0 while
+        # calories > 0 (which indicates a null→0 artifact from an old bad plan record).
+        has_calories = (direct_calories or 0) > 0
+        needs_macro_fill = (
+            direct_protein is None or direct_carbs is None or direct_fat is None or
+            (has_calories and not direct_carbs) or
+            (has_calories and not direct_fat)
+        )
+        if needs_macro_fill and (req.direct_code or req.direct_name or req.input):
             try:
                 rag = _get_rag()
                 db_food = None
@@ -94,13 +101,13 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
                     amount_g = req.direct_amount_g or 100.0
                     scale = amount_g / 100.0
                     
-                    if direct_calories is None:
+                    if not direct_calories:
                         direct_calories = round(db_cal * scale, 1)
-                    if direct_protein is None:
+                    if not direct_protein:
                         direct_protein = round(db_prot * scale, 1)
-                    if direct_carbs is None:
+                    if not direct_carbs:
                         direct_carbs = round(db_carb * scale, 1)
-                    if direct_fat is None:
+                    if not direct_fat:
                         direct_fat = round(db_fat * scale, 1)
             except Exception:
                 logger.exception("Failed to scale direct plan macros via Graph-RAG by code/name")
@@ -250,9 +257,9 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
                         "name_bn": matched_plan_item.get("name_bn"),
                         "name_en": matched_plan_item.get("name_en"),
                         "calories": float(matched_plan_item.get("calories") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
-                        "protein": float(matched_plan_item.get("protein_g") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
-                        "carbs": float(matched_plan_item.get("carbs_g") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
-                        "fat": float(matched_plan_item.get("fat_g") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                        "protein": float(matched_plan_item.get("protein_g") or matched_plan_item.get("protein") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                        "carbs": float(matched_plan_item.get("carbs_g") or matched_plan_item.get("carbs") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
+                        "fat": float(matched_plan_item.get("fat_g") or matched_plan_item.get("fat") or 0.0) / (float(matched_plan_item.get("amount_g") or 100.0) / 100.0),
                     }
 
             # Fallback to standard Neo4j RAG search
@@ -604,6 +611,7 @@ async def get_today_logs(current_user=Depends(get_current_user)):
             input_text=r.inputText,
             total_calories=r.totalCals,
             macros=safe_dict(from_json_string(r.macros)),
+            parsed_items=from_json_string(r.parsedItems) if r.parsedItems else [],
             meal_slot=r.mealSlot,
             logged_at=r.loggedAt,
         )

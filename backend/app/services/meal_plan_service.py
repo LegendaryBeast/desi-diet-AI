@@ -275,6 +275,8 @@ def _get_food_by_code(driver, code: str) -> Optional[Dict[str, Any]]:
            coalesce(f.name_bn, f.name_en) AS name_bn,
            f.energy_kcal AS calories,
            f.protein_g AS protein,
+           f.fat_g AS fat,
+           f.carbohydrate_g AS carbs,
            f.fiber_g AS fiber,
            fg.name_en AS food_group
     """
@@ -285,6 +287,8 @@ def _get_food_by_code(driver, code: str) -> Optional[Dict[str, Any]]:
                 rec = dict(result)
                 rec["calories"] = round(float(rec["calories"] or 0), 1)
                 rec["protein"] = round(float(rec["protein"] or 0), 2)
+                rec["fat"] = round(float(rec["fat"] or 0), 2)
+                rec["carbs"] = round(float(rec["carbs"] or 0), 2)
                 rec["fiber"] = round(float(rec["fiber"] or 0), 2)
                 return rec
     except Exception as e:
@@ -319,6 +323,8 @@ def _find_closest_food_by_name(driver, name_en: str, name_bn: str) -> Optional[D
            coalesce(f.name_bn, f.name_en) AS name_bn,
            f.energy_kcal AS calories,
            f.protein_g AS protein,
+           f.fat_g AS fat,
+           f.carbohydrate_g AS carbs,
            f.fiber_g AS fiber,
            fg.name_en AS food_group
     LIMIT 1
@@ -330,6 +336,8 @@ def _find_closest_food_by_name(driver, name_en: str, name_bn: str) -> Optional[D
                 rec = dict(result)
                 rec["calories"] = round(float(rec["calories"] or 0), 1)
                 rec["protein"] = round(float(rec["protein"] or 0), 2)
+                rec["fat"] = round(float(rec["fat"] or 0), 2)
+                rec["carbs"] = round(float(rec["carbs"] or 0), 2)
                 rec["fiber"] = round(float(rec["fiber"] or 0), 2)
                 return rec
     except Exception as e:
@@ -1120,6 +1128,7 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
                 RETURN f.code AS code, f.name_en AS name_en,
                        coalesce(f.name_bn, f.name_en) AS name_bn,
                        f.energy_kcal AS calories, f.protein_g AS protein,
+                       f.fat_g AS fat, f.carbohydrate_g AS carbs,
                        f.fiber_g AS fiber
                 LIMIT 6
             """)
@@ -1141,6 +1150,8 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
                         "name_bn":    rec["name_bn"] or rec["name_en"] or "",
                         "calories":   round(float(rec["calories"] or 0), 1),
                         "protein":    round(float(rec["protein"]  or 0), 2),
+                        "fat":        round(float(rec["fat"]      or 0), 2),
+                        "carbs":      round(float(rec["carbs"]    or 0), 2),
                         "fiber":      round(float(rec["fiber"]    or 0), 2),
                         "food_group": "Rice Staples",
                         "similarity_score": 0.0,
@@ -1163,6 +1174,7 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
                     RETURN f.code AS code, f.name_en AS name_en,
                            coalesce(f.name_bn, f.name_en) AS name_bn,
                            f.energy_kcal AS calories, f.protein_g AS protein,
+                           f.fat_g AS fat, f.carbohydrate_g AS carbs,
                            f.fiber_g AS fiber, fg.name_en AS food_group
                 """, codes=missing_essentials)
                 for rec in result:
@@ -1173,6 +1185,8 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
                             "name_bn":    rec["name_bn"] or rec["name_en"] or "",
                             "calories":   round(float(rec["calories"] or 0), 1),
                             "protein":    round(float(rec["protein"]  or 0), 2),
+                            "fat":        round(float(rec["fat"]      or 0), 2),
+                            "carbs":      round(float(rec["carbs"]    or 0), 2),
                             "fiber":      round(float(rec["fiber"]    or 0), 2),
                             "food_group": rec["food_group"] or "Other",
                             "similarity_score": 0.0,
@@ -1198,6 +1212,7 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
                     RETURN f.code AS code, f.name_en AS name_en,
                            coalesce(f.name_bn, f.name_en) AS name_bn,
                            f.energy_kcal AS calories, f.protein_g AS protein,
+                           f.fat_g AS fat, f.carbohydrate_g AS carbs,
                            f.fiber_g AS fiber, fg.name_en AS food_group
                     ORDER BY f.energy_kcal DESC
                     LIMIT $limit
@@ -1212,6 +1227,8 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
                             "name_bn":    rec["name_bn"] or rec["name_en"] or "",
                             "calories":   round(float(rec["calories"] or 0), 1),
                             "protein":    round(float(rec["protein"]  or 0), 2),
+                            "fat":        round(float(rec["fat"]      or 0), 2),
+                            "carbs":      round(float(rec["carbs"]    or 0), 2),
                             "fiber":      round(float(rec["fiber"]    or 0), 2),
                             "food_group": rec["food_group"] or "Other",
                             "similarity_score": 0.0,
@@ -1295,10 +1312,16 @@ def _scale_plan_to_target(plan_data: Dict[str, Any], target_calories: int, compl
         meal["target_calories"] = meal_target
         items = meal.get("items", [])
         for item in items:
-            original_cal = item.get("calories", 0)
-            original_g   = item.get("amount_g", 0)
-            item["calories"]  = round(original_cal * scale)
-            item["amount_g"]  = round(original_g  * scale)
+            original_cal    = item.get("calories", 0)
+            original_g      = item.get("amount_g", 0)
+            original_prot   = item.get("protein_g", 0) or 0
+            original_carbs  = item.get("carbs_g", 0) or 0
+            original_fat    = item.get("fat_g", 0) or 0
+            item["calories"]   = round(original_cal * scale)
+            item["amount_g"]   = round(original_g   * scale)
+            item["protein_g"]  = round(original_prot  * scale, 1)
+            item["carbs_g"]    = round(original_carbs * scale, 1)
+            item["fat_g"]      = round(original_fat   * scale, 1)
 
     return plan_data
 

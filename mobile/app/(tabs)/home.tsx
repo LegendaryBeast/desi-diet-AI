@@ -141,8 +141,26 @@ export default function HomeScreen() {
     trackingData.forEach((log: any) => {
       consumedCals += log.total_calories || 0;
       consumedProtein += log.macros?.protein_g || 0;
-      consumedCarbs += log.macros?.carbs_g || 0;
-      consumedFat += log.macros?.fat_g || 0;
+
+      let logCarbs = log.macros?.carbs_g || 0;
+      let logFat   = log.macros?.fat_g   || 0;
+
+      // Recover carbs/fat from parsed_items if the summary macros are zero
+      if ((logCarbs === 0 || logFat === 0) && (log.total_calories || 0) > 0) {
+        const parsedItems: any[] = Array.isArray(log.parsed_items) ? log.parsed_items : [];
+        if (parsedItems.length > 0) {
+          const rCarbs = parsedItems.reduce((s: number, it: any) => s + (it.carbs_g || 0), 0);
+          const rFat   = parsedItems.reduce((s: number, it: any) => s + (it.fat_g   || 0), 0);
+          if (logCarbs === 0 && rCarbs > 0) logCarbs = rCarbs;
+          if (logFat   === 0 && rFat   > 0) logFat   = rFat;
+        }
+        // Last resort: estimate from calories
+        if (logCarbs === 0) logCarbs = ((log.total_calories || 0) * 0.50) / 4;
+        if (logFat   === 0) logFat   = ((log.total_calories || 0) * 0.25) / 9;
+      }
+
+      consumedCarbs += logCarbs;
+      consumedFat   += logFat;
     });
   }
 

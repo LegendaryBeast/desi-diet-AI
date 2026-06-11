@@ -129,6 +129,7 @@ export const mealTrackingApi = {
       input: string;
       meal_slot?: string;
       language?: string;
+      direct_code?: string;
       direct_calories?: number;
       direct_protein?: number;
       direct_carbs?: number;
@@ -159,6 +160,7 @@ export const mealTrackingApi = {
         input: data.input,
         meal_slot: data.meal_slot,
         language: data.language || 'bn',
+        direct_code: data.direct_code,
         direct_calories: data.direct_calories,
         direct_protein: data.direct_protein,
         direct_carbs: data.direct_carbs,
@@ -237,4 +239,9 @@ export const personalCookerApi = {
   clearHistory: (sessionId: string) =>
     api.delete(`/personal-cooker/history?session_id=${sessionId}`),
   conditions: () => api.get('/personal-cooker/conditions'),
+};
+
+// WhatsApp API
+export const whatsappApi = {
+  optin: () => api.post('/whatsapp/optin'),
 };

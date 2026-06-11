@@ -242,6 +242,8 @@ def rank_foods_by_rda_contribution(
                coalesce(f.name_bn, f.name_en) AS name_bn,
                f.energy_kcal   AS calories,
                f.protein_g     AS protein,
+               f.fat_g         AS fat,
+               f.carbohydrate_g AS carbs,
                f.fiber_g       AS fiber,
                coalesce(fg.name_en, 'Other') AS food_group,
                similarity_score
@@ -263,7 +265,9 @@ def rank_foods_by_rda_contribution(
                 "name_bn":          record["name_bn"] or record["name_en"] or "",
                 "calories":         round(float(record["calories"] or 0), 1),   # kcal/100g
                 "protein":          round(float(record["protein"]  or 0), 2),
-                "fiber":            round(float(record["fiber"]    or 0), 2),
+                "fat":              round(float(record["fat"]       or 0), 2),
+                "carbs":            round(float(record["carbs"]     or 0), 2),
+                "fiber":            round(float(record["fiber"]     or 0), 2),
                 "food_group":       record["food_group"] or "Other",
                 "similarity_score": round(float(record["similarity_score"] or 0), 4),
             })

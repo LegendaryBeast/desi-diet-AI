@@ -284,28 +284,65 @@ export default function TargetDetailsScreen() {
   // 1. Calculate Calorie and Macro Totals
   const meals = planData?.meals || [];
 
-  // Sum macros and calories from completed plan slots
+  // Sum macros and calories from completed plan slots — use real item macros, not estimated ratios
   const slotTotals = meals
     .filter((m: any) => completedSlots.includes(m.slot))
     .reduce((acc: any, m: any) => {
-      const mealCals = (m.items || []).reduce((sum: number, item: any) => sum + (item.calories || 0), 0) || m.target_calories || 0;
-      acc.calories += mealCals;
-      // Since planned foods inside planData do not store macro fields individually, we calculate 
-      // the slot's macros using clinical target ratios matching daily target distribution.
-      acc.protein += (mealCals * 0.25) / 4;
-      acc.carbs += (mealCals * 0.50) / 4;
-      acc.fat += (mealCals * 0.25) / 9;
+      const items = m.items || [];
+      items.forEach((item: any) => {
+        const cal = item.calories || 0;
+        acc.calories += cal;
+        // Use real DB macros if available, otherwise fall back to clinical ratio estimate
+        const hasRealMacros = (item.protein_g != null && item.protein_g > 0) ||
+                              (item.carbs_g != null && item.carbs_g > 0) ||
+                              (item.fat_g != null && item.fat_g > 0);
+        if (hasRealMacros) {
+          acc.protein += item.protein_g || 0;
+          acc.carbs   += item.carbs_g   || 0;
+          acc.fat     += item.fat_g     || 0;
+        } else {
+          // Fallback: estimate from calories using standard macro ratios
+          acc.protein += (cal * 0.25) / 4;
+          acc.carbs   += (cal * 0.50) / 4;
+          acc.fat     += (cal * 0.25) / 9;
+        }
+      });
+      // If meal has no items at all, use target_calories
+      if (items.length === 0 && m.target_calories) {
+        acc.calories += m.target_calories;
+        acc.protein  += (m.target_calories * 0.25) / 4;
+        acc.carbs    += (m.target_calories * 0.50) / 4;
+        acc.fat      += (m.target_calories * 0.25) / 9;
+      }
       return acc;
     }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-  // Add tracked (logged) macros
+  // Add tracked (logged) macros — also parse parsedItems to recover carbs/fat if macros are zero
   const trackedTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
   if (Array.isArray(tracking)) {
     tracking.forEach((log: any) => {
       trackedTotals.calories += log.total_calories || 0;
-      trackedTotals.protein += log.macros?.protein_g || 0;
-      trackedTotals.carbs += log.macros?.carbs_g || 0;
-      trackedTotals.fat += log.macros?.fat_g || 0;
+      const logProtein = log.macros?.protein_g || 0;
+      let   logCarbs   = log.macros?.carbs_g   || 0;
+      let   logFat     = log.macros?.fat_g     || 0;
+
+      // If carbs/fat are 0 but calories > 0, recover from parsed_items (the individual item records)
+      if ((logCarbs === 0 || logFat === 0) && (log.total_calories || 0) > 0) {
+        const parsedItems: any[] = Array.isArray(log.parsed_items) ? log.parsed_items : [];
+        if (parsedItems.length > 0) {
+          const recoveredCarbs = parsedItems.reduce((s: number, it: any) => s + (it.carbs_g || 0), 0);
+          const recoveredFat   = parsedItems.reduce((s: number, it: any) => s + (it.fat_g   || 0), 0);
+          if (logCarbs === 0 && recoveredCarbs > 0) logCarbs = recoveredCarbs;
+          if (logFat   === 0 && recoveredFat   > 0) logFat   = recoveredFat;
+        }
+        // Last resort: estimate from calories
+        if (logCarbs === 0) logCarbs = ((log.total_calories || 0) * 0.50) / 4;
+        if (logFat   === 0) logFat   = ((log.total_calories || 0) * 0.25) / 9;
+      }
+
+      trackedTotals.protein += logProtein;
+      trackedTotals.carbs   += logCarbs;
+      trackedTotals.fat     += logFat;
     });
   }
 
@@ -368,6 +405,9 @@ export default function TargetDetailsScreen() {
   const microCompletedCount = allMicros.filter((n: any) => n.percentage >= 100).length;
   const totalMicroCount = allMicros.length;
   const metPercentage = totalMicroCount > 0 ? Math.round((microCompletedCount / totalMicroCount) * 100) : 0;
+  const averagePercentage = totalMicroCount > 0
+    ? Math.round(allMicros.reduce((acc: number, n: any) => acc + Math.min(100, n.percentage || 0), 0) / totalMicroCount)
+    : 0;
 
   // Top 3 deficiencies for gap analysis
   const deficiencies = [...allMicros]
@@ -549,13 +589,13 @@ export default function TargetDetailsScreen() {
                     strokeWidth={7}
                     fill="transparent"
                     strokeDasharray={2 * Math.PI * 36}
-                    strokeDashoffset={2 * Math.PI * 36 * (1 - metPercentage / 100)}
+                    strokeDashoffset={2 * Math.PI * 36 * (1 - averagePercentage / 100)}
                     strokeLinecap="round"
                     transform="rotate(-90 45 45)"
                   />
                 </Svg>
                 <View style={styles.scoreRingCenter}>
-                  <Text style={styles.scorePct}>{metPercentage}%</Text>
+                  <Text style={styles.scorePct}>{averagePercentage}%</Text>
                 </View>
               </View>
             </View>
