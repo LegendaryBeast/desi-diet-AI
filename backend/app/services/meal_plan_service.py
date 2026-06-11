@@ -16,6 +16,54 @@ from rag_engine import calculate_targets, KhadokGraphRAG, NDG_DIETARY_RULES, get
 _rag_engine = None
 
 
+def _is_plain_rice(food: Dict[str, Any]) -> bool:
+    """
+    Dynamically identifies plain/raw/cooked rice (ভাত / চাল) 
+    while allowing processed breakfast rice products (like chira, muri, khoi).
+    """
+    if not food:
+        return False
+    food_group = food.get("food_group", "")
+    if food_group != "Cereals and Millets":
+        return False
+    
+    # Read name keys
+    name_en = (food.get("food_name_en") or food.get("name_en") or "").lower()
+    name_bn = (food.get("food_name_bn") or food.get("name_bn") or "").lower()
+    
+    # Exclude processed/breakfast-friendly rice products
+    processed_keywords = ["flaked", "flakes", "popped", "puffed", "flour", "vermicelli", "semolina", "semai", "suji", "muri", "chira", "khoi"]
+    if any(k in name_en or k in name_bn for k in processed_keywords):
+        return False
+        
+    # Check if it is a plain rice
+    return "rice" in name_en or "ভাত" in name_bn or "চাল" in name_bn or "চাউল" in name_bn
+
+
+def _is_core_staple(food: Dict[str, Any]) -> bool:
+    """
+    Dynamically identifies if a food is a core staple (rice, roti, whole wheat flour, etc.)
+    that should bypass the variety avoidance filter.
+    """
+    if not food:
+        return False
+    food_group = food.get("food_group", "")
+    if food_group != "Cereals and Millets":
+        return False
+        
+    name_en = (food.get("food_name_en") or food.get("name_en") or "").lower()
+    name_bn = (food.get("food_name_bn") or food.get("name_bn") or "").lower()
+    
+    # Exclude sweet, processed, or snack grains
+    snack_keywords = ["biscuit", "semai", "vermicelli", "popcorn", "muri", "khoi", "chira", "semolina", "suji", "halwa", "puffed", "popped", "flaked"]
+    if any(k in name_en or k in name_bn for k in snack_keywords):
+        return False
+        
+    # Match rice, wheat flour, roti, atta, mayda
+    keywords = ["rice", "flour", "roti", "ruti", "atta", "mayda", "wheat", "bread", "bun", "roll", "ভাত", "চাল", "আটা", "ময়দা", "রুটি", "পাউরুটি"]
+    return any(k in name_en or k in name_bn for k in keywords)
+
+
 def _get_rag() -> KhadokGraphRAG:
     global _rag_engine
     if _rag_engine is None:
@@ -460,13 +508,32 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
         if not allowed_codes:
             continue
 
-        # 🍚 CULTURAL FIX: Strictly exclude inappropriate grains/staples per slot
-        LUNCH_DINNER_EXCLUDED_GRAINS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
-        BREAKFAST_EXCLUDED_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
-        if slot_name in ("lunch", "dinner"):
-            allowed_codes = allowed_codes - LUNCH_DINNER_EXCLUDED_GRAINS
-        elif slot_name == "breakfast":
-            allowed_codes = allowed_codes - BREAKFAST_EXCLUDED_CODES
+        # 🍚 CULTURAL FIX: Dynamically filter allowed codes to exclude slot-inappropriate grains/staples
+        filtered_allowed = set()
+        for code in allowed_codes:
+            if code == "code":
+                continue
+            food = safe_by_code.get(code)
+            if not food:
+                filtered_allowed.add(code)
+                continue
+            
+            # Breakfast: exclude plain rice
+            if slot_name == "breakfast" and _is_plain_rice(food):
+                continue
+                
+            # Lunch/Dinner: exclude snack/breakfast-only grains
+            if slot_name in ("lunch", "dinner") and food.get("food_group") == "Cereals and Millets":
+                has_explicit_lunch_dinner = (
+                    code in slot_pools.get("lunch", set()) or
+                    code in slot_pools.get("dinner", set()) or
+                    code in slot_pools.get("all", set())
+                )
+                if not has_explicit_lunch_dinner:
+                    continue
+            
+            filtered_allowed.add(code)
+        allowed_codes = filtered_allowed
 
         corrected_items = []
         for item in meal.get("items", []) or []:
@@ -479,8 +546,7 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
                 
                 # Apply variety cache / avoidance
                 if avoid_codes:
-                    CORE_STAPLES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "A018", "A019", "A020"}
-                    filtered_candidates = [c for c in candidates if c["code"] not in avoid_codes or c["code"] in CORE_STAPLES]
+                    filtered_candidates = [c for c in candidates if c["code"] not in avoid_codes or _is_core_staple(c)]
                     if filtered_candidates:
                         candidates = filtered_candidates
 
@@ -517,8 +583,6 @@ def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str
         g = f.get("food_group", "Other")
         group_to_foods.setdefault(g, []).append(f)
 
-    CORE_STAPLES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "A018", "A019", "A020"}
-
     for meal in plan_data.get("meals", []) or []:
         slot_name = meal.get("slot", "").lower()
         items = meal.get("items", []) or []
@@ -536,7 +600,7 @@ def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str
                 for c in candidates:
                     c_code = c.get("code", "")
                     if c_code and c_code not in seen_codes:
-                        if not avoid_codes or c_code not in avoid_codes or c_code in CORE_STAPLES:
+                        if not avoid_codes or c_code not in avoid_codes or _is_core_staple(c):
                             replacement = c
                             break
                 if not replacement and avoid_codes:
@@ -636,11 +700,6 @@ def _ensure_meal_minimum_items(
     VEG_GROUPS = {"Vegetables", "Leafy Vegetables", "Other Vegetables", "Roots & Tubers",
                   "Green Leafy Vegetables", "Roots and Tubers"}
 
-    CORE_STAPLES = {
-        "01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039",
-        "A015", "A018", "A019", "A020"
-    }
-
     def _group_of(item):
         return item.get("food_group", "")
 
@@ -688,7 +747,7 @@ def _ensure_meal_minimum_items(
                 if not f_code or f_code in excluded:
                     continue
                 if f.get("food_group") in groups:
-                    if not avoid_codes or f_code not in avoid_codes or f_code in CORE_STAPLES:
+                    if not avoid_codes or f_code not in avoid_codes or _is_core_staple(f):
                         return f
             
             # 2. Try standard fallback list as backup
@@ -698,7 +757,7 @@ def _ensure_meal_minimum_items(
                 if not fb_code or fb_code in excluded:
                     continue
                 if fb.get("food_group") in groups:
-                    if not avoid_codes or fb_code not in avoid_codes or fb_code in CORE_STAPLES:
+                    if not avoid_codes or fb_code not in avoid_codes or _is_core_staple(fb):
                         return fb
             
             # 3. Last resort fallback (ignore variety constraints)
@@ -755,7 +814,7 @@ def _ensure_meal_minimum_items(
             f_code = f.get("code") or f.get("food_code") or ""
             if not f_code or f_code in existing_codes:
                 continue
-            if avoid_codes and f_code in avoid_codes and f_code not in CORE_STAPLES:
+            if avoid_codes and f_code in avoid_codes and not _is_core_staple(f):
                 continue
             
             f_group = f.get("food_group", "")
@@ -789,7 +848,7 @@ def _ensure_meal_minimum_items(
                 break
             fb_code = fb.get("food_code") or fb.get("code") or ""
             if fb_code and fb_code not in existing_codes:
-                if not avoid_codes or fb_code not in avoid_codes or fb_code in CORE_STAPLES:
+                if not avoid_codes or fb_code not in avoid_codes or _is_core_staple(fb):
                     items.append(_make_item(fb))
                     existing_codes.add(fb_code)
                     print(f"📦 Minimum items (3rd pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
@@ -848,25 +907,35 @@ def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
     """
     result = {"breakfast": set(), "lunch": set(), "dinner": set(), "supplementary": set()}
     
-    # Foods that are culturally INAPPROPRIATE for breakfast (will be removed from breakfast pool)
-    # Bangladeshi breakfast is roti/paratha/suji/semai, NEVER rice
-    BREAKFAST_EXCLUDED_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
-    # Foods that are culturally INAPPROPRIATE for lunch/dinner staples (popcorn, muri, chira, semai, suji, sweet biscuits)
-    LUNCH_DINNER_EXCLUDED_GRAINS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
-    
     try:
         with driver.session() as session:
             # Foods for each slot
             rows = session.run("""
                 MATCH (f:Food)-[r:HAS_MEAL_SLOT]->(ms:MealSlot)
                 WHERE f.code IN $codes
-                RETURN f.code AS code, ms.name AS slot, r.role AS role
+                OPTIONAL MATCH (f)-[:BELONGS_TO]->(fg:FoodGroup)
+                RETURN f.code AS code, 
+                       f.name_en AS name_en, 
+                       f.name_bn AS name_bn, 
+                       fg.name_en AS food_group,
+                       ms.name AS slot, 
+                       r.role AS role
             """, codes=list(safe_food_codes)).data()
+
+            food_by_code = {}
+            for row in rows:
+                code = row["code"]
+                if code and code not in food_by_code:
+                    food_by_code[code] = {
+                        "code": code,
+                        "name_en": row.get("name_en") or "",
+                        "name_bn": row.get("name_bn") or "",
+                        "food_group": row.get("food_group") or ""
+                    }
 
             for row in rows:
                 slot = row["slot"]
                 code = row["code"]
-                role = row.get("role", "side")
                 if slot in result:
                     result[slot].add(code)
                 if slot == "all":
@@ -875,20 +944,23 @@ def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
                     result["dinner"].add(code)
             
             # 🍚 CULTURAL FIX: Remove rice from breakfast pool
-            # Bangladeshi breakfast NEVER includes rice (ভাত). Breakfast = roti/paratha/suji/semai only.
-            for code in BREAKFAST_EXCLUDED_CODES:
-                if code in result["breakfast"]:
+            for code in list(result["breakfast"]):
+                food = food_by_code.get(code)
+                if food and _is_plain_rice(food):
                     result["breakfast"].discard(code)
-                    print(f"🍚 Cultural fix: Removed {code} from breakfast slot pool (rice is not a breakfast food)")
+                    print(f"🍚 Cultural fix: Removed {food['name_bn']} ({code}) from breakfast slot pool (rice is not a breakfast food)")
 
             # Remove breakfast/snack-only grains from lunch and dinner
-            for code in LUNCH_DINNER_EXCLUDED_GRAINS:
-                if code in result["lunch"]:
-                    result["lunch"].discard(code)
-                    print(f"🍚 Cultural fix: Removed {code} from lunch slot pool (snack/sweet grain)")
-                if code in result["dinner"]:
-                    result["dinner"].discard(code)
-                    print(f"🍚 Cultural fix: Removed {code} from dinner slot pool (snack/sweet grain)")
+            for slot_name in ("lunch", "dinner"):
+                for code in list(result[slot_name]):
+                    food = food_by_code.get(code)
+                    if food and food.get("food_group") == "Cereals and Millets":
+                        # If a cereal/grain is in lunch/dinner pool, check if it had a direct HAS_MEAL_SLOT relation to lunch/dinner/all in Neo4j.
+                        slots_for_food = {r["slot"] for r in rows if r["code"] == code}
+                        has_explicit_lunch_dinner = "lunch" in slots_for_food or "dinner" in slots_for_food or "all" in slots_for_food
+                        if not has_explicit_lunch_dinner:
+                            result[slot_name].discard(code)
+                            print(f"🍚 Cultural fix: Removed {food['name_bn']} ({code}) from {slot_name} slot pool (snack/sweet grain)")
 
             # Supplementary = foods marked is_supplementary=true (milk, fruits, etc.)
             supp = session.run("""
@@ -1096,22 +1168,26 @@ def _build_meal_plan_prompt(
             allowed = safe_foods[:]
         
         # 🍚 CULTURAL FIX: Rice must NEVER appear in breakfast food list; breakfast/snack-only grains must NEVER appear in lunch/dinner
-        RICE_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
-        LUNCH_DINNER_EXCLUDED_GRAINS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
         if slot == "breakfast":
-            allowed = [f for f in allowed if f.get("code") not in RICE_CODES]
+            allowed = [f for f in allowed if not _is_plain_rice(f)]
         elif slot in ("lunch", "dinner"):
-            allowed = [f for f in allowed if f.get("code") not in LUNCH_DINNER_EXCLUDED_GRAINS]
+            # Exclude grains/cereals unless they are explicitly in the slot's codes (not just supplementary)
+            allowed_codes_for_slot = slot_pools.get(slot, set()) if slot_pools else set()
+            allowed_codes_for_all = slot_pools.get("all", set()) if slot_pools else set()
+            filtered_allowed = []
+            for f in allowed:
+                f_code = f.get("code")
+                if f.get("food_group") == "Cereals and Millets":
+                    if f_code not in allowed_codes_for_slot and f_code not in allowed_codes_for_all:
+                        continue
+                filtered_allowed.append(f)
+            allowed = filtered_allowed
 
         # 🔄 VARIETY CACHE / AVOIDANCE:
         # Exclude previously suggested codes from the allowed pool to force variety on regeneration.
         # But do NOT avoid core staples (Plain Rice/Roti/Paratha) to prevent meal plan generation failures due to lack of staples.
         if avoid_codes:
-            CORE_STAPLES = {
-                "01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039",
-                "A015", "A018", "A019", "A020"
-            }
-            allowed = [f for f in allowed if f.get("code") not in avoid_codes or f.get("code") in CORE_STAPLES]
+            allowed = [f for f in allowed if f.get("code") not in avoid_codes or _is_core_staple(f)]
         
         # Categorize allowed foods
         staples = []
@@ -1632,35 +1708,23 @@ def _generate_fallback_meal_plan(
 
     used_codes = set()
 
-    # Breakfast-only cereals (Semolina/Suji, Vermicelli/Semai, popcorn, muri, chira, biscuits, barley, millet)
-    BREAKFAST_ONLY_CEREALS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
-    # Rice codes that must NEVER appear at breakfast (cultural rule)
-    BREAKFAST_EXCLUDED_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
-    # Preferred breakfast grains (atta ruti, bread, suji, semai)
-    PREFERRED_BREAKFAST_GRAINS = {"A019", "A018", "01_0002", "01_0003", "01_0032", "01_0042", "A016", "A022", "A023", "A024", "01_0026", "01_0029"}
-
     def pick_slot_specific(cat, slot, used):
         pool = categories.get(cat, [])
         
         # 1. Slot-based filtering
         if slot in ["lunch", "dinner"]:
-            # Exclude sweet breakfast/snack-only grains from lunch/dinner
-            pool = [f for f in pool if f["code"] not in BREAKFAST_ONLY_CEREALS]
+            # Exclude snack/breakfast-only grains from lunch/dinner
+            # i.e. exclude non-core staples from the cereals category
+            pool = [f for f in pool if not (cat == "Cereals & Grains" and not _is_core_staple(f))]
         elif slot == "breakfast":
             # Exclude rice from breakfast
-            pool = [f for f in pool if f["code"] not in BREAKFAST_EXCLUDED_CODES]
+            pool = [f for f in pool if not _is_plain_rice(f)]
             
-            # For breakfast cereals, ONLY allow preferred breakfast grains
-            if cat in ["Cereals and Millets", "Cereals", "Cereals & Grains"]:
-                bfast_pool = [f for f in pool if f["code"] in PREFERRED_BREAKFAST_GRAINS]
+            # For breakfast cereals, ONLY allow preferred breakfast grains (non-rice grains)
+            if cat == "Cereals & Grains":
+                bfast_pool = [f for f in pool if not _is_plain_rice(f)]
                 if bfast_pool:
                     pool = bfast_pool
-                else:
-                    # If preferred items are exhausted, still don't fall back to rice
-                    forced_pool = categories.get(cat, [])
-                    forced_pool = [f for f in forced_pool if f["code"] in PREFERRED_BREAKFAST_GRAINS]
-                    if forced_pool:
-                        pool = forced_pool
 
         # 2. Protein slot preference
         if cat in ["Fish & Seafood", "Meat & Poultry"] and slot == "breakfast":
@@ -1855,11 +1919,7 @@ def _enforce_variety_cache(plan_data: Dict[str, Any], safe_foods: List[Dict[str,
     if not avoid_codes or not plan_data:
         return plan_data
 
-    CORE_STAPLES = {
-        "01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039",
-        "A015", "A018", "A019", "A020"
-    }
-
+    safe_by_code = {f["code"]: f for f in safe_foods if f.get("code")}
     group_to_foods = {}
     for f in safe_foods:
         g = f.get("food_group", "Other")
@@ -1881,7 +1941,8 @@ def _enforce_variety_cache(plan_data: Dict[str, Any], safe_foods: List[Dict[str,
         new_items = []
         for item in meal.get("items", []):
             code = item.get("food_code") or item.get("code") or ""
-            if code in avoid_codes and code not in CORE_STAPLES:
+            food = safe_by_code.get(code)
+            if code in avoid_codes and not (food and _is_core_staple(food)):
                 original_group = item.get("food_group", "")
                 candidates = group_to_foods.get(original_group, safe_foods)
                 
