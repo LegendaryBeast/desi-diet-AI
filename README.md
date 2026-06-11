@@ -1,5 +1,11 @@
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank">
+  <a href="https://youtu.be/b_bTzmIBPus" target="_blank">
+    <img src="https://img.shields.io/badge/YouTube-Watch%20Video-red?style=for-the-badge&logo=youtube" alt="Play Video" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/b_bTzmIBPus" target="_blank">
     <img src="https://img.youtube.com/vi/b_bTzmIBPus/maxresdefault.jpg" 
          alt="Watch the video" 
          width="560" 
