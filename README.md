@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://youtu.be/b_bTzmIBPus" target="_blank">
-    <img src="https://img.youtube.com/vi/b_bTzmIBPus/maxresdefault.jpg" 
+    <img src="https://i.ibb.co.com/ns9KwT6K/iframe.jpg" 
          alt="Watch the video" 
          width="560" 
          style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
