@@ -68,6 +68,8 @@ interface MealItem {
   amount_g?: number;
   calories?: number;
   protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
   why_bn?: string;
   food_group?: string;
   /** Single food emoji assigned by backend (LLM or category-based fallback). */
@@ -193,8 +195,8 @@ export const MealPlan = () => {
         direct_code: food.food_code || food.code || undefined,
         direct_calories: food.calories ? Number(food.calories) : undefined,
         direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
-        direct_carbs: undefined,
-        direct_fat: undefined,
+        direct_carbs: food.carbs_g ? Number(food.carbs_g) : undefined,
+        direct_fat: food.fat_g ? Number(food.fat_g) : undefined,
         direct_name: food.name_en || food.name_bn || undefined,
         direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
       });
@@ -563,8 +565,8 @@ export const MealPlan = () => {
               direct_code: food.food_code || food.code || undefined,
               direct_calories: food.calories ? Number(food.calories) : undefined,
               direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
-              direct_carbs: undefined,
-              direct_fat: undefined,
+              direct_carbs: food.carbs_g ? Number(food.carbs_g) : undefined,
+              direct_fat: food.fat_g ? Number(food.fat_g) : undefined,
               direct_name: food.name_en || food.name_bn || undefined,
               direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
             });

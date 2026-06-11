@@ -461,10 +461,18 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
             
             used_codes_in_meal.add(resolved_code)
             
-            # Recalculate portion-based calories
+            # Recalculate portion-based calories and macros
             amount_g = _parse_amount_g(item.get("amount_g") or item.get("amount"))
             kcal_per_100g = float(db_food.get("calories") or db_food.get("energy_kcal") or 0)
             item_calories = round((kcal_per_100g * amount_g) / 100.0)
+
+            db_prot = float(db_food.get("protein") or db_food.get("protein_g") or 0.0)
+            db_fat  = float(db_food.get("fat") or db_food.get("fat_g") or 0.0)
+            db_carb = float(db_food.get("carbs") or db_food.get("carbohydrate_g") or 0.0)
+
+            item_protein = round((db_prot * amount_g) / 100.0, 1)
+            item_carbs = round((db_carb * amount_g) / 100.0, 1)
+            item_fat = round((db_fat * amount_g) / 100.0, 1)
             
             item["food_code"] = resolved_code
             if "code" in item:
@@ -477,6 +485,9 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
             item["name_en"] = cooked_en
             item["name_bn"] = cooked_bn
             item["calories"] = item_calories
+            item["protein_g"] = item_protein
+            item["carbs_g"] = item_carbs
+            item["fat_g"] = item_fat
             item["food_group"] = raw_group
             item["amount_g"] = amount_g
             # Always set amount for frontend compatibility
@@ -2397,10 +2408,21 @@ async def sync_meal_logs_for_slot(user_id: str, plan: Any, slot: str, completed:
     if not target_meal:
         return
 
+    # Fetch all logs for this slot today to prevent duplicates
+    today_logs = await prisma.mealtracking.find_many(
+        where={
+            "userId": user_id,
+            "mealSlot": slot,
+            "loggedAt": {"gte": today, "lt": today + timedelta(days=1)}
+        }
+    )
+
     items = target_meal.get("items", [])
     for food in items:
         food_code = food.get("food_code") or food.get("code") or ""
-        food_name = food.get("name_bn") or food.get("name_en") or ""
+        food_name_bn = food.get("name_bn") or ""
+        food_name_en = food.get("name_en") or ""
+        food_name = food_name_bn or food_name_en or ""
         if not food_name:
             continue
 
@@ -2422,41 +2444,71 @@ async def sync_meal_logs_for_slot(user_id: str, plan: Any, slot: str, completed:
             except Exception:
                 amount_g = 100.0
 
-        # Check if already logged to prevent duplicates
-        existing_log = await prisma.mealtracking.find_first(
-            where={
+        # Check if already logged (in today_logs)
+        already_logged = False
+        fc_lower = food_code.strip().lower()
+        bn_lower = food_name_bn.strip().lower()
+        en_lower = food_name_en.strip().lower()
+
+        for log in today_logs:
+            # Check parsedItems content
+            try:
+                p_items = json.loads(log.parsedItems) if isinstance(log.parsedItems, str) else log.parsedItems
+                if isinstance(p_items, list):
+                    for p_item in p_items:
+                        p_code = (p_item.get("code") or "").strip().lower()
+                        p_name = (p_item.get("name") or "").strip().lower()
+                        if fc_lower and p_code == fc_lower:
+                            already_logged = True
+                            break
+                        if bn_lower and (p_name == bn_lower or bn_lower in p_name or p_name in bn_lower):
+                            already_logged = True
+                            break
+                        if en_lower and (p_name == en_lower or en_lower in p_name or p_name in en_lower):
+                            already_logged = True
+                            break
+                    if already_logged:
+                        break
+            except Exception:
+                pass
+            
+            # Check inputText fallback matching
+            input_text = (log.inputText or "").strip().lower()
+            if bn_lower and bn_lower in input_text:
+                already_logged = True
+                break
+            if en_lower and en_lower in input_text:
+                already_logged = True
+                break
+
+        if already_logged:
+            continue
+
+        parsed_item = {
+            "code": food_code,
+            "name": food_name,
+            "amount_g": amount_g,
+            "calories": round(calories, 1),
+            "protein_g": round(protein, 1),
+            "carbs_g": round(carbs, 1),
+            "fat_g": round(fat, 1),
+        }
+        macros = {
+            "protein_g": round(protein, 1),
+            "carbs_g": round(carbs, 1),
+            "fat_g": round(fat, 1),
+        }
+
+        await prisma.mealtracking.create(
+            data={
                 "userId": user_id,
+                "inputText": f"📋 [Plan] {food_name}",
+                "parsedItems": to_json_string([parsed_item]),
+                "totalCals": int(calories),
+                "macros": to_json_string(macros),
+                "feedback": "পরিকল্পিত খাবারটি সফলভাবে আপনার দৈনন্দিন ট্র্যাকিংয়ে যুক্ত করা হয়েছে।",
                 "mealSlot": slot,
-                "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
-                "parsedItems": {"contains": food_name}
+                "language": plan.language or "bn",
+                "loggedAt": datetime.now(timezone.utc)
             }
         )
-        if not existing_log:
-            parsed_item = {
-                "code": food_code,
-                "name": food_name,
-                "amount_g": amount_g,
-                "calories": round(calories, 1),
-                "protein_g": round(protein, 1),
-                "carbs_g": round(carbs, 1),
-                "fat_g": round(fat, 1),
-            }
-            macros = {
-                "protein_g": round(protein, 1),
-                "carbs_g": round(carbs, 1),
-                "fat_g": round(fat, 1),
-            }
-
-            await prisma.mealtracking.create(
-                data={
-                    "userId": user_id,
-                    "inputText": f"📋 [Plan] {food_name}",
-                    "parsedItems": to_json_string([parsed_item]),
-                    "totalCals": int(calories),
-                    "macros": to_json_string(macros),
-                    "feedback": "পরিকল্পিত খাবারটি সফলভাবে আপনার দৈনন্দিন ট্র্যাকিংয়ে যুক্ত করা হয়েছে।",
-                    "mealSlot": slot,
-                    "language": plan.language or "bn",
-                    "loggedAt": datetime.now(timezone.utc)
-                }
-            )
