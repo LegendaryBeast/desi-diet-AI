@@ -42,14 +42,81 @@ DesiDiet is powered by a diverse ingestion layer combining peer-reviewed data so
 ---
 ## Platform Key Features & Screenshots
 
-| | |
-|:---:|:---:|
-| **1. Personalized Meal Planning**<br>AI-generated daily/weekly plans matching user profile, health status, and NDG 2025 targets.<br><br><img src="docs/screenshots/meal_plan.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **2. Conversational AI Diet Assistant**<br>Real-time streaming SSE chat with full user profile context.<br><br><img src="docs/screenshots/ai_assistant.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **3. Meal Logging via Speech & Vision**<br>Multi-lingual voice, text, or image food logging grounded in Neo4j.<br><br><img src="docs/screenshots/dashboard.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **4. Health Log & Trend Tracking**<br>Progress logging for weight, BP, blood sugar, and HbA1c with context injection.<br><br><img src="docs/screenshots/health_report.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **5. Food Knowledge Browser**<br>Multilingual search displaying full nutrition specs and medical safety warnings.<br><br><img src="docs/screenshots/food_database.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **6. Health & Nutrition Reports**<br>PDF email reports analyzing calorie trends, macros, and clinical insights.<br><br><img src="docs/screenshots/health_report.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **7. Medicine Reminder Parsing**<br>Converts natural language descriptions of prescriptions into structured in-app reminders.<br><br><img src="docs/screenshots/medicine_reminders.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **8. Interactive Meal Builder**<br>Interactive meal calculator with target matching and AI feedback.<br><br><img src="docs/screenshots/meal_plan.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **9. NutriSaathi Cooking Guide**<br>Personalized cooking assistant generating local recipes with health substitutions.<br><br><img src="docs/screenshots/ai_assistant.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **10. Bilingual Interface**<br>Entire application fully localized in Bengali and English.<br><br><img src="docs/screenshots/dashboard.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **11. Grocery Sourcing & Price Compare**<br>Price-sorted local ingredient recommendations from nearest shops via GPS with live price comparison.<br><br><img src="docs/screenshots/grocery_sourcing_web.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **12. AI Chatbot**<br>Interactive conversational agent for instant nutrition tracking and dietary advice.<br><br><img src="docs/screenshots/ai_assistant.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>1. Personalized Meal Planning</strong><br>
+      AI-generated daily/weekly plans matching user profile, health status, and NDG 2025 targets.<br><br>
+      <img src="docs/screenshots/meal_plan.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>2. Conversational AI Diet Assistant</strong><br>
+      Real-time streaming SSE chat with full user profile context.<br><br>
+      <img src="docs/screenshots/ai_assistant.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>3. Meal Logging via Speech & Vision</strong><br>
+      Multi-lingual voice, text, or image food logging grounded in Neo4j.<br><br>
+      <img src="docs/screenshots/dashboard.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>4. Health Log & Trend Tracking</strong><br>
+      Progress logging for weight, BP, blood sugar, and HbA1c with context injection.<br><br>
+      <img src="docs/screenshots/health_report.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>5. Food Knowledge Browser</strong><br>
+      Multilingual search displaying full nutrition specs and medical safety warnings.<br><br>
+      <img src="docs/screenshots/food_database.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>6. Health & Nutrition Reports</strong><br>
+      PDF email reports analyzing calorie trends, macros, and clinical insights.<br><br>
+      <img src="docs/screenshots/health_report.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>7. Medicine Reminder Parsing</strong><br>
+      Converts natural language descriptions of prescriptions into structured in-app reminders.<br><br>
+      <img src="docs/screenshots/medicine_reminders.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>8. Interactive Meal Builder</strong><br>
+      Interactive meal calculator with target matching and AI feedback.<br><br>
+      <img src="docs/screenshots/meal_plan.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>9. NutriSaathi Cooking Guide</strong><br>
+      Personalized cooking assistant generating local recipes with health substitutions.<br><br>
+      <img src="docs/screenshots/ai_assistant.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>10. Bilingual Interface</strong><br>
+      Entire application fully localized in Bengali and English.<br><br>
+      <img src="docs/screenshots/dashboard.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>11. Grocery Sourcing & Price Compare</strong><br>
+      Price-sorted local ingredient recommendations from nearest shops via GPS with live price comparison.<br><br>
+      <img src="docs/screenshots/grocery_sourcing_web.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>12. AI Chatbot</strong><br>
+      Interactive conversational agent for instant nutrition tracking and dietary advice.<br><br>
+      <img src="docs/screenshots/ai_assistant.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+</table>
+
 
 
 ---
@@ -80,14 +147,79 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
 
 ## DesiDiet Business (B2B Admin Portal)
 
-| | |
-|:---:|:---:|
-| **1. Executive Overview Dashboard**<br>Real-time tracking of MRR, Active Subscriptions, Churn Rate, and L2C Funnel.<br><br><img src="docs/screenshots/business_overview.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **2. Revenue & Churn Analytics**<br>Deep dive into subscription mix, top brands revenue share, and actionable churn signals.<br><br><img src="docs/screenshots/business_revenue.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **3. Platform Operations & AI Telemetry**<br>Live activity logs, AI token consumption tracking by feature, and geographic user distribution.<br><br><img src="docs/screenshots/business_operations.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **4. Partner Brand Management**<br>Manage storefronts, catalog listings, and track brand performance via conversion vs revenue quadrants.<br><br><img src="docs/screenshots/business_brands.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **5. Brand Performance Deep Dive**<br>Granular metrics for individual partner brands including revenue history, new customers, and product rating distribution.<br><br><img src="docs/screenshots/business_brand_performance.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **6. Advanced Analytics & Cohorts**<br>Analyze user acquisition channels, cohort retention matrices, and customer lifetime value (LTV).<br><br><img src="docs/screenshots/business_analytics.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **7. AI Usage & Cost Forecasting**<br>Monitor daily LLM token consumption, estimated costs, and API request volume by feature.<br><br><img src="docs/screenshots/business_ai_usage_overview.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **8. Token Quotas & Top Consumers**<br>Track highest token consumers and manage automatic quota alerts for heavy users.<br><br><img src="docs/screenshots/business_ai_consumers.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **9. Subscription Tier Management**<br>Manage free, basic, and premium pricing tiers while tracking MRR contribution and payment mix.<br><br><img src="docs/screenshots/business_subscriptions.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | **10. Churn Risk & Win-back Campaigns**<br>Identify cancellation reasons, predict user churn risk, and trigger automated win-back emails.<br><br><img src="docs/screenshots/business_churn.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
-| **11. Vision — Freemium & B2B Model**<br>7-day free trial + ৳300/month Pro plan (Shwapno, Chaldal, Foodpanda B2B grocery sourcing integrations).<br><br><img src="docs/screenshots/vision_freemium_b2b.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | *(More B2B Integrations Coming Soon)* |
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>1. Executive Overview Dashboard</strong><br>
+      Real-time tracking of MRR, Active Subscriptions, Churn Rate, and L2C Funnel.<br><br>
+      <img src="docs/screenshots/business_overview.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>2. Revenue & Churn Analytics</strong><br>
+      Deep dive into subscription mix, top brands revenue share, and actionable churn signals.<br><br>
+      <img src="docs/screenshots/business_revenue.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>3. Platform Operations & AI Telemetry</strong><br>
+      Live activity logs, AI token consumption tracking by feature, and geographic user distribution.<br><br>
+      <img src="docs/screenshots/business_operations.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>4. Partner Brand Management</strong><br>
+      Manage storefronts, catalog listings, and track brand performance via conversion vs revenue quadrants.<br><br>
+      <img src="docs/screenshots/business_brands.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>5. Brand Performance Deep Dive</strong><br>
+      Granular metrics for individual partner brands including revenue history, new customers, and product rating distribution.<br><br>
+      <img src="docs/screenshots/business_brand_performance.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>6. Advanced Analytics & Cohorts</strong><br>
+      Analyze user acquisition channels, cohort retention matrices, and customer lifetime value (LTV).<br><br>
+      <img src="docs/screenshots/business_analytics.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>7. AI Usage & Cost Forecasting</strong><br>
+      Monitor daily LLM token consumption, estimated costs, and API request volume by feature.<br><br>
+      <img src="docs/screenshots/business_ai_usage_overview.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>8. Token Quotas & Top Consumers</strong><br>
+      Track highest token consumers and manage automatic quota alerts for heavy users.<br><br>
+      <img src="docs/screenshots/business_ai_consumers.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>9. Subscription Tier Management</strong><br>
+      Manage free, basic, and premium pricing tiers while tracking MRR contribution and payment mix.<br><br>
+      <img src="docs/screenshots/business_subscriptions.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>10. Churn Risk & Win-back Campaigns</strong><br>
+      Identify cancellation reasons, predict user churn risk, and trigger automated win-back emails.<br><br>
+      <img src="docs/screenshots/business_churn.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <strong>11. Vision — Freemium & B2B Model</strong><br>
+      7-day free trial + ৳300/month Pro plan (Shwapno, Chaldal, Foodpanda B2B grocery sourcing integrations).<br><br>
+      <img src="docs/screenshots/vision_freemium_b2b.png" style="height: 220px; width: 100%; object-fit: cover; border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <strong>(More B2B Integrations Coming Soon)</strong>
+    </td>
+  </tr>
+</table>
+
 
 
 
