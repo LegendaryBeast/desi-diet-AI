@@ -279,30 +279,49 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
     """Generate AI meal plan for today or future day."""
     target_date = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc) + timedelta(days=offset)
 
-    if not force:
-        existing = await prisma.mealplan.find_first(
-            where={
-                "userId": current_user.id,
-                "planType": "daily",
-                "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
-            }
-        )
-        if existing:
-            return await _plan_to_response(existing)
-            
+    existing = await prisma.mealplan.find_first(
+        where={
+            "userId": current_user.id,
+            "planType": "daily",
+            "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
+        }
+    )
+
+    if existing and not force:
+        return await _plan_to_response(existing)
+
+    completed_slots = []
+    existing_plan_data = None
+    if existing:
+        completed_slots = safe_list(from_json_string(existing.completedSlots)) if existing.completedSlots else []
+        existing_plan_data = safe_dict(existing.planData)
+
     if force:
-        await prisma.mealplan.delete_many(
-            where={
-                "userId": current_user.id,
-                "planType": "daily",
-                "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
-            }
-        )
+        if not completed_slots:
+            # If no slots are completed, it's safe to delete and start completely fresh
+            await prisma.mealplan.delete_many(
+                where={
+                    "userId": current_user.id,
+                    "planType": "daily",
+                    "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
+                }
+            )
+            existing = None
+            existing_plan_data = None
+        else:
+            # If there are completed slots, do NOT delete. We will pass them to the generator.
+            print(f"🔄 Partial daily regeneration triggered. Preserving completed slots: {completed_slots}")
 
     try:
-        plan_data = await generate_daily_meal_plan(current_user.id, language=language)
+        plan_data = await generate_daily_meal_plan(
+            current_user.id,
+            language=language,
+            existing_plan_data=existing_plan_data,
+            completed_slots=completed_slots
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
     plan = await save_meal_plan(current_user.id, "daily", plan_data, language, target_date)
     return await _plan_to_response(plan)
 

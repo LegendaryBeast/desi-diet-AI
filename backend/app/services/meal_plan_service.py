@@ -918,7 +918,7 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
     return combined
 
 
-def _scale_plan_to_target(plan_data: Dict[str, Any], target_calories: int) -> Dict[str, Any]:
+def _scale_plan_to_target(plan_data: Dict[str, Any], target_calories: int, completed_slots: set = None) -> Dict[str, Any]:
     """Scale all food item portions proportionally so the total calories exactly hit the target.
     This fixes the common issue where the LLM under-generates food portions.
     """
@@ -926,26 +926,45 @@ def _scale_plan_to_target(plan_data: Dict[str, Any], target_calories: int) -> Di
     if not meals:
         return plan_data
 
-    # Calculate actual total from LLM output
-    actual_total = sum(
-        item.get("calories", 0)
-        for meal in meals
-        for item in meal.get("items", [])
-    )
+    if completed_slots is None:
+        completed_slots = set()
+    else:
+        completed_slots = {s.lower() for s in completed_slots}
 
-    if actual_total <= 0:
+    # Calculate calories for completed and non-completed meals separately
+    completed_total = 0
+    non_completed_total = 0
+
+    for meal in meals:
+        slot = meal.get("slot", "").lower()
+        meal_cal = sum(item.get("calories", 0) for item in meal.get("items", []))
+        if slot in completed_slots:
+            completed_total += meal_cal
+        else:
+            non_completed_total += meal_cal
+
+    # Remaining calorie target for non-completed meals
+    remaining_target = max(100, target_calories - completed_total)
+
+    if non_completed_total <= 0:
         return plan_data
 
-    # Only scale if there's a meaningful gap (>3% off target)
-    gap_pct = abs(actual_total - target_calories) / target_calories
+    # Only scale if there's a meaningful gap (>3% off target) for non-completed meals
+    gap_pct = abs(non_completed_total - remaining_target) / remaining_target
     if gap_pct < 0.03:
         return plan_data
 
-    scale = target_calories / actual_total
-    print(f"⚖️  Scaling plan: LLM generated {actual_total} kcal → scaling by {scale:.3f} to reach {target_calories} kcal")
+    scale = remaining_target / non_completed_total
+    print(f"⚖️  Scaling plan (excluding completed slots {completed_slots}): non-completed generated {non_completed_total} kcal → scaling by {scale:.3f} to reach remaining {remaining_target} kcal")
 
     meal_targets = [0.30, 0.40, 0.30]  # breakfast / lunch / dinner fractions
     for i, meal in enumerate(meals):
+        slot = meal.get("slot", "").lower()
+        if slot in completed_slots:
+            meal_cal = sum(item.get("calories", 0) for item in meal.get("items", []))
+            meal["target_calories"] = meal_cal
+            continue
+
         meal_target = round(target_calories * meal_targets[i]) if i < len(meal_targets) else round(target_calories / len(meals))
         meal["target_calories"] = meal_target
         items = meal.get("items", [])
@@ -1724,7 +1743,7 @@ def _generate_fallback_meal_plan(
     return fallback_plan
 
 
-async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[str, Any]:
+async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_plan_data: Dict[str, Any] = None, completed_slots: List[str] = None) -> Dict[str, Any]:
     """Generate a daily meal plan for a user, using the most recent health log weight."""
     profile = await prisma.profile.find_unique(where={"userId": user_id})
     if not profile:
@@ -1819,8 +1838,32 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn") -> Dict[s
     # Annotate which weight was used for transparency
     plan_data["_calculated_from_weight_kg"] = current_weight
 
+    # Restore completed meals to guarantee they are unchanged
+    completed_slots_set = {s.lower() for s in completed_slots} if completed_slots else set()
+    completed_meals = []
+    if existing_plan_data and completed_slots_set:
+        for meal in existing_plan_data.get("meals", []):
+            if meal.get("slot", "").lower() in completed_slots_set:
+                completed_meals.append(meal)
+
+    if completed_slots_set and completed_meals:
+        completed_map = {m["slot"].lower(): m for m in completed_meals}
+        new_meals = []
+        restored_slots = set()
+        for meal in plan_data.get("meals", []):
+            slot_name = meal.get("slot", "").lower()
+            if slot_name in completed_map:
+                new_meals.append(completed_map[slot_name])
+                restored_slots.add(slot_name)
+            else:
+                new_meals.append(meal)
+        for slot_name, comp_meal in completed_map.items():
+            if slot_name not in restored_slots:
+                new_meals.append(comp_meal)
+        plan_data["meals"] = new_meals
+
     # ✅ Scale portions proportionally so total calories always hit the target
-    plan_data = _scale_plan_to_target(plan_data, targets["target_calories"])
+    plan_data = _scale_plan_to_target(plan_data, targets["target_calories"], completed_slots=completed_slots_set)
 
     # 🎨 Fill in emoji for every item (LLM may omit; helper provides fallback)
     plan_data = _ensure_item_emojis(plan_data)
@@ -1934,15 +1977,35 @@ async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any]
         for item in m.get("items", [])
     )
 
-    plan = await prisma.mealplan.create(
-        data={
+    # Look for an existing meal plan for this user, type, and date to update it
+    existing = await prisma.mealplan.find_first(
+        where={
             "userId": user_id,
-            "planDate": target_date,
             "planType": plan_type,
-            "planData": to_json_string(plan_data),
-            "calorieTarget": plan_data.get("target_calories", 2000),
-            "aiSuggestionCal": ai_cal,
-            "language": language,
+            "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
         }
     )
+
+    if existing:
+        plan = await prisma.mealplan.update(
+            where={"planId": existing.planId},
+            data={
+                "planData": to_json_string(plan_data),
+                "calorieTarget": plan_data.get("target_calories", 2000),
+                "aiSuggestionCal": ai_cal,
+                "language": language,
+            }
+        )
+    else:
+        plan = await prisma.mealplan.create(
+            data={
+                "userId": user_id,
+                "planDate": target_date,
+                "planType": plan_type,
+                "planData": to_json_string(plan_data),
+                "calorieTarget": plan_data.get("target_calories", 2000),
+                "aiSuggestionCal": ai_cal,
+                "language": language,
+            }
+        )
     return plan
