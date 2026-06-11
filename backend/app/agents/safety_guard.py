@@ -52,6 +52,18 @@ async def safety_guard_node(state: AgentState) -> AgentState:
         {"role": "user", "content": message}
     ]
 
+    # Hardcoded whitelist: these keywords are ALWAYS in-scope for our app.
+    # Even if the LLM misclassifies, we never reject them.
+    _IN_SCOPE_KEYWORDS = [
+        "report", "summary", "progress", "meal plan", "plan",
+        "breakfast", "lunch", "dinner", "snack", "meal",
+        "profile", "weight", "height", "age", "health log",
+        "medicine", "reminder", "calorie", "nutrient",
+        "রিপোর্ট", "সারাংশ", "খাবার", "পরিকল্পনা",
+        "ওজন", "উচ্চতা", "বয়স", "স্বাস্থ্য", "ওষুধ",
+        "খেয়েছি", "খাইছি", "খেলাম", "ক্যালোরি",
+    ]
+
     try:
         raw = await llm_client.chat_completion(
             messages=messages,
@@ -68,6 +80,12 @@ async def safety_guard_node(state: AgentState) -> AgentState:
         is_safe = True
         is_in_scope = True
         language = "bn"
+
+    # Override: never reject whitelisted keywords
+    lower_msg = message.lower()
+    if not is_in_scope and any(kw in lower_msg for kw in _IN_SCOPE_KEYWORDS):
+        logger.info("SafetyGuardNode overriding LLM classification: query contains in-scope keyword.")
+        is_in_scope = True
 
     if not is_safe or not is_in_scope:
         # Generate appropriate refusal message based on language
