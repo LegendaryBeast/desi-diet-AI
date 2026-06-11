@@ -23,6 +23,23 @@ DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent 
 
 ---
 
+## Technical Execution & System Architecture
+
+DesiDiet is designed around an AI-Native 5-Layer model that decouples integration, business logic, semantic optimization, and knowledge databases:
+
+![DesiDiet System Architecture](docs/architecture_diagram.png)
+
+
+## Dataset & Integration Sources
+
+DesiDiet is powered by a diverse ingestion layer combining peer-reviewed data sources, relational inputs, and validated synthetic sets:
+
+*   **Open Datasets:** Grounded in the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and clinical schemas adapted from the peer-reviewed study, [An Explainable GraphRAG Framework for Personalized Nutrition Recommendation](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
+*   **External APIs:** OpenAI API (used for Whispering voice inputs and chat orchestration) and Pinecone Vector Database (hosting indexed recipe data).
+*   **Internal Systems:** PostgreSQL relational database (via Prisma ORM) storing user profiles, logs, and targets, and a Neo4j Graph Database mapping complex food, nutrient, and disease relationships.
+*   **Synthetic Data:** Automatically generated and updated food compatibility/pairing matrices, validated programmatically via AST structures.
+
+---
 ## Platform Key Features & Screenshots
 
 | | |
@@ -40,12 +57,11 @@ DesiDiet introduces a 5-Layer AI Reference Architecture powered by a dual-agent 
 
 Our mobile-first web app is designed for accessibility on the go, bringing intelligent nutrition straight to the palm of your hand. 
 
-| | |
-|:---:|:---:|
-| **1. Mobile Dashboard**<br><br><img src="docs/screenshots/app_home.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. Daily Meal Tracking**<br><br><img src="docs/screenshots/app_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **3. Pushti-AI Assistant**<br><br><img src="docs/screenshots/app_pushti_ai.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. Target Goals & BMI**<br><br><img src="docs/screenshots/app_target_goals.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **5. Health & Disease Setup**<br><br><img src="docs/screenshots/app_disease_selection.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **6. User Profile & Metrics**<br><br><img src="docs/screenshots/app_profile.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **7. Pro Upgrade Flow**<br><br><img src="docs/screenshots/app_pro_upgrade.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **8. Health PDF Reports**<br><br><img src="docs/screenshots/app_health_report.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **1. Mobile Dashboard** | **2. Daily Meal Tracking** | **3. Pushti-AI Assistant** | **4. Target Goals & BMI** |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/app_home.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_meal_plan.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_pushti_ai.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_target_goals.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+| **5. Health & Disease Setup** | **6. User Profile & Metrics** | **7. Pro Upgrade Flow** | **8. Health PDF Reports** |
+| <img src="docs/screenshots/app_disease_selection.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_profile.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_pro_upgrade.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/app_health_report.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
 
 ---
 
@@ -53,10 +69,10 @@ Our mobile-first web app is designed for accessibility on the go, bringing intel
 
 Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, ask for advice, and get full dietary planning right from your favorite messaging app.
 
-| | |
-|:---:|:---:|
-| **1. WhatsApp Meal Plans**<br><br><img src="docs/screenshots/whatsapp_meal_plan.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **2. WhatsApp Meal Logs**<br><br><img src="docs/screenshots/whatsapp_meal_log.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
-| **3. WhatsApp Nutrition Info**<br><br><img src="docs/screenshots/whatsapp_nutrition_info.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **4. WhatsApp Health Advice**<br><br><img src="docs/screenshots/whatsapp_advice.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
+| **1. WhatsApp Meal Plans** | **2. WhatsApp Meal Logs** | **3. WhatsApp Nutrition Info** | **4. WhatsApp Health Advice** |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/whatsapp_meal_plan.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_meal_log.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_nutrition_info.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> | <img src="docs/screenshots/whatsapp_advice.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/> |
+
 
 ---
 
@@ -71,16 +87,6 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
 | **9. Subscription Tier Management**<br>Manage free, basic, and premium pricing tiers while tracking MRR contribution and payment mix.<br><br><img src="docs/screenshots/business_subscriptions.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | **10. Churn Risk & Win-back Campaigns**<br>Identify cancellation reasons, predict user churn risk, and trigger automated win-back emails.<br><br><img src="docs/screenshots/business_churn.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> |
 | **11. Vision — Freemium & B2B Model**<br>7-day free trial + ৳300/month Pro plan (Shwapno, Chaldal, Foodpanda B2B grocery sourcing integrations).<br><br><img src="docs/screenshots/vision_freemium_b2b.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/> | *(More B2B Integrations Coming Soon)* |
 
-## Dataset & Integration Sources
-
-DesiDiet is powered by a diverse ingestion layer combining peer-reviewed data sources, relational inputs, and validated synthetic sets:
-
-*   **Open Datasets:** Grounded in the [National Dietary Guidelines for Bangladesh](docs/NationalDietaryGuidelinesforBangladesh-23Aug2025.pdf), [Bangladeshi Food Composition Tables (FCT)](docs/FCT_10_2_14_final_version.pdf), and clinical schemas adapted from the peer-reviewed study, [An Explainable GraphRAG Framework for Personalized Nutrition Recommendation](docs/frai-9-1808444.pdf) (Dindukurthi et al., 2026).
-*   **External APIs:** OpenAI API (used for Whispering voice inputs and chat orchestration) and Pinecone Vector Database (hosting indexed recipe data).
-*   **Internal Systems:** PostgreSQL relational database (via Prisma ORM) storing user profiles, logs, and targets, and a Neo4j Graph Database mapping complex food, nutrient, and disease relationships.
-*   **Synthetic Data:** Automatically generated and updated food compatibility/pairing matrices, validated programmatically via AST structures.
-
----
 
 ## System Methodology & Scientific Grounding
 
@@ -115,21 +121,6 @@ The system processes all user interactions via a 6-stage sequential workflow:
 4.  **AI Reasoning:** LangGraph coordinates Pusti AI and NutriSaathi execution paths.
 5.  **Response:** Emits real-time language-matched feedback (Bangla/English).
 6.  **Learn & Improve:** Stores response characteristics for regression validation testing.
-
----
-
-## Technical Execution & System Architecture
-
-DesiDiet is designed around an AI-Native 5-Layer model that decouples integration, business logic, semantic optimization, and knowledge databases:
-
-![DesiDiet System Architecture](docs/architecture_diagram.png)
-
-### Production-Ready Features
-*   **High Performance:** Sub-50ms latency for cached queries, supported by real-time streaming SSE chat.
-*   **Robust Session Memory:** Uses Prisma connected to a reliable PostgreSQL instance for strict database schema verification and data integrity.
-*   **Audio/Vision Input Verification:** Users can submit voice recordings (transcribed via Whisper) or food images. The system maps raw LLM visual tags back to database-verified food items—ensuring that only verified food codes are logged to the PostgreSQL database, blocking hallucinated food logs entirely.
-*   **Upcoming Version Roadmap:** A clinical family planning and maternal health module is slated for the upcoming release to offer targeted nutritional plans for mother and child health.
-
 
 ---
 
