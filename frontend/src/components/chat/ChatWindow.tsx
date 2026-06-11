@@ -34,6 +34,7 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useChatActions } from '../../contexts/ChatActionContext';
 import { DashboardLayout } from '../layout/DashboardLayout';
 import { ProModal } from '../ui/ProModal';
+import { WhatsAppConnectModal } from '../whatsapp/WhatsAppConnectModal';
 
 import { chatApi, groceryApi, type ChatHistoryItem, isAuthenticated, type MealTrackingResponse } from '../../lib/api';
 
@@ -116,6 +117,7 @@ export const ChatWindow = () => {
   const { isPro, canSendMessage, messageCount, incrementMessageCount, FREE_MESSAGE_LIMIT } = useSubscription();
   const { navigateTo, showToast } = useChatActions();
   const [showProModal, setShowProModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -680,11 +682,7 @@ export const ChatWindow = () => {
       headerActions={(
         <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              const phone = '8801410249676';
-              const message = encodeURIComponent('হ্যালো PushtiAI! আমি পুষ্টি সম্পর্কে জানতে চাই।');
-              window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-            }}
+            onClick={() => setShowWhatsAppModal(true)}
             className="p-2 md:p-3 bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm"
             title="Chat on WhatsApp"
           >
@@ -1235,6 +1233,7 @@ export const ChatWindow = () => {
           </div>
         </div>
       </div>
+      <WhatsAppConnectModal isOpen={showWhatsAppModal} onClose={() => setShowWhatsAppModal(false)} />
     </DashboardLayout>
   );
 };
