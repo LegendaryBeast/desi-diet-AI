@@ -127,11 +127,16 @@ The system processes all user interactions via a 6-stage sequential workflow:
 
 ## Database Schema
 
-The system relies on a dual-schema storage design:
-*   **PostgreSQL Relational Schema:** Details user profiles, daily calorie targets, weight charts, and meal tracking logs.
-*   **Neo4j Graph Database Schema:** Models direct relationships between diseases, micro/macro nutrients, and local food items, serving as the source of truth for safe food verification.
+The system relies on a dual-schema storage design to partition user transactional logs from clinical rules:
 
-Refer to the database visualization files in the `docs/` directory for full entity-relationship layouts.
+### 1. PostgreSQL Relational Schema
+Details user profiles, daily calorie targets, weight charts, and meal tracking logs.
+<img src="docs/postgres_schema.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px;"/>
+
+### 2. Neo4j Graph Database Schema
+Models direct relationships between diseases, micro/macro nutrients, and local food items, serving as the source of truth for safe food verification.
+<img src="docs/neo4j_schema.png" width="100%" style="border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/>
+
 
 ---
 
