@@ -9,7 +9,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { colors, fonts, spacing, radius } from '../../lib/theme';
 import {
   Send, Bot, Sparkles, CalendarDays, TrendingUp, Flame, ChevronRight,
-  Image as ImageIcon, Mic, Camera, Crown, X, FileText, Download, Trash2
+  Image as ImageIcon, Mic, Camera, Crown, X, FileText, Download, Trash2,
+  ShoppingCart
 } from 'lucide-react-native';
 import { API_BASE_URL, profileApi, chatApi } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -75,6 +76,7 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const haptics = useHaptics();
   const prefillSent = useRef(false);
+  const [visibleGroceryMsgIds, setVisibleGroceryMsgIds] = useState<Set<string>>(new Set());
 
   // Subscription state
   const { isPro, canSendMessage, messageCount, incrementMessageCount, FREE_MESSAGE_LIMIT } = useSubscription();
@@ -555,7 +557,34 @@ export default function ChatScreen() {
                 <ToolResultCard result={item.toolResult} isBn={language === 'bn'} />
               )}
               {item.groceryData && (
-                <GroceryCard data={item.groceryData} isBn={language === 'bn'} />
+                <View style={{ marginTop: 8 }}>
+                  <TouchableOpacity
+                    style={styles.groceryToggleBtn}
+                    onPress={() => {
+                      haptics.light();
+                      setVisibleGroceryMsgIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(item.id)) {
+                          next.delete(item.id);
+                        } else {
+                          next.add(item.id);
+                        }
+                        return next;
+                      });
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <ShoppingCart size={14} color={colors.white} />
+                    <Text style={styles.groceryToggleBtnText}>
+                      {visibleGroceryMsgIds.has(item.id)
+                        ? (language === 'bn' ? 'কেনাকাটার সাজেশন লুকান' : 'Hide Grocery Suggestions')
+                        : (language === 'bn' ? 'কেনাকাটার সাজেশন দেখুন' : 'See Grocery Suggestions')}
+                    </Text>
+                  </TouchableOpacity>
+                  {visibleGroceryMsgIds.has(item.id) && (
+                    <GroceryCard data={item.groceryData} isBn={language === 'bn'} />
+                  )}
+                </View>
               )}
             </View>
           )}
@@ -1305,6 +1334,23 @@ const styles = StyleSheet.create({
   actionCardBtnText: {
     fontFamily: fonts.bnBold,
     fontSize: 12.5,
+    color: colors.white,
+  },
+  groceryToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  groceryToggleBtnText: {
+    fontFamily: fonts.bnBold,
+    fontSize: 13,
     color: colors.white,
   },
 });
