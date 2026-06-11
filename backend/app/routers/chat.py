@@ -74,6 +74,12 @@ TOOL_DISPATCH = {
     "personal_cooker_chat": (chat_tools.tool_personal_cooker_chat, True),
 }
 
+# Tools that mutate user data — after these run we MUST rebuild context
+_MUTATING_TOOLS = {
+    "update_profile", "log_health", "log_meal",
+    "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
+}
+
 
 async def perform_meal_logging(user_id: str, input_text: str, meal_slot: str, language: str) -> dict:
     from app.utils import to_json_string
@@ -902,11 +908,6 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                                 existing["function"]["arguments"] += tc.function.arguments
 
             # If tool calls were requested, execute them
-            # Tools that mutate user data — after these run we MUST rebuild context
-            _MUTATING_TOOLS = {
-                "update_profile", "log_health", "log_meal",
-                "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
-            }
             if tool_calls:
                 formatted_tool_calls = []
                 tool_results = []
