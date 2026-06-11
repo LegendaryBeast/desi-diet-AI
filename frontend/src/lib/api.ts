@@ -1010,6 +1010,12 @@ export const groceryApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  trackClick: (data: { item_name: string; platform: string; price_bdt?: number; chat_message_id?: string }) =>
+    apiFetch<{ success: boolean; suggestion_id: string }>('/groceries/track-click', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ─── Personal Cooker ─────────────────────────────────────────────────────────

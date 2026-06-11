@@ -15,6 +15,32 @@ import httpx
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimation: ~4 chars per token."""
+    return max(1, len(text) // 4)
+
+
+async def _record_token_usage(user_id: str, feature: str, prompt_text: str, completion_text: str):
+    """Record estimated token usage for a user."""
+    try:
+        prompt_tokens = _estimate_tokens(prompt_text)
+        completion_tokens = _estimate_tokens(completion_text)
+        total_tokens = prompt_tokens + completion_tokens
+        cost_usd = round(total_tokens * 0.000002, 6)  # ~$2 per 1M tokens
+        await prisma.tokenusage.create(
+            data={
+                "userId": user_id,
+                "feature": feature,
+                "promptTokens": prompt_tokens,
+                "completionTokens": completion_tokens,
+                "totalTokens": total_tokens,
+                "costUSD": cost_usd,
+            }
+        )
+    except Exception:
+        pass  # Don't fail the chat if token tracking fails
+
 from app.services.diet_plan_chat_service import (
     COLLECTION_SYSTEM_PROMPT,
     extract_collected_data,
@@ -1069,6 +1095,10 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                     )
                 except Exception as e:
                     logger.warning("Failed to store assistant chat message in DB: %s", e)
+                
+                # Record token usage
+                all_prompt = "\n".join([m.get("content", "") for m in messages if isinstance(m.get("content"), str)])
+                await _record_token_usage(current_user.id, "chat", all_prompt, assistant_response)
 
         except Exception as e:
             logger.exception("LLM chat stream failed: %s", e)
@@ -1229,6 +1259,10 @@ async def diet_plan_session(req: DietPlanChatRequest, current_user=Depends(get_c
             except Exception as e:
                 err_msg = "পরিকল্পনা তৈরি করতে সমস্যা হয়েছে।" if req.language == "bn" else "Failed to generate plan."
                 yield f"data: {json.dumps({'error': err_msg})}\n\n"
+
+        # Record token usage for diet plan session
+        all_prompt = "\n".join([m.get("content", "") for m in messages if isinstance(m.get("content"), str)])
+        await _record_token_usage(current_user.id, "meal_plan", all_prompt, full_response)
 
         yield f"data: {json.dumps({'done': True})}\n\n"
 

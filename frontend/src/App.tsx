@@ -18,6 +18,7 @@ import { PersonalCooker } from './pages/PersonalCooker';
 import { MealTracking } from './pages/MealTracking';
 import { GroceryPage } from './pages/GroceryPage';
 import { MealBuilder } from './pages/MealBuilder';
+import BusinessDashboardEntry from './business-dashboard';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { PageLoader } from './components/ui/PageLoader';
@@ -29,14 +30,14 @@ import { useLocation } from 'react-router-dom';
 
 const ConditionalNav = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker', '/meal-tracking', '/grocery', '/meal-builder'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker', '/meal-tracking', '/grocery', '/meal-builder', '/business-dashboard'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Nav />;
 };
 
 const ConditionalFooter = () => {
   const location = useLocation();
-  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker', '/meal-tracking', '/grocery', '/meal-builder'];
+  const hidePaths = ['/dashboard', '/chat', '/meal-plan', '/health-log', '/profile', '/medicine', '/foods', '/report', '/micronutrients', '/docs', '/personal-cooker', '/meal-tracking', '/grocery', '/meal-builder', '/business-dashboard'];
   if (hidePaths.some(p => location.pathname.startsWith(p))) return null;
   return <Footer />;
 };
@@ -93,6 +94,7 @@ function AppRoutes() {
                 <Route path="/report" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
                 <Route path="/micronutrients" element={<ProtectedRoute><Micronutrients /></ProtectedRoute>} />
               <Route path="/personal-cooker" element={<ProtectedRoute><PersonalCooker /></ProtectedRoute>} />
+              <Route path="/business-dashboard/*" element={<BusinessDashboardEntry />} />
               </Routes>
             </main>
             <ConditionalFooter />

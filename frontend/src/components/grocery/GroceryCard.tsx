@@ -72,6 +72,7 @@ interface GroceryCardProps {
   userLng?: number;
   onClose?: () => void;
   isBn?: boolean;
+  onPlatformClick?: (itemName: string, platform: string, priceBdt: number) => void;
 }
 
 const LS_CART_KEY = 'desidiet_grocery_cart';
@@ -93,7 +94,7 @@ function saveCart(cart: CartItem[]) {
   }
 }
 
-export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true }: GroceryCardProps) => {
+export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true, onPlatformClick }: GroceryCardProps) => {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -353,7 +354,7 @@ export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true }: Gr
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <PriceComparison offers={item.offers} isCompact />
+                    <PriceComparison offers={item.offers} isCompact onPlatformClick={(platform, price) => onPlatformClick?.(isBn ? item.name_bn : item.name_en, platform, price)} />
                     {/* Add-to-cart quick button */}
                     <button
                       onClick={(e) => {
@@ -393,7 +394,7 @@ export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true }: Gr
                       className="overflow-hidden"
                     >
                       <div className="pt-3 pb-1">
-                        <PriceComparison offers={item.offers} />
+                        <PriceComparison offers={item.offers} onPlatformClick={(platform, price) => onPlatformClick?.(isBn ? item.name_bn : item.name_en, platform, price)} />
                       </div>
                       {/* Quick action row */}
                       <div className="flex items-center gap-2 mt-2 pb-1">

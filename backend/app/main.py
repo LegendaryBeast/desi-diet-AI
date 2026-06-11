@@ -14,6 +14,7 @@ from app.db import lifespan
 from app.routers import (
     auth, profile, health_log, meal_plan, chat, foods, report,
     meal_tracking, medicine, meal_builder, groceries, docs, whatsapp,
+    admin,
 )
 from app.personal_cooker.router import router as personal_cooker_router
 from app.models.schemas import UserProfile as JournalUserProfile, DietPlanResponse as JournalDietPlanResponse
@@ -50,6 +51,7 @@ app.include_router(groceries.router, prefix="/groceries", tags=["Groceries"])
 app.include_router(docs.router, prefix="/docs-api", tags=["Documentation"])
 app.include_router(personal_cooker_router, tags=["Personal Cooker"])
 app.include_router(whatsapp.router, tags=["WhatsApp"])
+app.include_router(admin.router, prefix="/admin-api", tags=["Admin Dashboard"])
 
 
 # --- Q1 Journal Endpoints ---

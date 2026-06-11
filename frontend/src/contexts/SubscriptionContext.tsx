@@ -2,22 +2,45 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 
 const FREE_MESSAGE_LIMIT = 3;
 
+export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'premium';
+
+interface PlanConfig {
+  aiTokenQuota: number;
+  maxSavedMeals: number;
+  maxFamilyMembers: number;
+}
+
+const PLAN_CONFIGS: Record<SubscriptionTier, PlanConfig> = {
+  free: { aiTokenQuota: 1000, maxSavedMeals: 3, maxFamilyMembers: 1 },
+  basic: { aiTokenQuota: 10000, maxSavedMeals: 20, maxFamilyMembers: 2 },
+  pro: { aiTokenQuota: 50000, maxSavedMeals: 100, maxFamilyMembers: 4 },
+  premium: { aiTokenQuota: 200000, maxSavedMeals: 999, maxFamilyMembers: 8 },
+};
+
 interface SubscriptionContextValue {
   isPro: boolean;
-  subscribe: () => void;
+  tier: SubscriptionTier;
+  subscribe: (tier?: SubscriptionTier) => void;
   unsubscribe: () => void;
   messageCount: number;
   incrementMessageCount: () => void;
   resetMessageCount: () => void;
   canSendMessage: boolean;
   FREE_MESSAGE_LIMIT: number;
+  tokenQuota: number;
+  tokensUsed: number;
+  incrementTokensUsed: (count: number) => void;
+  planConfig: PlanConfig;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isPro, setIsPro] = useState(() => {
-    return localStorage.getItem('desidiet_subscription') === 'pro';
+  const [tier, setTier] = useState<SubscriptionTier>(() => {
+    const saved = localStorage.getItem('desidiet_subscription_tier');
+    if (saved && ['free', 'basic', 'pro', 'premium'].includes(saved)) return saved as SubscriptionTier;
+    // Legacy fallback
+    return localStorage.getItem('desidiet_subscription') === 'pro' ? 'pro' : 'free';
   });
 
   const [messageCount, setMessageCount] = useState(() => {
@@ -25,18 +48,41 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return saved ? parseInt(saved, 10) : 0;
   });
 
+  const [tokensUsed, setTokensUsed] = useState(() => {
+    const saved = localStorage.getItem('desidiet_tokens_used');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const isPro = tier !== 'free';
+  const planConfig = PLAN_CONFIGS[tier];
+
   useEffect(() => {
     localStorage.setItem('desidiet_chat_count', String(messageCount));
   }, [messageCount]);
 
-  const subscribe = useCallback(() => {
-    localStorage.setItem('desidiet_subscription', 'pro');
-    setIsPro(true);
+  useEffect(() => {
+    localStorage.setItem('desidiet_tokens_used', String(tokensUsed));
+  }, [tokensUsed]);
+
+  useEffect(() => {
+    localStorage.setItem('desidiet_subscription_tier', tier);
+    // Legacy sync
+    if (tier === 'pro' || tier === 'premium') {
+      localStorage.setItem('desidiet_subscription', 'pro');
+    } else {
+      localStorage.removeItem('desidiet_subscription');
+    }
+  }, [tier]);
+
+  const subscribe = useCallback((newTier: SubscriptionTier = 'pro') => {
+    localStorage.setItem('desidiet_subscription_tier', newTier);
+    setTier(newTier);
   }, []);
 
   const unsubscribe = useCallback(() => {
+    localStorage.removeItem('desidiet_subscription_tier');
     localStorage.removeItem('desidiet_subscription');
-    setIsPro(false);
+    setTier('free');
   }, []);
 
   const incrementMessageCount = useCallback(() => {
@@ -48,12 +94,18 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.setItem('desidiet_chat_count', '0');
   }, []);
 
+  const incrementTokensUsed = useCallback((count: number) => {
+    setTokensUsed((prev) => prev + count);
+  }, []);
+
+  // Free tier: 3 messages limit. Paid tiers: unlimited messages but token quota applies
   const canSendMessage = isPro || messageCount < FREE_MESSAGE_LIMIT;
 
   return (
     <SubscriptionContext.Provider
       value={{
         isPro,
+        tier,
         subscribe,
         unsubscribe,
         messageCount,
@@ -61,6 +113,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         resetMessageCount,
         canSendMessage,
         FREE_MESSAGE_LIMIT,
+        tokenQuota: planConfig.aiTokenQuota,
+        tokensUsed,
+        incrementTokensUsed,
+        planConfig,
       }}
     >
       {children}

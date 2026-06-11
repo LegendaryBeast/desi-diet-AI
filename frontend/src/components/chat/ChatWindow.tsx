@@ -960,6 +960,9 @@ export const ChatWindow = () => {
                             )
                           )
                         }
+                        onPlatformClick={(itemName, platform, priceBdt) => {
+                          groceryApi.trackClick({ item_name: itemName, platform, price_bdt: priceBdt }).catch(() => {});
+                        }}
                       />
                     )}
                     {/* Grocery Prompt Card */}

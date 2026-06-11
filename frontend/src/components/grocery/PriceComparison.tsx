@@ -22,9 +22,10 @@ interface Offer {
 interface PriceComparisonProps {
   offers: Offer[];
   isCompact?: boolean;
+  onPlatformClick?: (platform: string, priceBdt: number) => void;
 }
 
-export const PriceComparison = ({ offers, isCompact = false }: PriceComparisonProps) => {
+export const PriceComparison = ({ offers, isCompact = false, onPlatformClick }: PriceComparisonProps) => {
   if (!offers || offers.length === 0) return null;
 
   const sorted = [...offers].sort((a, b) => a.price_bdt - b.price_bdt);
@@ -44,6 +45,7 @@ export const PriceComparison = ({ offers, isCompact = false }: PriceComparisonPr
               href={offer.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onPlatformClick?.(offer.platform_id, offer.price_bdt)}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[0.6rem] font-bold border transition-shadow hover:shadow-sm"
@@ -87,6 +89,7 @@ export const PriceComparison = ({ offers, isCompact = false }: PriceComparisonPr
               href={offer.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onPlatformClick?.(offer.platform_id, offer.price_bdt)}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}

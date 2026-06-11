@@ -13,6 +13,7 @@ model User {
   email        String?  @unique
   passwordHash String   @map("password_hash")
   language     String   @default("bn")
+  role         String   @default("user") // user, admin, super_admin
   createdAt    DateTime @default(now()) @map("created_at")
 
   profile              Profile?
@@ -22,6 +23,9 @@ model User {
   mealTrackings        MealTracking[]
   medicineReminders    MedicineReminder[]
   personalCookerChats  PersonalCookerChat[]
+  subscriptions        UserSubscription[]
+  tokenUsages          TokenUsage[]
+  grocerySuggestions   GrocerySuggestion[]
 
   @@map("users")
 }
@@ -142,4 +146,86 @@ model PersonalCookerChat {
 
   @@index([userId, sessionId])
   @@map("personal_cooker_chats")
+}
+
+// ─── Subscription & Business Dashboard Models ─────────────────────────
+
+model SubscriptionPlan {
+  id               String   @id @default(uuid())
+  name             String
+  tier             String   // free, basic, pro, premium
+  priceMonthlyBDT  Int      @map("price_monthly_bdt")
+  priceYearlyBDT   Int      @map("price_yearly_bdt")
+  features         String   // JSON array of strings
+  aiTokenQuota     Int      @map("ai_token_quota")
+  maxSavedMeals    Int      @map("max_saved_meals")
+  maxFamilyMembers Int      @map("max_family_members")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  subscriptions    UserSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model UserSubscription {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String   @map("plan_id")
+  plan               SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  status             String   // trial, active, cancelled, expired, past_due
+  startedAt          DateTime @default(now()) @map("started_at")
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelReason       String?  @map("cancel_reason")
+  mrrBDT             Int      @default(0) @map("mrr_bdt")
+  paymentMethod      String?  @map("payment_method") // bkash, nagad, card, rocket, ssl
+  autoRenew          Boolean  @default(true) @map("auto_renew")
+  trialEndsAt        DateTime? @map("trial_ends_at")
+
+  @@map("user_subscriptions")
+}
+
+model TokenUsage {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date             DateTime @default(now())
+  feature          String   // chat, meal_plan, recipe, voice, nutrition_scan
+  promptTokens     Int      @default(0) @map("prompt_tokens")
+  completionTokens Int      @default(0) @map("completion_tokens")
+  totalTokens      Int      @default(0) @map("total_tokens")
+  costUSD          Float    @default(0) @map("cost_usd")
+
+  @@map("token_usages")
+}
+
+model GrocerySuggestion {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatMessageId String? @map("chat_message_id")
+
+  itemName     String   @map("item_name")
+  platform     String   // chaldal, kiksha, rokomari, daraz, etc.
+  priceBDT     Float?   @map("price_bdt")
+  clickedAt    DateTime @default(now()) @map("clicked_at")
+  purchasedAt  DateTime? @map("purchased_at")
+
+  @@map("grocery_suggestions")
+}
+
+model AdminAccessLog {
+  id         String   @id @default(uuid())
+  ipAddress  String?  @map("ip_address")
+  accessedAt DateTime @default(now()) @map("accessed_at")
+  success    Boolean
+  password   String?  // hashed or masked for debugging
+
+  @@map("admin_access_logs")
 }

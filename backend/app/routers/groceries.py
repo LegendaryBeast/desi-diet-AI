@@ -2,11 +2,20 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
+from pydantic import BaseModel
 from app.dependencies import get_current_user
+from app.db import prisma
 from app.services.grocery_service import suggest_groceries_for_foods, suggest_groceries_from_chat
 from app.data.shop_locations import get_nearby_shops
 
 router = APIRouter()
+
+
+class TrackGroceryClickRequest(BaseModel):
+    item_name: str
+    platform: str
+    price_bdt: Optional[float] = None
+    chat_message_id: Optional[str] = None
 
 
 @router.get("/search")
@@ -56,3 +65,48 @@ async def groceries_from_chat(
     if result is None:
         return {"items": [], "nearby_shops": [], "total_items": 0}
     return result
+
+
+@router.post("/track-click")
+async def track_grocery_click(
+    req: TrackGroceryClickRequest,
+    current_user=Depends(get_current_user),
+):
+    """Track when a user clicks a grocery suggestion link."""
+    suggestion = await prisma.grocerysuggestion.create(
+        data={
+            "userId": current_user.id,
+            "chatMessageId": req.chat_message_id,
+            "itemName": req.item_name,
+            "platform": req.platform,
+            "priceBDT": req.price_bdt,
+        }
+    )
+    return {
+        "success": True,
+        "suggestion_id": suggestion.id,
+        "item_name": suggestion.itemName,
+        "platform": suggestion.platform,
+    }
+
+
+@router.post("/track-purchase/{suggestion_id}")
+async def track_grocery_purchase(
+    suggestion_id: str,
+    current_user=Depends(get_current_user),
+):
+    """Mark a grocery suggestion as purchased."""
+    from datetime import datetime, timezone
+    suggestion = await prisma.grocerysuggestion.find_unique(
+        where={"id": suggestion_id}
+    )
+    if not suggestion:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    if suggestion.userId != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your suggestion")
+    
+    updated = await prisma.grocerysuggestion.update(
+        where={"id": suggestion_id},
+        data={"purchasedAt": datetime.now(timezone.utc)},
+    )
+    return {"success": True, "purchased_at": updated.purchasedAt.isoformat() if updated.purchasedAt else None}
