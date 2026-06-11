@@ -667,8 +667,9 @@ export const ChatWindow = () => {
     : (profile?.name_en || profile?.name_bn || user?.email?.split('@')[0] || user?.phone || 'User');
 
   return (
-    <DashboardLayout
-      title={t('chat.title')}
+    <>
+      <DashboardLayout
+        title={t('chat.title')}
       subtitle={t('chat.active_status')}
       noPadding
       headerExtra={(
@@ -707,9 +708,6 @@ export const ChatWindow = () => {
         </div>
       )}
     >
-      {/* Pro Upgrade Modal */}
-      <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger="chat_limit" />
-
       <div className="flex-1 flex flex-col relative max-w-4xl mx-auto w-full min-h-0">
         {/* Soft Background Glows */}
         <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[400px] bg-accent/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none" />
@@ -1233,7 +1231,9 @@ export const ChatWindow = () => {
           </div>
         </div>
       </div>
-      <WhatsAppConnectModal isOpen={showWhatsAppModal} onClose={() => setShowWhatsAppModal(false)} />
     </DashboardLayout>
+    <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger="chat_limit" />
+    <WhatsAppConnectModal isOpen={showWhatsAppModal} onClose={() => setShowWhatsAppModal(false)} />
+  </>
   );
 };
