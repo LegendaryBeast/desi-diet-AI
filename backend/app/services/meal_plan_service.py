@@ -24,7 +24,7 @@ def _is_plain_rice(food: Dict[str, Any]) -> bool:
     if not food:
         return False
     food_group = food.get("food_group", "")
-    if food_group != "Cereals and Millets":
+    if food_group not in ("Cereals and Millets", "Rice Staples"):
         return False
     
     # Read name keys
@@ -48,7 +48,7 @@ def _is_core_staple(food: Dict[str, Any]) -> bool:
     if not food:
         return False
     food_group = food.get("food_group", "")
-    if food_group != "Cereals and Millets":
+    if food_group not in ("Cereals and Millets", "Rice Staples"):
         return False
         
     name_en = (food.get("food_name_en") or food.get("name_en") or "").lower()
@@ -505,6 +505,12 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
     for meal in plan_data.get("meals", []) or []:
         slot_name = meal.get("slot", "").lower()
         allowed_codes = slot_pools.get(slot_name, set()) | slot_pools.get("supplementary", set()) | slot_pools.get("all", set())
+        # Ensure all Rice Staples in safe_foods are in allowed_codes for lunch and dinner
+        if slot_name in ("lunch", "dinner"):
+            for f in safe_foods:
+                if f.get("food_group") == "Rice Staples" and f.get("code"):
+                    allowed_codes.add(f["code"])
+
         if not allowed_codes:
             continue
 
@@ -519,7 +525,7 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
                 continue
             
             # Breakfast: exclude plain rice
-            if slot_name == "breakfast" and _is_plain_rice(food):
+            if slot_name == "breakfast" and (food.get("food_group") == "Rice Staples" or _is_plain_rice(food)):
                 continue
                 
             # Lunch/Dinner: exclude snack/breakfast-only grains
@@ -692,7 +698,7 @@ def _ensure_meal_minimum_items(
     """
     SLOT_MINIMUMS = {"breakfast": 3, "lunch": 4, "dinner": 4, "snack": 2}
     SUPP_GROUPS = {"Fruits", "Dairy & Milk", "Nuts & Seeds"}
-    STAPLE_GROUPS = {"Cereals & Grains", "Cereals", "Cereals and Millets", "Cereals and Cereal Products"}
+    STAPLE_GROUPS = {"Cereals & Grains", "Cereals", "Cereals and Millets", "Cereals and Cereal Products", "Rice Staples"}
     PULSE_GROUPS = {"Pulses & Legumes", "Grain Legumes", "Pulse and Pulse Products"}
     PROTEIN_GROUPS = {"Fish & Seafood", "Meat & Poultry", "Eggs", "Egg and Egg Products",
                       "Animal Meat", "Poultry", "Fresh Water Fish and Shellfish", "Marine Fish",
@@ -984,11 +990,66 @@ def _ensure_balanced_food_list(rag: KhadokGraphRAG, rag_foods: List[Dict[str, An
     and includes essential micronutrient-dense foods (eggs, milk, lentils, spinach, guava)
     so the LLM can build calorie-sufficient and nutrient-complete meal plans.
     """
-    existing_codes = {f["code"] for f in rag_foods if f.get("code")}
-    existing_groups = {f["food_group"] for f in rag_foods}
+    # 0. Always ensure plain rice (Rice Staples) is present in safe_foods
+    # This is critical so the LLM always has authentic rice options for lunch/dinner.
+    # We also update any existing plain rice foods to have food_group = "Rice Staples".
+    for f in rag_foods:
+        if _is_plain_rice(f):
+            f["food_group"] = "Rice Staples"
 
     driver = rag.get_neo4j_driver()
     supplemental = []
+
+    try:
+        with driver.session() as session:
+            rice_result = session.run("""
+                MATCH (f:Food)-[:BELONGS_TO]->(fg:FoodGroup)
+                WHERE fg.name_en IN ["Cereals and Millets", "Cereals", "Cereals & Grains"]
+                  AND (toLower(f.name_en) CONTAINS "rice" OR f.name_bn CONTAINS "ভাত" OR f.name_bn CONTAINS "চাল" OR f.name_bn CONTAINS "চাউল")
+                  AND NOT toLower(f.name_en) CONTAINS "puffed"
+                  AND NOT toLower(f.name_en) CONTAINS "popped"
+                  AND NOT toLower(f.name_en) CONTAINS "flaked"
+                  AND NOT toLower(f.name_en) CONTAINS "flakes"
+                  AND NOT toLower(f.name_en) CONTAINS "flour"
+                  AND NOT toLower(f.name_en) CONTAINS "bran"
+                  AND NOT toLower(f.name_en) CONTAINS "pulao"
+                  AND NOT toLower(f.name_en) CONTAINS "biryani"
+                  AND NOT toLower(f.name_en) CONTAINS "khichuri"
+                  AND NOT toLower(f.name_en) CONTAINS "payesh"
+                  AND f.is_partial = false
+                RETURN f.code AS code, f.name_en AS name_en,
+                       coalesce(f.name_bn, f.name_en) AS name_bn,
+                       f.energy_kcal AS calories, f.protein_g AS protein,
+                       f.fiber_g AS fiber
+                LIMIT 6
+            """)
+            for rec in rice_result:
+                code = rec["code"]
+                # Update/override existing food if it is already in safe_foods
+                existing_found = False
+                for f in rag_foods:
+                    if f.get("code") == code:
+                        f["food_group"] = "Rice Staples"
+                        existing_found = True
+                        break
+                
+                # If not present, add it to supplemental list
+                if not existing_found and code not in {f.get("code") for f in rag_foods if f.get("code")}:
+                    supplemental.append({
+                        "code":       code or "",
+                        "name_en":    rec["name_en"] or "",
+                        "name_bn":    rec["name_bn"] or rec["name_en"] or "",
+                        "calories":   round(float(rec["calories"] or 0), 1),
+                        "protein":    round(float(rec["protein"]  or 0), 2),
+                        "fiber":      round(float(rec["fiber"]    or 0), 2),
+                        "food_group": "Rice Staples",
+                        "similarity_score": 0.0,
+                    })
+    except Exception as e:
+        print(f"⚠️ Failed to ensure Rice Staples in food list: {e}")
+
+    existing_codes = {f["code"] for f in (rag_foods + supplemental) if f.get("code")}
+    existing_groups = {f["food_group"] for f in (rag_foods + supplemental)}
 
     # 1. Always ensure key micronutrient-dense staples are present
     essential_codes = ["M004", "L002", "B013", "C033", "E028"]
@@ -1169,14 +1230,24 @@ def _build_meal_plan_prompt(
         
         # 🍚 CULTURAL FIX: Rice must NEVER appear in breakfast food list; breakfast/snack-only grains must NEVER appear in lunch/dinner
         if slot == "breakfast":
-            allowed = [f for f in allowed if not _is_plain_rice(f)]
+            allowed = [f for f in allowed if not _is_plain_rice(f) and f.get("food_group") != "Rice Staples"]
         elif slot in ("lunch", "dinner"):
+            # Ensure all Rice Staples in safe_foods are in allowed
+            allowed_codes_set = {f.get("code") for f in allowed if f.get("code")}
+            for f in safe_foods:
+                if f.get("food_group") == "Rice Staples" and f.get("code") not in allowed_codes_set:
+                    allowed.append(f)
+
             # Exclude grains/cereals unless they are explicitly in the slot's codes (not just supplementary)
             allowed_codes_for_slot = slot_pools.get(slot, set()) if slot_pools else set()
             allowed_codes_for_all = slot_pools.get("all", set()) if slot_pools else set()
             filtered_allowed = []
             for f in allowed:
                 f_code = f.get("code")
+                # Rice Staples are always allowed in lunch/dinner
+                if f.get("food_group") == "Rice Staples":
+                    filtered_allowed.append(f)
+                    continue
                 if f.get("food_group") == "Cereals and Millets":
                     if f_code not in allowed_codes_for_slot and f_code not in allowed_codes_for_all:
                         continue
@@ -1187,9 +1258,10 @@ def _build_meal_plan_prompt(
         # Exclude previously suggested codes from the allowed pool to force variety on regeneration.
         # But do NOT avoid core staples (Plain Rice/Roti/Paratha) to prevent meal plan generation failures due to lack of staples.
         if avoid_codes:
-            allowed = [f for f in allowed if f.get("code") not in avoid_codes or _is_core_staple(f)]
+            allowed = [f for f in allowed if f.get("code") not in avoid_codes or _is_core_staple(f) or f.get("food_group") == "Rice Staples"]
         
         # Categorize allowed foods
+        rice_staples = []
         staples = []
         proteins = []
         veggies = []
@@ -1197,7 +1269,9 @@ def _build_meal_plan_prompt(
         
         for f in allowed:
             g = f.get("food_group", "Other")
-            if g in ["Cereals and Millets", "Cereals", "Cereals & Grains"]:
+            if g == "Rice Staples":
+                rice_staples.append(f)
+            elif g in ["Cereals and Millets", "Cereals", "Cereals & Grains"]:
                 staples.append(f)
             elif g in ["Poultry", "Animal Meat", "Marine Fish", "Fresh Water Fish and Shellfish", "Marine Shellfish", "Egg and Egg Products", "Eggs", "Grain Legumes", "Pulses & Legumes"]:
                 proteins.append(f)
@@ -1207,6 +1281,7 @@ def _build_meal_plan_prompt(
                 others.append(f)
                 
         # Sort by graph similarity score (highest first) so LLM sees best-ranked foods
+        rice_staples.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         staples.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         proteins.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
         veggies.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
@@ -1223,6 +1298,7 @@ def _build_meal_plan_prompt(
                     result[i], result[i+1] = result[i+1], result[i]
             return result
         
+        rice_staples = _light_shuffle(rice_staples)
         staples = _light_shuffle(staples)
         proteins = _light_shuffle(proteins)
         veggies = _light_shuffle(veggies)
@@ -1230,8 +1306,11 @@ def _build_meal_plan_prompt(
         
         # Build structured text block — show more foods so LLM has full range
         lines = []
+        if rice_staples:
+            lines.append("  RICE STAPLES (ভাত / পোলাও / চাল) - (Highly recommended/preferred for Lunch and Dinner):")
+            lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in rice_staples[:8]])
         if staples:
-            lines.append("  STAPLES (grains/roti/rice):")
+            lines.append("  WHEAT & OTHER STAPLES (রুটি / পরোটা / সুজি / সেমাই):")
             lines.extend([f"  - {f['name_bn']} ({f['name_en']}): {f.get('calories','N/A')} kcal/100g, {f.get('protein','N/A')}g protein, code: {f['code']}" for f in staples[:12]])
         if proteins:
             lines.append("  PROTEINS (meat/poultry/fish/eggs/lentils):")
@@ -1296,7 +1375,7 @@ CRITICAL RULES:
 8b. For EVERY item, include an "emoji" field with a single appropriate food emoji (e.g. 🍚 rice, 🫓 roti, 🐟 fish, 🍗 chicken, 🥚 egg, 🥬 greens, 🍌 banana, 🥛 milk, 🍲 dal). Pick the most accurate single emoji for that food.
 9. Return ONLY a valid JSON object — no markdown, no extra text outside JSON.
 10. All numeric values must be integers.
-11. Lunch and dinner MUST include a staple grain (Rice/ভাত or Roti/রুটি) from the food list.
+11. Lunch and dinner MUST include a staple grain, strongly trending towards choosing a rice staple from the RICE STAPLES list (Rice/ভাত) for lunch and dinner. Roti/রুটি is acceptable for dinner but rice is highly preferred. Breakfast staple grain MUST be chosen from the WHEAT & OTHER STAPLES list (রুটি, পরোটা, সুজি, সেমাই), NEVER plain rice.
 12. Respect traditional Bangladeshi food pairings. For example, pair Rice (ভাত) with curry (Chicken/Beef/Fish) and Dal (মসুর ডাল), or Roti (রুটি) with Eggs/Dal. Refer to the POPULAR FOOD COMBINATIONS guide provided in the prompt. Do not pair unrelated or mismatching items in a single meal.
 13. VARIETY: Ensure you select different curries, vegetables, and proteins than a typical default plan. Mix it up and provide creative, appetizing combinations!
 13b. DAILY ROTATION (CRITICAL): Do NOT generate the same meal plan every day. Rotate staple grains and proteins across days:
@@ -1306,9 +1385,9 @@ CRITICAL RULES:
     - NEVER repeat the exact same combination of foods on consecutive days.
     - Each day's plan should feel DIFFERENT and appetizing.
 14. MEAL SLOT RULES — STRICTLY ENFORCED:
-    - BREAKFAST (সকালের নাস্তা): Light morning food. Typical Bangladeshi breakfast = Roti/Paratha + Egg/Dal + Tea/Milk. May also include: Semai, Suji, Bread, Banana, seasonal fruits, nuts, milk. NEVER serve rice + fish curry or heavy dal + bhorta for breakfast. Breakfast should NOT look like lunch.
-    - LUNCH (দুপুরের খাবার): Heavy main meal. MUST include: Rice (ভাত) as staple + Dal (মসুর/মুগ ডাল) + Protein curry (Fish/Chicken/Beef/Egg) + Vegetable bhaji/torkari. This is the biggest meal of the day.
-    - DINNER (রাতের খাবার): Substantial but can be lighter than lunch. Options: Rice + Dal + Protein + Veg, OR Roti + Protein curry + Veg. Do NOT serve only fruits or only bread for dinner.
+    - BREAKFAST (সকালের নাস্তা): Light morning food. Typical Bangladeshi breakfast = Roti/Paratha + Egg/Dal + Tea/Milk. May also include: Semai, Suji, Bread, Banana, seasonal fruits, nuts, milk. MUST choose the staple grain from WHEAT & OTHER STAPLES list. NEVER serve plain rice + fish curry or heavy dal + bhorta for breakfast. Breakfast should NOT look like lunch.
+    - LUNCH (দুপুরের খাবার): Heavy main meal. MUST include: a plain rice staple chosen from the RICE STAPLES list + Dal (মসুর/মুগ ডাল) + Protein curry (Fish/Chicken/Beef/Egg) + Vegetable bhaji/torkari. This is the biggest meal of the day.
+    - DINNER (রাতের খাবার): Substantial but can be lighter than lunch. MUST include: either a plain rice staple from the RICE STAPLES list (preferred) or a roti/flour bread from the WHEAT & OTHER STAPLES list + Dal + Protein curry + Veg. Do NOT serve only fruits or only bread for dinner.
     - SNACK: Fruits, nuts, milk, small portions.
 15. MINIMUM ITEMS PER MEAL (CRITICAL): Every meal slot MUST contain at least 3 items, ideally 4. Do NOT generate meals with only 1 or 2 items.
     - BREAKFAST must have: 1 staple (Roti/Paratha/Suji/Semai) + 1 protein (Egg/Dal) + 1 supplementary (Milk/Fruit/Nuts). That's 3 items minimum.
