@@ -178,6 +178,15 @@ export const ChatWindow = () => {
             const localOnly = prev.filter((m) => !historyIds.has(m.id));
             return [...formatted, ...localOnly];
           });
+        } else {
+          // Fallback: if database history is empty, try to restore from localStorage
+          try {
+            const cached = localStorage.getItem('desidiet_chat_messages');
+            if (cached) {
+              const parsed = JSON.parse(cached) as Message[];
+              setMessages((prev) => (prev.length === 0 ? parsed : prev));
+            }
+          } catch { /* ignore */ }
         }
       })
       .catch((err) => {
@@ -451,7 +460,13 @@ export const ChatWindow = () => {
       imageDataUrl: attachedImage?.dataUrl,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => {
+      const next = [...prev, userMsg];
+      try {
+        localStorage.setItem('desidiet_chat_messages', JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
     setInput('');
     setPendingImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -465,10 +480,16 @@ export const ChatWindow = () => {
           ? 'লগইন করুন বা নিবন্ধন করুন আমার সাথে কথা বলতে।'
           : 'Please login or register to chat with me.';
         setIsTyping(false);
-        setMessages((prev) => [
-          ...prev,
-          { id: Date.now() + 1, type: 'ai', text: fallback, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-        ]);
+        setMessages((prev) => {
+          const next = [
+            ...prev,
+            { id: Date.now() + 1, type: 'ai' as const, text: fallback, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+          ];
+          try {
+            localStorage.setItem('desidiet_chat_messages', JSON.stringify(next));
+          } catch { /* ignore */ }
+          return next;
+        });
       }, 1000);
       return;
     }
@@ -477,7 +498,13 @@ export const ChatWindow = () => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Insert placeholder
-    setMessages((prev) => [...prev, { id: aiMsgId, type: 'ai', text: '', time }]);
+    setMessages((prev) => {
+      const next = [...prev, { id: aiMsgId, type: 'ai' as const, text: '', time }];
+      try {
+        localStorage.setItem('desidiet_chat_messages', JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
     setIsTyping(false);
     setIsStreaming(true);
 
@@ -499,9 +526,9 @@ export const ChatWindow = () => {
             isFoodRelatedQuery(textToSend || '') ||
             isFoodRelatedQuery(res.reply || ''));
 
-        // Update the AI message text and intent
-        setMessages((prev) =>
-          prev.map((m) =>
+        // Update the AI message text, intent, and include tool results
+        setMessages((prev) => {
+          let updated = prev.map((m) =>
             m.id === aiMsgId
               ? {
                   ...m,
@@ -510,8 +537,29 @@ export const ChatWindow = () => {
                   showGroceryPrompt: !!shouldOfferGroceryPrompt,
                 }
               : m
-          )
-        );
+          );
+
+          if (res.tool_calls && res.tool_calls.length > 0) {
+            // 1. Check for logged meal
+            const mealLog = res.tool_calls.find((t: any) => t.tool === 'log_meal');
+            if (mealLog) {
+              updated = updated.map((m) => (m.id === aiMsgId ? { ...m, loggedMeal: mealLog.result } : m));
+            }
+
+            // 2. Set toolResult for other tools so they render inline card
+            const otherTool = res.tool_calls.find((t: any) => t.tool !== 'log_meal');
+            if (otherTool) {
+              updated = updated.map((m) => (m.id === aiMsgId ? { ...m, toolResult: otherTool } : m));
+            }
+          }
+
+          // Persist the final updated messages to localStorage!
+          try {
+            localStorage.setItem('desidiet_chat_messages', JSON.stringify(updated));
+          } catch { /* ignore */ }
+
+          return updated;
+        });
 
         if (res.error) {
           setApiError(res.error);
@@ -519,36 +567,6 @@ export const ChatWindow = () => {
 
         // Handle tool calls if any
         if (res.tool_calls && res.tool_calls.length > 0) {
-          // 1. Check for logged meal
-          const mealLog = res.tool_calls.find((t: any) => t.tool === 'log_meal');
-          if (mealLog) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === aiMsgId ? { ...m, loggedMeal: mealLog.result } : m))
-            );
-            window.dispatchEvent(new Event('data:refresh'));
-          }
-
-          // 2. Set toolResult for other tools so they render inline card
-          const otherTool = res.tool_calls.find((t: any) => t.tool !== 'log_meal');
-          if (otherTool) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === aiMsgId ? { ...m, toolResult: otherTool } : m))
-            );
-          }
-
-          // 3. Handle actions
-          res.tool_calls.forEach((t: any) => {
-            if (t.action) {
-              const type = t.action.type;
-              const payload = t.action.payload || {};
-              if (type === 'navigate' && payload.to) {
-                navigateTo(String(payload.to));
-              } else if (type === 'show_toast') {
-                showToast(String(payload.message || ''), (payload.level) || 'info');
-              }
-            }
-          });
-
           // Refresh data on mutating tools
           const mutatingTools = new Set([
             'update_profile',
@@ -562,12 +580,20 @@ export const ChatWindow = () => {
           if (hasMutation) {
             window.dispatchEvent(new Event('data:refresh'));
           }
-        }
 
-        // Persist final messages to localStorage
-        try {
-          localStorage.setItem('desidiet_chat_messages', JSON.stringify(messages));
-        } catch { /* ignore */ }
+          // Handle actions
+          res.tool_calls.forEach((t: any) => {
+            if (t.action) {
+              const type = t.action.type;
+              const payload = t.action.payload || {};
+              if (type === 'navigate' && payload.to) {
+                navigateTo(String(payload.to));
+              } else if (type === 'show_toast') {
+                showToast(String(payload.message || ''), (payload.level) || 'info');
+              }
+            }
+          });
+        }
       })
       .catch((err) => {
         setIsStreaming(false);

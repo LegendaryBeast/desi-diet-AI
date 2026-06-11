@@ -1404,15 +1404,17 @@ async def get_chat_history(current_user=Depends(get_current_user)):
     try:
         messages = await prisma.chatmessage.find_many(
             where={"userId": current_user.id},
-            order={"createdAt": "asc"},
+            order={"createdAt": "desc"},
             take=50
         )
+        # Reverse to return in chronological order (asc)
+        sorted_messages = list(reversed(messages))
         return [{
             "role": msg.role,
             "content": msg.content,
             "id": msg.messageId,
             "groceryData": json.loads(msg.groceryData) if msg.groceryData else None,
-        } for msg in messages]
+        } for msg in sorted_messages]
     except Exception as e:
         logger.exception("Failed to fetch chat history: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch chat history")
@@ -1493,6 +1495,40 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
                 await token_optimizer.save_semantic_cache(req.message, response_data)
             except Exception as cache_save_err:
                 logger.warning("Failed saving to semantic cache: %s", cache_save_err)
+
+        # 4. Save messages to the database to prevent history vanishing
+        if not response_data.get("error"):
+            if req.message:
+                try:
+                    await prisma.chatmessage.create(
+                        data={
+                            "userId": current_user.id,
+                            "role": "user",
+                            "content": req.message,
+                            "intent": response_data.get("intent") or "pusti_ai",
+                        }
+                    )
+                except Exception as e:
+                    logger.warning("Failed to store user chat message in DB (unified): %s", e)
+
+            if response_data.get("reply"):
+                try:
+                    await prisma.chatmessage.create(
+                        data={
+                            "userId": current_user.id,
+                            "role": "assistant",
+                            "content": response_data["reply"],
+                            "intent": response_data.get("intent") or "pusti_ai",
+                        }
+                    )
+                except Exception as e:
+                    logger.warning("Failed to store assistant chat message in DB (unified): %s", e)
+
+            # Record token usage
+            try:
+                await _record_token_usage(current_user.id, "chat_unified", req.message or "", response_data.get("reply") or "")
+            except Exception as token_err:
+                logger.warning("Failed recording token usage in unified chat: %s", token_err)
 
         return response_data
     except Exception as e:
