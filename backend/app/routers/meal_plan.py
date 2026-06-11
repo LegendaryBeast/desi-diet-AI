@@ -454,6 +454,13 @@ async def mark_slot_complete(plan_id: str, req: MarkSlotCompleteRequest, current
         data={"completedSlots": to_json_string(completed_slots)},
     )
     
+    # Synchronize MealTracking logs for all foods in the completed/uncompleted slot
+    try:
+        from app.services.meal_plan_service import sync_meal_logs_for_slot
+        await sync_meal_logs_for_slot(user_id=current_user.id, plan=updated, slot=req.slot, completed=req.completed)
+    except Exception as e:
+        print(f"Failed to sync meal logs on slot completion: {e}")
+    
     if updated and updated.planType == "daily":
         try:
             from app.services.meal_plan_cache import set_cached_meal_plan

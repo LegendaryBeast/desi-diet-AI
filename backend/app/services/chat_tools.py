@@ -192,6 +192,14 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
             where={"planId": plan.planId},
             data={"completedSlots": to_json_string(completed_slots)},
         )
+        
+        # Synchronize MealTracking logs for all foods in the completed/uncompleted slot
+        try:
+            from app.services.meal_plan_service import sync_meal_logs_for_slot
+            await sync_meal_logs_for_slot(user_id=user_id, plan=updated, slot=slot, completed=completed)
+        except Exception as es:
+            logger.warning("Failed to sync meal logs in tool_mark_meal_complete: %s", es)
+
         try:
             from app.services.meal_plan_cache import set_cached_meal_plan
             await set_cached_meal_plan(user_id, today, updated)

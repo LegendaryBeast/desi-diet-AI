@@ -2358,3 +2358,105 @@ async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any]
             print(f"Failed to cache meal plan: {e}")
 
     return plan
+
+
+async def sync_meal_logs_for_slot(user_id: str, plan: Any, slot: str, completed: bool) -> None:
+    """Synchronize MealTracking logs when a planned slot is completed/marked as eaten or unmarked."""
+    import json
+    from datetime import datetime, timedelta, timezone
+    from zoneinfo import ZoneInfo
+    from app.utils import from_json_string, to_json_string
+
+    bd_tz = ZoneInfo("Asia/Dhaka")
+    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
+    # 1. If unmarking, delete the logs for this slot logged today
+    if not completed:
+        await prisma.mealtracking.delete_many(
+            where={
+                "userId": user_id,
+                "mealSlot": slot,
+                "loggedAt": {"gte": today, "lt": today + timedelta(days=1)}
+            }
+        )
+        return
+
+    # 2. If marking completed, extract slot items from planData
+    try:
+        plan_data = json.loads(plan.planData) if isinstance(plan.planData, str) else plan.planData
+    except Exception:
+        plan_data = {}
+
+    meals = plan_data.get("meals", [])
+    target_meal = None
+    for m in meals:
+        if m.get("slot", "").lower() == slot.lower():
+            target_meal = m
+            break
+
+    if not target_meal:
+        return
+
+    items = target_meal.get("items", [])
+    for food in items:
+        food_code = food.get("food_code") or food.get("code") or ""
+        food_name = food.get("name_bn") or food.get("name_en") or ""
+        if not food_name:
+            continue
+
+        # Standardize calories/macros
+        calories = float(food.get("calories") or 0.0)
+        protein = float(food.get("protein_g") or 0.0)
+        carbs = float(food.get("carbs_g") or 0.0)
+        fat = float(food.get("fat_g") or 0.0)
+
+        # Get amount
+        amount_g = 100.0
+        amount_val = food.get("amount_g") or food.get("amount")
+        if amount_val:
+            try:
+                if isinstance(amount_val, str):
+                    amount_g = float("".join(c for c in amount_val if c.isdigit() or c == '.'))
+                else:
+                    amount_g = float(amount_val)
+            except Exception:
+                amount_g = 100.0
+
+        # Check if already logged to prevent duplicates
+        existing_log = await prisma.mealtracking.find_first(
+            where={
+                "userId": user_id,
+                "mealSlot": slot,
+                "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
+                "parsedItems": {"contains": food_name}
+            }
+        )
+        if not existing_log:
+            parsed_item = {
+                "code": food_code,
+                "name": food_name,
+                "amount_g": amount_g,
+                "calories": round(calories, 1),
+                "protein_g": round(protein, 1),
+                "carbs_g": round(carbs, 1),
+                "fat_g": round(fat, 1),
+            }
+            macros = {
+                "protein_g": round(protein, 1),
+                "carbs_g": round(carbs, 1),
+                "fat_g": round(fat, 1),
+            }
+
+            await prisma.mealtracking.create(
+                data={
+                    "userId": user_id,
+                    "inputText": f"📋 [Plan] {food_name}",
+                    "parsedItems": to_json_string([parsed_item]),
+                    "totalCals": int(calories),
+                    "macros": to_json_string(macros),
+                    "feedback": "পরিকল্পিত খাবারটি সফলভাবে আপনার দৈনন্দিন ট্র্যাকিংয়ে যুক্ত করা হয়েছে।",
+                    "mealSlot": slot,
+                    "language": plan.language or "bn",
+                    "loggedAt": datetime.now(timezone.utc)
+                }
+            )
