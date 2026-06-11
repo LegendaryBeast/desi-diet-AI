@@ -1,4 +1,11 @@
-[![Youtube Video Link](https://youtube.com)](https://youtu.be/b_bTzmIBPus)
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank">
+    <img src="https://img.youtube.com/vi/b_bTzmIBPus/maxresdefault.jpg" 
+         alt="Watch the video" 
+         width="560" 
+         style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+  </a>
+</p>
 
 # **DesiDiet — AI-Native Clinical Nutrition & Meal Planning** 
 
