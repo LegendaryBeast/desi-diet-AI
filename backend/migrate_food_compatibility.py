@@ -28,6 +28,12 @@ def migrate(driver):
 
     with driver.session() as session:
 
+        # ── 0. Cleanup old relationships ─────────────────────────────────────
+        print("\n[0/4] Cleaning up old compatibility relationships...")
+        session.run("MATCH ()-[r:HAS_MEAL_SLOT]->() DELETE r")
+        session.run("MATCH ()-[r:BEST_PAIRED_WITH_GROUP]->() DELETE r")
+        print("  ✅ Cleanup complete")
+
         # ── 1. Create MealSlot nodes ─────────────────────────────────────────
         print("\n[1/4] Creating MealSlot nodes...")
         slots = ["breakfast", "lunch", "dinner", "snack", "all"]
@@ -40,7 +46,7 @@ def migrate(driver):
 
         # ── 2. Create/Update :HAS_MEAL_SLOT relationships ────────────────────
         print("\n[2/4] Migrating HAS_MEAL_SLOT relationships...")
-        created = 0
+        batch_slots = []
         for _, row in df.iterrows():
             code = str(row["food_code"]).strip()
             role = str(row["role"]).strip()
@@ -51,22 +57,27 @@ def migrate(driver):
             for slot in slots_for_food:
                 if not slot:
                     continue
-                result = session.run("""
-                    MATCH (f:Food {code: $code})
-                    MATCH (ms:MealSlot {name: $slot})
-                    MERGE (f)-[r:HAS_MEAL_SLOT]->(ms)
-                    ON CREATE SET r.role = $role, r.score = $score, r.notes = $notes
-                    ON MATCH  SET r.role = $role, r.score = $score, r.notes = $notes
-                    RETURN f.code AS code
-                """, code=code, slot=slot, role=role, score=score, notes=notes)
-                if result.single():
-                    created += 1
+                batch_slots.append({
+                    "code": code,
+                    "slot": slot,
+                    "role": role,
+                    "score": score,
+                    "notes": notes
+                })
 
-        print(f"  ✅ {created} HAS_MEAL_SLOT relationships created/updated")
+        session.run("""
+            UNWIND $batch AS row
+            MATCH (f:Food {code: row.code})
+            MATCH (ms:MealSlot {name: row.slot})
+            MERGE (f)-[r:HAS_MEAL_SLOT]->(ms)
+            ON CREATE SET r.role = row.role, r.score = row.score, r.notes = row.notes
+            ON MATCH  SET r.role = row.role, r.score = row.score, r.notes = row.notes
+        """, batch=batch_slots)
+        print(f"  ✅ {len(batch_slots)} HAS_MEAL_SLOT relationships created/updated")
 
         # ── 3. Create :BEST_PAIRED_WITH_GROUP relationships ──────────────────
         print("\n[3/4] Migrating BEST_PAIRED_WITH_GROUP relationships...")
-        paired = 0
+        batch_pairs = []
         for _, row in df.iterrows():
             code = str(row["food_code"]).strip()
             groups_raw = str(row.get("pairs_with_groups", "")).strip()
@@ -75,18 +86,21 @@ def migrate(driver):
                 continue
             groups = [g.strip() for g in groups_raw.split("|") if g.strip()]
             for grp in groups:
-                result = session.run("""
-                    MATCH (f:Food {code: $code})
-                    MATCH (fg:FoodGroup {name_en: $grp})
-                    MERGE (f)-[r:BEST_PAIRED_WITH_GROUP]->(fg)
-                    ON CREATE SET r.score = $score
-                    ON MATCH  SET r.score = $score
-                    RETURN f.code AS code
-                """, code=code, grp=grp, score=score)
-                if result.single():
-                    paired += 1
+                batch_pairs.append({
+                    "code": code,
+                    "grp": grp,
+                    "score": score
+                })
 
-        print(f"  ✅ {paired} BEST_PAIRED_WITH_GROUP relationships created/updated")
+        session.run("""
+            UNWIND $batch AS row
+            MATCH (f:Food {code: row.code})
+            MATCH (fg:FoodGroup {name_en: row.grp})
+            MERGE (f)-[r:BEST_PAIRED_WITH_GROUP]->(fg)
+            ON CREATE SET r.score = row.score
+            ON MATCH  SET r.score = row.score
+        """, batch=batch_pairs)
+        print(f"  ✅ {len(batch_pairs)} BEST_PAIRED_WITH_GROUP relationships created/updated")
 
         # ── 4. Mark supplementary/universal foods ────────────────────────────
         print("\n[4/4] Marking supplementary foods...")

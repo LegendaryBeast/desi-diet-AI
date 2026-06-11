@@ -435,6 +435,14 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
         if not allowed_codes:
             continue
 
+        # 🍚 CULTURAL FIX: Strictly exclude inappropriate grains/staples per slot
+        LUNCH_DINNER_EXCLUDED_GRAINS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
+        BREAKFAST_EXCLUDED_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
+        if slot_name in ("lunch", "dinner"):
+            allowed_codes = allowed_codes - LUNCH_DINNER_EXCLUDED_GRAINS
+        elif slot_name == "breakfast":
+            allowed_codes = allowed_codes - BREAKFAST_EXCLUDED_CODES
+
         corrected_items = []
         for item in meal.get("items", []) or []:
             code = item.get("food_code") or item.get("code") or ""
@@ -748,8 +756,10 @@ def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
     result = {"breakfast": set(), "lunch": set(), "dinner": set(), "supplementary": set()}
     
     # Foods that are culturally INAPPROPRIATE for breakfast (will be removed from breakfast pool)
-    # A015 = আতপ চাল (raw/parboiled rice) — Bangladeshi breakfast is roti/paratha/suji/semai, NEVER rice
-    BREAKFAST_EXCLUDED_CODES = {"A015"}
+    # Bangladeshi breakfast is roti/paratha/suji/semai, NEVER rice
+    BREAKFAST_EXCLUDED_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
+    # Foods that are culturally INAPPROPRIATE for lunch/dinner staples (popcorn, muri, chira, semai, suji, sweet biscuits)
+    LUNCH_DINNER_EXCLUDED_GRAINS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
     
     try:
         with driver.session() as session:
@@ -777,6 +787,15 @@ def _get_slot_separated_foods(driver, safe_food_codes: set) -> Dict[str, set]:
                 if code in result["breakfast"]:
                     result["breakfast"].discard(code)
                     print(f"🍚 Cultural fix: Removed {code} from breakfast slot pool (rice is not a breakfast food)")
+
+            # Remove breakfast/snack-only grains from lunch and dinner
+            for code in LUNCH_DINNER_EXCLUDED_GRAINS:
+                if code in result["lunch"]:
+                    result["lunch"].discard(code)
+                    print(f"🍚 Cultural fix: Removed {code} from lunch slot pool (snack/sweet grain)")
+                if code in result["dinner"]:
+                    result["dinner"].discard(code)
+                    print(f"🍚 Cultural fix: Removed {code} from dinner slot pool (snack/sweet grain)")
 
             # Supplementary = foods marked is_supplementary=true (milk, fruits, etc.)
             supp = session.run("""
@@ -963,9 +982,13 @@ def _build_meal_plan_prompt(
         else:
             allowed = safe_foods[:]
         
-        # 🍚 CULTURAL FIX: Rice (A015) must NEVER appear in breakfast food list
+        # 🍚 CULTURAL FIX: Rice must NEVER appear in breakfast food list; breakfast/snack-only grains must NEVER appear in lunch/dinner
+        RICE_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
+        LUNCH_DINNER_EXCLUDED_GRAINS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
         if slot == "breakfast":
-            allowed = [f for f in allowed if f.get("code") != "A015"]
+            allowed = [f for f in allowed if f.get("code") not in RICE_CODES]
+        elif slot in ("lunch", "dinner"):
+            allowed = [f for f in allowed if f.get("code") not in LUNCH_DINNER_EXCLUDED_GRAINS]
         
         # Categorize allowed foods
         staples = []
@@ -1486,34 +1509,35 @@ def _generate_fallback_meal_plan(
 
     used_codes = set()
 
-    # Breakfast-only cereals (Semolina/Suji, Vermicelli/Semai)
-    BREAKFAST_ONLY_CEREALS = {"A016", "A022", "A023", "A024"}
+    # Breakfast-only cereals (Semolina/Suji, Vermicelli/Semai, popcorn, muri, chira, biscuits, barley, millet)
+    BREAKFAST_ONLY_CEREALS = {"01_0001", "01_0008", "01_0009", "01_0010", "01_0011", "01_0022", "01_0023", "01_0026", "01_0027", "01_0029", "01_0034", "A016", "A022", "A023", "A024"}
     # Rice codes that must NEVER appear at breakfast (cultural rule)
-    BREAKFAST_EXCLUDED_CODES = {"A015"}
+    BREAKFAST_EXCLUDED_CODES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "code"}
+    # Preferred breakfast grains (atta ruti, bread, suji, semai)
+    PREFERRED_BREAKFAST_GRAINS = {"A019", "A018", "01_0002", "01_0003", "01_0032", "01_0042", "A016", "A022", "A023", "A024", "01_0026", "01_0029"}
 
     def pick_slot_specific(cat, slot, used):
         pool = categories.get(cat, [])
         
-        # 0. Hard exclude inappropriate foods for ANY slot
-        pool = [f for f in pool if f["code"] not in BREAKFAST_EXCLUDED_CODES]
-        
         # 1. Slot-based filtering
         if slot in ["lunch", "dinner"]:
-            # Exclude sweet breakfast items
+            # Exclude sweet breakfast/snack-only grains from lunch/dinner
             pool = [f for f in pool if f["code"] not in BREAKFAST_ONLY_CEREALS]
         elif slot == "breakfast":
-            # For breakfast cereals, ONLY allow suji, semai, atta/roti — NEVER rice
-            preferred_bfast_codes = BREAKFAST_ONLY_CEREALS.union({"A019", "A018"})
-            bfast_pool = [f for f in pool if f["code"] in preferred_bfast_codes]
-            if bfast_pool:
-                pool = bfast_pool
-            else:
-                # If preferred items are exhausted, still don't fall back to rice
-                # Force-pick from preferred list even if used globally
-                forced_pool = categories.get(cat, [])
-                forced_pool = [f for f in forced_pool if f["code"] in preferred_bfast_codes]
-                if forced_pool:
-                    pool = forced_pool
+            # Exclude rice from breakfast
+            pool = [f for f in pool if f["code"] not in BREAKFAST_EXCLUDED_CODES]
+            
+            # For breakfast cereals, ONLY allow preferred breakfast grains
+            if cat in ["Cereals and Millets", "Cereals", "Cereals & Grains"]:
+                bfast_pool = [f for f in pool if f["code"] in PREFERRED_BREAKFAST_GRAINS]
+                if bfast_pool:
+                    pool = bfast_pool
+                else:
+                    # If preferred items are exhausted, still don't fall back to rice
+                    forced_pool = categories.get(cat, [])
+                    forced_pool = [f for f in forced_pool if f["code"] in PREFERRED_BREAKFAST_GRAINS]
+                    if forced_pool:
+                        pool = forced_pool
 
         # 2. Protein slot preference
         if cat in ["Fish & Seafood", "Meat & Poultry"] and slot == "breakfast":

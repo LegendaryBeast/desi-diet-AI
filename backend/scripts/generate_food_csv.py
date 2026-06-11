@@ -19,7 +19,7 @@ OUT_PAIRS = "backend/data/food_pairings.csv"
 # ─────────────────────────────────────────────────────────────────────────────
 GROUP_RULES = {
     "Cereals and Millets": (
-        "breakfast,lunch,dinner",
+        "lunch,dinner",
         "staple",
         "Grain Legumes|Animal Meat|Poultry|Marine Fish|Fresh Water Fish and Shellfish|Green Leafy Vegetables|Other Vegetables|Roots and Tubers|Egg and Egg Products|Milk and Milk Products|Spices and Condiments",
         1.0,
@@ -173,11 +173,31 @@ GROUP_RULES = {
 # ─────────────────────────────────────────────────────────────────────────────
 FOOD_OVERRIDES = {
     # Rice variants — primary Bangladeshi staple
-    "01_0017": {"meal_slots": "breakfast,lunch,dinner,snack", "score": 1.0, "notes": "Plain cooked rice (ভাত) — the cornerstone of every Bangladeshi meal. Universal pairing."},
+    "01_0017": {"meal_slots": "lunch,dinner", "score": 1.0, "notes": "Plain cooked rice (ভাত) — the cornerstone of every Bangladeshi meal. Universal pairing."},
     "01_0018": {"meal_slots": "lunch,dinner", "score": 0.95, "notes": "Biriyani rice — festive preparation. Pairs with raita, salad, and meat."},
-    "01_0019": {"meal_slots": "breakfast,lunch,dinner", "score": 0.95, "notes": "Rice flattened/puffed (chira/muri) — used in breakfast or snack with milk, yogurt, or banana."},
-    # Bread/Roti
+    "01_0019": {"meal_slots": "breakfast,snack", "score": 0.95, "notes": "Rice flattened/puffed (chira/muri) — used in breakfast or snack with milk, yogurt, or banana."},
+    # Grains/Cereals slot overrides to prevent sweet/snack foods appearing in lunch/dinner
+    "01_0001": {"meal_slots": "breakfast,snack", "notes": "Barley — typically used for breakfast porridges or snacks."},
     "01_0002": {"meal_slots": "breakfast,dinner", "score": 0.95, "notes": "Bread/roti — breakfast staple. Pairs with egg, dal, vegetables, and milk."},
+    "01_0003": {"meal_slots": "breakfast,dinner", "score": 0.95, "notes": "White bread — breakfast or dinner staple. Pairs with egg, dal, vegetables, and milk."},
+    "01_0008": {"meal_slots": "breakfast,snack", "notes": "Pear millet — eaten as breakfast or snack porridge."},
+    "01_0009": {"meal_slots": "snack", "role": "supplementary", "notes": "Popcorn — snack item only. Not appropriate for breakfast, lunch, or dinner staples."},
+    "01_0010": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Rice flaked (chira) — breakfast or snack item. Often eaten with milk, yogurt, or banana."},
+    "01_0011": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Water-soaked chira — breakfast or snack item. Often eaten with milk, yogurt, or banana."},
+    "01_0022": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Rice popped (khoi) — breakfast or snack item. Often eaten with milk, yogurt, or banana."},
+    "01_0023": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Rice puffed (muri) — breakfast or snack item. Often eaten with milk, yogurt, or banana."},
+    "01_0026": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Wheat semolina (suji) — breakfast or snack item. Often prepared as sweet halwa."},
+    "01_0027": {"meal_slots": "breakfast,snack", "notes": "Sorghum — breakfast or snack grain."},
+    "01_0029": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Wheat vermicelli (semai) — breakfast or snack item. Often prepared as sweet semai."},
+    "01_0032": {"meal_slots": "breakfast,dinner", "notes": "Refined wheat flour (mayda) — used to make roti/paratha for breakfast or dinner."},
+    "01_0034": {"meal_slots": "snack", "role": "supplementary", "notes": "Sweet biscuit — snack item only."},
+    "01_0035": {"meal_slots": "breakfast,lunch,dinner", "notes": "Plain Khichuri — comforting meal suitable for breakfast, lunch, or dinner."},
+    "01_0042": {"meal_slots": "breakfast,dinner", "notes": "Roti — standard wheat flatbread. Breakfast or dinner staple. Pairs with egg, dal, vegetables."},
+    "A016": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Sweet semai (vermicelli) — breakfast or snack item."},
+    "A018": {"meal_slots": "breakfast,dinner", "notes": "Refined wheat flour (mayda) — used for making paratha/roti for breakfast or dinner."},
+    "A022": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Wheat semolina (suji) — breakfast or snack item, typically halwa."},
+    "A023": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Wheat vermicelli (semai) — breakfast or snack item, typically sweet."},
+    "A024": {"meal_slots": "breakfast,snack", "role": "supplementary", "notes": "Wheat vermicelli roasted (semai) — breakfast or snack item, typically sweet."},
     # Ilish (Hilsa) — national fish
     "09_0054": {"meal_slots": "lunch,dinner", "score": 1.0, "notes": "Ilish (Hilsa) — national fish. Sarsha ilish with rice is iconic. Premium pairing."},
     # Mustard oil — key Bangladeshi cooking fat
