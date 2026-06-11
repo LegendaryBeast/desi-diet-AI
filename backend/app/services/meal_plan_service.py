@@ -376,15 +376,40 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
             
             # If this code was already used in this meal, try to pick a different fallback
             if resolved_code in used_codes_in_meal:
-                fallbacks = standard_fallbacks.get(slot_name) or standard_fallbacks["breakfast"]
-                for fb in fallbacks:
-                    fb_code = fb.get("code") or fb.get("food_code") or ""
-                    if fb_code and fb_code not in used_codes_in_meal:
-                        db_food = fb
-                        resolved_code = fb_code
-                        print(f"🔄 Duplicate avoidance: Replaced duplicate with '{fb_code}' ({fb.get('name_en')})")
-                        break
-                # If still duplicate (all fallbacks exhausted), accept it — better than crashing
+                # Try to pick a different food of the same food group from safe_foods / slot pool first!
+                pool = slot_to_safe_foods.get(slot_name) or []
+                replaced = False
+                if pool:
+                    pool_sorted = sorted(pool, key=lambda f: f.get("similarity_score", 0), reverse=True)
+                    for f in pool_sorted:
+                        f_code = f.get("code") or f.get("food_code") or ""
+                        if f_code and f_code not in used_codes_in_meal:
+                            if f.get("food_group") == db_food.get("food_group"):
+                                db_food = f
+                                resolved_code = f_code
+                                replaced = True
+                                print(f"🔄 Duplicate avoidance (safe_foods same group): Replaced duplicate with '{resolved_code}' ({f.get('name_en')})")
+                                break
+                    if not replaced:
+                        for f in pool_sorted:
+                            f_code = f.get("code") or f.get("food_code") or ""
+                            if f_code and f_code not in used_codes_in_meal:
+                                db_food = f
+                                resolved_code = f_code
+                                replaced = True
+                                print(f"🔄 Duplicate avoidance (safe_foods any group): Replaced duplicate with '{resolved_code}' ({f.get('name_en')})")
+                                break
+                
+                # If still not replaced, fall back to standard_fallbacks
+                if not replaced:
+                    fallbacks = standard_fallbacks.get(slot_name) or standard_fallbacks["breakfast"]
+                    for fb in fallbacks:
+                        fb_code = fb.get("code") or fb.get("food_code") or ""
+                        if fb_code and fb_code not in used_codes_in_meal:
+                            db_food = fb
+                            resolved_code = fb_code
+                            print(f"🔄 Duplicate avoidance (hardcoded): Replaced duplicate with '{fb_code}' ({fb.get('name_en')})")
+                            break
             
             used_codes_in_meal.add(resolved_code)
             
@@ -589,9 +614,14 @@ _MINIMUM_FALLBACKS = {
 }
 
 
-def _ensure_meal_minimum_items(plan_data: Dict[str, Any], avoid_codes: set = None) -> Dict[str, Any]:
+def _ensure_meal_minimum_items(
+    plan_data: Dict[str, Any], 
+    safe_foods: List[Dict[str, Any]], 
+    slot_pools: Dict[str, set] = None, 
+    avoid_codes: set = None
+) -> Dict[str, Any]:
     """
-    Ensures every meal slot meets its minimum item requirement with smart fallback selection.
+    Ensures every meal slot meets its minimum item requirement with smart dynamic fallback selection.
     - Breakfast: min 3 items (staple + protein + supplementary)
     - Lunch: min 4 items (grain + pulse + protein + vegetable)
     - Dinner: min 4 items (grain + pulse + protein + vegetable)
@@ -606,6 +636,11 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any], avoid_codes: set = Non
     VEG_GROUPS = {"Vegetables", "Leafy Vegetables", "Other Vegetables", "Roots & Tubers",
                   "Green Leafy Vegetables", "Roots and Tubers"}
 
+    CORE_STAPLES = {
+        "01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039",
+        "A015", "A018", "A019", "A020"
+    }
+
     def _group_of(item):
         return item.get("food_group", "")
 
@@ -615,16 +650,20 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any], avoid_codes: set = Non
     def _make_item(fb, amount_g=100):
         kcal_per_100g = float(fb.get("calories") or fb.get("energy_kcal") or 0)
         fb_code = fb.get("food_code") or fb.get("code") or ""
+        raw_bn = fb.get("name_bn") or fb.get("name_en") or ""
+        raw_en = fb.get("name_en") or ""
+        raw_group = fb.get("food_group") or ""
+        cooked_bn, cooked_en = _get_cooked_name(raw_bn, raw_en, raw_group)
         return {
             "food_code": fb_code,
             "code": fb_code,
-            "name_bn": fb.get("name_bn", ""),
-            "name_en": fb.get("name_en", ""),
-            "food_group": fb.get("food_group", ""),
+            "name_bn": cooked_bn,
+            "name_en": cooked_en,
+            "food_group": raw_group,
             "calories": round((kcal_per_100g * amount_g) / 100.0),
             "amount_g": amount_g,
             "amount": f"{int(amount_g)}g",
-            "emoji": _validate_emoji({"name_en": fb.get("name_en", ""), "food_group": fb.get("food_group", "")}),
+            "emoji": _validate_emoji({"name_en": cooked_en, "food_group": raw_group}),
         }
 
     for meal in plan_data.get("meals", []) or []:
@@ -634,101 +673,128 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any], avoid_codes: set = Non
         existing_codes.discard("")
         min_items = SLOT_MINIMUMS.get(slot_name, 3)
 
-        fallbacks = _MINIMUM_FALLBACKS.get(slot_name) or _MINIMUM_FALLBACKS.get("breakfast", [])
+        # Build dynamic fallbacks from safe_foods for this slot
+        allowed_codes = set()
+        if slot_pools:
+            allowed_codes = slot_pools.get(slot_name, set()) | slot_pools.get("supplementary", set()) | slot_pools.get("all", set())
         
-        # 🔄 Filter fallbacks to avoid previously recommended items
-        if avoid_codes:
-            CORE_STAPLES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "A018", "A019", "A020"}
-            filtered_fallbacks = [fb for fb in fallbacks if (fb.get("food_code") or fb.get("code")) not in avoid_codes or (fb.get("food_code") or fb.get("code")) in CORE_STAPLES]
-            # Keep filtered list only if we still have enough options
-            if len(filtered_fallbacks) >= min_items:
-                fallbacks = filtered_fallbacks
+        slot_candidates = [f for f in safe_foods if f.get("code") in allowed_codes] if allowed_codes else safe_foods[:]
+        slot_candidates.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
 
-        added = 0
+        def pick_dynamic_candidate(groups, excluded):
+            # 1. Try safe_foods in slot_candidates
+            for f in slot_candidates:
+                f_code = f.get("code") or f.get("food_code") or ""
+                if not f_code or f_code in excluded:
+                    continue
+                if f.get("food_group") in groups:
+                    if not avoid_codes or f_code not in avoid_codes or f_code in CORE_STAPLES:
+                        return f
+            
+            # 2. Try standard fallback list as backup
+            fallbacks = _MINIMUM_FALLBACKS.get(slot_name) or _MINIMUM_FALLBACKS.get("breakfast", [])
+            for fb in fallbacks:
+                fb_code = fb.get("food_code") or fb.get("code") or ""
+                if not fb_code or fb_code in excluded:
+                    continue
+                if fb.get("food_group") in groups:
+                    if not avoid_codes or fb_code not in avoid_codes or fb_code in CORE_STAPLES:
+                        return fb
+            
+            # 3. Last resort fallback (ignore variety constraints)
+            for fb in fallbacks:
+                fb_code = fb.get("food_code") or fb.get("code") or ""
+                if fb_code and fb_code not in excluded:
+                    if fb.get("food_group") in groups:
+                        return fb
+            return None
 
         # ── Phase 1: Enforce REQUIRED categories even if count is already met ──
-        required_added = 0
-        for fb in fallbacks:
-            fb_code = fb.get("food_code") or fb.get("code") or ""
-            if not fb_code or fb_code in existing_codes:
-                continue
-            fb_group = fb.get("food_group", "")
+        # BREAKFAST: MUST have a staple grain (roti/paratha/suji/semai)
+        if slot_name == "breakfast":
+            has_staple = _has_group(items, STAPLE_GROUPS)
+            if not has_staple:
+                chosen_staple = pick_dynamic_candidate(STAPLE_GROUPS, existing_codes)
+                if chosen_staple:
+                    items.append(_make_item(chosen_staple))
+                    existing_codes.add(chosen_staple.get("code") or chosen_staple.get("food_code"))
+                    print(f"📦 Staple fix: Added '{chosen_staple.get('name_bn')}' to breakfast (no staple found)")
 
-            # BREAKFAST: MUST have a staple grain (roti/paratha/suji/semai)
+        # LUNCH/DINNER: MUST have staple + pulse + protein + vegetable
+        if slot_name in ("lunch", "dinner"):
+            has_staple = _has_group(items, STAPLE_GROUPS)
+            has_pulse = _has_group(items, PULSE_GROUPS)
+            has_protein = _has_group(items, PROTEIN_GROUPS)
+            has_veg = _has_group(items, VEG_GROUPS)
+
+            if not has_staple:
+                fb = pick_dynamic_candidate(STAPLE_GROUPS, existing_codes)
+                if fb:
+                    items.append(_make_item(fb)); existing_codes.add(fb.get("code") or fb.get("food_code"))
+                    print(f"📦 Staple fix: Added '{fb.get('name_bn')}' to {slot_name}")
+            if not has_pulse:
+                fb = pick_dynamic_candidate(PULSE_GROUPS, existing_codes)
+                if fb:
+                    items.append(_make_item(fb)); existing_codes.add(fb.get("code") or fb.get("food_code"))
+                    print(f"📦 Pulse fix: Added '{fb.get('name_bn')}' to {slot_name}")
+            if not has_protein:
+                fb = pick_dynamic_candidate(PROTEIN_GROUPS, existing_codes)
+                if fb:
+                    items.append(_make_item(fb)); existing_codes.add(fb.get("code") or fb.get("food_code"))
+                    print(f"📦 Protein fix: Added '{fb.get('name_bn')}' to {slot_name}")
+            if not has_veg:
+                fb = pick_dynamic_candidate(VEG_GROUPS, existing_codes)
+                if fb:
+                    items.append(_make_item(fb)); existing_codes.add(fb.get("code") or fb.get("food_code"))
+                    print(f"📦 Veg fix: Added '{fb.get('name_bn')}' to {slot_name}")
+
+        # ── Phase 2: Reach minimum item count ──
+        for f in slot_candidates:
+            if len(items) >= min_items:
+                break
+            f_code = f.get("code") or f.get("food_code") or ""
+            if not f_code or f_code in existing_codes:
+                continue
+            if avoid_codes and f_code in avoid_codes and f_code not in CORE_STAPLES:
+                continue
+            
+            f_group = f.get("food_group", "")
             if slot_name == "breakfast":
                 has_staple = _has_group(items, STAPLE_GROUPS)
-                if not has_staple:
-                    # Collect all available breakfast staples and pick one randomly
-                    breakfast_staples = [fb for fb in fallbacks if fb.get("food_group", "") in STAPLE_GROUPS and fb.get("food_code") not in existing_codes]
-                    if breakfast_staples:
-                        import random as _staple_rand
-                        chosen_staple = _staple_rand.choice(breakfast_staples)
-                        items.append(_make_item(chosen_staple))
-                        existing_codes.add(chosen_staple.get("food_code"))
-                        required_added += 1
-                        print(f"📦 Staple fix: Added '{chosen_staple.get('name_bn')}' ({chosen_staple.get('food_code')}) to breakfast (no staple found)")
-                    break  # Only add one staple
+                if has_staple and f_group not in SUPP_GROUPS and len(items) >= 2:
+                    continue
 
-            # LUNCH/DINNER: MUST have staple + pulse + protein + vegetable
             if slot_name in ("lunch", "dinner"):
                 has_staple = _has_group(items, STAPLE_GROUPS)
                 has_pulse = _has_group(items, PULSE_GROUPS)
                 has_protein = _has_group(items, PROTEIN_GROUPS)
                 has_veg = _has_group(items, VEG_GROUPS)
+                if not has_pulse and f_group not in PULSE_GROUPS:
+                    continue
+                if not has_protein and f_group not in PROTEIN_GROUPS:
+                    continue
+                if not has_veg and f_group not in VEG_GROUPS:
+                    continue
+                if not has_staple and f_group not in STAPLE_GROUPS:
+                    continue
 
-                if not has_staple and fb_group in STAPLE_GROUPS:
-                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
-                    print(f"📦 Staple fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
-                    break
-                if not has_pulse and fb_group in PULSE_GROUPS:
-                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
-                    print(f"📦 Pulse fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
-                    break
-                if not has_protein and fb_group in PROTEIN_GROUPS:
-                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
-                    print(f"📦 Protein fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
-                    break
-                if not has_veg and fb_group in VEG_GROUPS:
-                    items.append(_make_item(fb)); existing_codes.add(fb_code); required_added += 1
-                    print(f"📦 Veg fix: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name}")
-                    break
+            items.append(_make_item(f))
+            existing_codes.add(f_code)
+            print(f"📦 Minimum items: Added '{f.get('name_bn')}' ({f_code}) to {slot_name} (now {len(items)} items)")
 
-        # ── Phase 2: Reach minimum item count ──
+        # Third pass: if still below minimum, add any non-duplicate fallback from standard fallback pool
+        fallbacks = _MINIMUM_FALLBACKS.get(slot_name) or _MINIMUM_FALLBACKS.get("breakfast", [])
         for fb in fallbacks:
             if len(items) >= min_items:
                 break
             fb_code = fb.get("food_code") or fb.get("code") or ""
-            if not fb_code or fb_code in existing_codes:
-                continue
-            fb_group = fb.get("food_group", "")
+            if fb_code and fb_code not in existing_codes:
+                if not avoid_codes or fb_code not in avoid_codes or fb_code in CORE_STAPLES:
+                    items.append(_make_item(fb))
+                    existing_codes.add(fb_code)
+                    print(f"📦 Minimum items (3rd pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
 
-            # For breakfast: if already has a staple, prefer supplementary
-            if slot_name == "breakfast":
-                has_staple = _has_group(items, STAPLE_GROUPS)
-                if has_staple and fb_group not in SUPP_GROUPS and len(items) >= 2:
-                    continue
-
-            # For lunch/dinner: ensure we have staple, pulse, protein, vegetable
-            if slot_name in ("lunch", "dinner"):
-                has_staple = _has_group(items, STAPLE_GROUPS)
-                has_pulse = _has_group(items, PULSE_GROUPS)
-                has_protein = _has_group(items, PROTEIN_GROUPS)
-                has_veg = _has_group(items, VEG_GROUPS)
-                if not has_pulse and fb_group not in PULSE_GROUPS:
-                    continue
-                if not has_protein and fb_group not in PROTEIN_GROUPS:
-                    continue
-                if not has_veg and fb_group not in VEG_GROUPS:
-                    continue
-                if not has_staple and fb_group not in STAPLE_GROUPS:
-                    continue
-
-            items.append(_make_item(fb))
-            existing_codes.add(fb_code)
-            added += 1
-            print(f"📦 Minimum items: Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
-
-        # Third pass: if still below minimum, add any non-duplicate fallback
+        # Fourth pass: ignore variety constraints for static fallbacks if we still can't satisfy the minimum
         for fb in fallbacks:
             if len(items) >= min_items:
                 break
@@ -736,11 +802,10 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any], avoid_codes: set = Non
             if fb_code and fb_code not in existing_codes:
                 items.append(_make_item(fb))
                 existing_codes.add(fb_code)
-                added += 1
-                print(f"📦 Minimum items (3rd pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
+                print(f"📦 Minimum items (4th pass): Added '{fb.get('name_bn')}' ({fb_code}) to {slot_name} (now {len(items)} items)")
 
         if len(items) < min_items:
-            print(f"⚠️ Could not reach {min_items} items for {slot_name} (has {len(items)}). All fallbacks exhausted or duplicated.")
+            print(f"⚠️ Could not reach {min_items} items for {slot_name} (has {len(items)}). All fallbacks exhausted.")
 
         meal["items"] = items
 
@@ -1946,7 +2011,7 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_
         plan_data = _validate_and_sanitize_meal_plan_foods(plan_data, safe_foods, rag.get_neo4j_driver(), slot_pools)
         plan_data = _enforce_slot_appropriateness(plan_data, slot_pools, safe_foods, avoid_codes=avoid_codes)
         plan_data = _deduplicate_meal_items(plan_data, safe_foods, avoid_codes=avoid_codes)
-        plan_data = _ensure_meal_minimum_items(plan_data, avoid_codes=avoid_codes)
+        plan_data = _ensure_meal_minimum_items(plan_data, safe_foods, slot_pools, avoid_codes=avoid_codes)
         plan_data = _enforce_variety_cache(plan_data, safe_foods, avoid_codes, completed_slots_set)
     except Exception as e:
         print(f"LLM daily meal plan error: {e}")
