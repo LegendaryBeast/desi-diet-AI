@@ -99,6 +99,9 @@ class TokenOptimizer:
 
     async def lookup_semantic_cache(self, query: str) -> Optional[Dict[str, Any]]:
         """Look up a query in the semantic cache. Returns cached response dict if matched."""
+        if not self.is_cacheable(query):
+            return None
+
         query_clean = query.strip().lower()
         if not query_clean:
             return None
