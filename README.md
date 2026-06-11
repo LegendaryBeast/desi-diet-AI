@@ -12,7 +12,6 @@
          style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
   </a>
 </p>
-
 # **DesiDiet — AI-Native Clinical Nutrition & Meal Planning** 
 
 > **Proudly Built for Infinity AI Buildfest 2026 @ BRAC University**
