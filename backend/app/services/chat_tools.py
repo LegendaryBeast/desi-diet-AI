@@ -590,7 +590,6 @@ async def tool_generate_meal_plan(user_id: str, args: Dict[str, Any] = None) -> 
             plan_data=new_plan_data,
             target_date=today,
             language=language,
-            completed_slots=completed_slots
         )
         
         # Return the generated plan
