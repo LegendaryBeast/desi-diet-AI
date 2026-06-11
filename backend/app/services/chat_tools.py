@@ -99,7 +99,11 @@ async def tool_get_meal_plan(user_id: str, args: Dict[str, Any] = None) -> Dict[
     bd_tz = ZoneInfo("Asia/Dhaka")
     today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     plan = await prisma.mealplan.find_first(
-        where={"userId": user_id, "planDate": {"gte": today}},
+        where={
+            "userId": user_id,
+            "planType": "daily",
+            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+        },
         order={"createdAt": "desc"},
     )
     if not plan or not plan.planData:
@@ -128,7 +132,11 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
     bd_tz = ZoneInfo("Asia/Dhaka")
     today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     plan = await prisma.mealplan.find_first(
-        where={"userId": user_id, "planDate": {"gte": today}},
+        where={
+            "userId": user_id,
+            "planType": "daily",
+            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+        },
         order={"createdAt": "desc"},
     )
     if not plan:

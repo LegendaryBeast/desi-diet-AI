@@ -429,7 +429,11 @@ async def _build_user_context(current_user_id: str) -> str:
     # ── Today's Meal Plan ─────────────────────────────────────────────────────
     today = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     today_plan = await prisma.mealplan.find_first(
-        where={"userId": current_user_id, "planDate": {"gte": today}},
+        where={
+            "userId": current_user_id,
+            "planType": "daily",
+            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+        },
         order={"createdAt": "desc"},
     )
     if today_plan and today_plan.planData:
@@ -440,6 +444,33 @@ async def _build_user_context(current_user_id: str) -> str:
                 completed_slots = json.loads(today_plan.completedSlots) if isinstance(today_plan.completedSlots, str) else today_plan.completedSlots
             
             lines.append("\n=== TODAY'S MEAL PLAN ===")
+            for meal in plan_data.get("meals", []):
+                status = "✅ Eaten" if meal.get("slot") in completed_slots else "⬜ Pending"
+                items_text = ", ".join(
+                    f"{i.get('name_bn') or i.get('name_en')} ({i.get('calories', '?')} kcal)"
+                    for i in meal.get("items", [])
+                )
+                lines.append(f"[{meal.get('slot_bn') or meal.get('slot')}] {status}: {items_text or 'No items'} (~{meal.get('target_calories', '?')} kcal)")
+        except Exception:
+            pass
+
+    # ── Tomorrow's Meal Plan ──────────────────────────────────────────────────
+    tomorrow_plan = await prisma.mealplan.find_first(
+        where={
+            "userId": current_user_id,
+            "planType": "daily",
+            "planDate": {"gte": today + timedelta(days=1), "lt": today + timedelta(days=2)},
+        },
+        order={"createdAt": "desc"},
+    )
+    if tomorrow_plan and tomorrow_plan.planData:
+        try:
+            plan_data = json.loads(tomorrow_plan.planData) if isinstance(tomorrow_plan.planData, str) else tomorrow_plan.planData
+            completed_slots = []
+            if tomorrow_plan.completedSlots:
+                completed_slots = json.loads(tomorrow_plan.completedSlots) if isinstance(tomorrow_plan.completedSlots, str) else tomorrow_plan.completedSlots
+            
+            lines.append("\n=== TOMORROW'S MEAL PLAN ===")
             for meal in plan_data.get("meals", []):
                 status = "✅ Eaten" if meal.get("slot") in completed_slots else "⬜ Pending"
                 items_text = ", ".join(
