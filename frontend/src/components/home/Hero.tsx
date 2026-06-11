@@ -112,7 +112,7 @@ export const Hero = () => {
             initial={{ opacity: 0, x: 40, scale: 0.97 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="hidden lg:flex flex-col relative self-stretch"
+            className="flex flex-col relative self-stretch"
           >
             {/* Glow */}
             <div className="absolute -inset-3 bg-gradient-to-br from-accent/25 via-transparent to-forest/15 rounded-[2.5rem] blur-2xl opacity-60 pointer-events-none" />
@@ -129,8 +129,8 @@ export const Hero = () => {
                 <span className="font-bn text-[0.65rem] text-ink-faint mx-auto pr-8">DesiDiet — পরিচিতি ভিডিও</span>
               </div>
 
-              {/* 16:9 iframe — fills remaining card height */}
-              <div className="relative flex-1 rounded-xl overflow-hidden min-h-[240px]">
+              {/* 16:9 iframe — fixed ratio on mobile, flex-fill on desktop */}
+              <div className="relative w-full rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                 <iframe
                   className="absolute inset-0 w-full h-full"
                   src="https://www.youtube.com/embed/b_bTzmIBPus"
@@ -143,11 +143,11 @@ export const Hero = () => {
               </div>
             </div>
 
-            {/* Floating badge */}
+            {/* Floating badge — desktop only to avoid mobile overflow */}
             <motion.div
               animate={{ y: [-8, 8, -8] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -left-10 top-16 bg-white border border-ink/5 p-3 rounded-xl shadow-xl flex items-center gap-2 z-10"
+              className="hidden lg:flex absolute -left-10 top-16 bg-white border border-ink/5 p-3 rounded-xl shadow-xl items-center gap-2 z-10"
             >
               <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                 <ShieldCheck size={12} />
