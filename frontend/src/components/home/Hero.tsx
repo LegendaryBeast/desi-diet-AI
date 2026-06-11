@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ShieldCheck, Sparkles, ChevronRight, BookOpen, Utensils } from 'lucide-react';
+import { ShieldCheck, Sparkles, ChevronRight, BookOpen, Utensils, MessageSquare, Zap } from 'lucide-react';
 
 export const Hero = () => {
   const { isLoggedIn } = useAuth();
@@ -142,6 +142,64 @@ export const Hero = () => {
                 />
               </div>
             </div>
+
+            {/* Chat UI Mockup — below video */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4 }}
+              className="relative mt-4 bg-white rounded-[2rem] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-ink/5"
+            >
+              {/* Chat header */}
+              <div className="flex items-center gap-3 mb-4 border-b border-ink/5 pb-4">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-ink flex items-center justify-center text-cream">
+                    <MessageSquare size={16} />
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-ink text-sm">DesiDiet AI</div>
+                  <div className="font-body text-[0.6rem] text-green-500 uppercase tracking-widest mt-0.5">Online</div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="space-y-4 mb-4">
+                <div className="flex justify-end">
+                  <div className="bg-ink text-cream rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%] font-bn text-[0.85rem] leading-relaxed shadow-sm">
+                    আমার ডায়াবেটিস আছে। আজকের জন্য ২,০০০ ক্যালোরির একটি দেশীয় ডায়েট প্ল্যান দাও।
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center text-cream shrink-0 mt-1 shadow-sm">
+                    <MessageSquare size={12} />
+                  </div>
+                  <div className="bg-cream-dark text-ink border border-ink/5 rounded-2xl rounded-tl-sm p-4 font-bn text-[0.85rem] leading-relaxed shadow-sm w-full">
+                    <div className="font-bold text-accent mb-2">সকালের নাস্তা (৪০০ ক্যালোরি):</div>
+                    <ul className="space-y-1.5 mb-3 text-ink-muted">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> লাল আটার রুটি - ২টি (১২০ গ্রাম)</li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> মিক্সড সবজি ভাজি - ১ বাটি (১৫০ গ্রাম)</li>
+                    </ul>
+                    <div className="font-bold text-accent mb-2 mt-3">দুপুরের খাবার (৬০০ ক্যালোরি):</div>
+                    <ul className="space-y-1.5 text-ink-muted">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> লাল চালের ভাত - ১ কাপ (১৫০ গ্রাম)</li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-accent" /> রুই মাছের ঝোল - ১ পিস (১০০ গ্রাম)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input bar */}
+              <div className="relative">
+                <div className="w-full bg-cream rounded-full pl-5 pr-12 py-3.5 border border-ink/5 flex items-center shadow-inner">
+                  <span className="font-bn text-[0.85rem] text-ink-faint">আপনার প্রশ্ন লিখুন...</span>
+                </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-accent rounded-full flex items-center justify-center text-cream shadow-sm">
+                  <Zap size={14} />
+                </div>
+              </div>
+            </motion.div>
 
             {/* Floating badge — desktop only to avoid mobile overflow */}
             <motion.div
