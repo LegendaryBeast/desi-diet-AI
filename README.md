@@ -1,4 +1,4 @@
-<p align="center">
+<img width="640" height="350" alt="image" src="https://github.com/user-attachments/assets/38158c0c-20a2-4fbe-9546-f9ece1f7ca2c" /><p align="center">
   <a href="https://youtu.be/b_bTzmIBPus" target="_blank">
     <img src="https://img.shields.io/badge/YouTube-Watch%20Video-red?style=for-the-badge&logo=youtube" alt="Play Video" />
   </a>
@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://youtu.be/b_bTzmIBPus" target="_blank">
-    <img src="https://i.ibb.co.com/ns9KwT6K/iframe.jpg" 
+    <img src="https://i.ibb.co.com/TM7L4sZq/iframe.jpg" 
          alt="Watch the video" 
          width="560" 
          style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
