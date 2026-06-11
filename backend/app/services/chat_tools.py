@@ -538,3 +538,70 @@ async def tool_personal_cooker_chat(user_id: str, args: Dict[str, Any]) -> Dict[
     except Exception as e:
         logger.warning("Personal cooker chat failed: %s", e)
         return _err(f"Personal cooker failed: {e}")
+
+
+# ── Regenerate / Generate Meal Plan Tool ──────────────────────────────────────
+
+async def tool_generate_meal_plan(user_id: str, args: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Generate or update/regenerate today's daily meal plan, keeping completed slots unchanged."""
+    bd_tz = ZoneInfo("Asia/Dhaka")
+    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    
+    # 1. Fetch existing plan
+    existing = await prisma.mealplan.find_first(
+        where={
+            "userId": user_id,
+            "planType": "daily",
+            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+        },
+        order={"createdAt": "desc"},
+    )
+    
+    language = "bn"
+    completed_slots = []
+    existing_plan_data = None
+    
+    if existing:
+        language = existing.language or "bn"
+        completed_slots = safe_list(from_json_string(existing.completedSlots)) if existing.completedSlots else []
+        try:
+            existing_plan_data = json.loads(existing.planData) if isinstance(existing.planData, str) else existing.planData
+        except Exception:
+            existing_plan_data = None
+            
+    # If the args specify a target language, respect it
+    if args and args.get("language"):
+        language = args.get("language")
+
+    try:
+        from app.services.meal_plan_service import generate_daily_meal_plan, save_meal_plan
+        # 2. Call generator - it handles preserving completed slots inside the function!
+        new_plan_data = await generate_daily_meal_plan(
+            user_id=user_id,
+            language=language,
+            existing_plan_data=existing_plan_data,
+            completed_slots=completed_slots
+        )
+        
+        # 3. Save the plan using save_meal_plan helper
+        saved_plan = await save_meal_plan(
+            user_id=user_id,
+            plan_type="daily",
+            plan_data=new_plan_data,
+            target_date=today,
+            language=language,
+            completed_slots=completed_slots
+        )
+        
+        # Return the generated plan
+        return _ok({
+            "message": "Today's meal plan has been generated/regenerated successfully.",
+            "meals": new_plan_data.get("meals", []),
+            "target_calories": saved_plan.calorieTarget,
+            "completed_slots": completed_slots,
+            "macros": new_plan_data.get("macros", {}),
+        })
+    except Exception as e:
+        logger.error("Failed to generate meal plan in tool_generate_meal_plan: %s", e)
+        return _err(f"Failed to generate meal plan: {str(e)}")
+

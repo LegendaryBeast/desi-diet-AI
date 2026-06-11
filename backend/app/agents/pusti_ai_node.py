@@ -72,6 +72,7 @@ ANY question that combines food/eating with a health condition IS in scope.
 6. HEALTH REPORT: If user asks for report, summarise from context AND append [HEALTH_REPORT_LINK].
 7. Always use values from the Graph-RAG context below — never invent nutrition values.
 8. Use tools proactively for actions (profile, plan, reminders, navigation).
+9. REGENERATION/NEW MEAL PLAN: If the user asks for a new meal plan, requests to try a new plan, or wants to update/regenerate their current plan, you MUST call the `generate_meal_plan` tool. This will dynamically generate a new plan (preserving any meals/slots they have already marked as eaten) and update their active plan.
 
 === USER'S COMPLETE CONTEXT ===
 {early_summary_context}
@@ -94,6 +95,7 @@ PUSTI_TOOLS = [
     {"type": "function", "function": {"name": "get_food_safety", "description": "Check if a food is safe for the user's conditions.", "parameters": {"type": "object", "properties": {"food_name": {"type": "string"}}, "required": ["food_name"]}}},
     {"type": "function", "function": {"name": "navigate_to", "description": "Navigate the app to a page.", "parameters": {"type": "object", "properties": {"page": {"type": "string", "enum": ["home", "profile", "meal-plan", "health-log", "report", "chat", "nutrisaathi"]}}, "required": ["page"]}}},
     {"type": "function", "function": {"name": "show_toast", "description": "Show a toast notification in the app.", "parameters": {"type": "object", "properties": {"message": {"type": "string"}, "type": {"type": "string", "enum": ["success", "error", "info"]}}, "required": ["message"]}}},
+    {"type": "function", "function": {"name": "generate_meal_plan", "description": "Generate a new daily meal plan for today or regenerate it preserving already completed/eaten meals.", "parameters": {"type": "object", "properties": {"language": {"type": "string"}}, "required": []}}},
 ]
 
 

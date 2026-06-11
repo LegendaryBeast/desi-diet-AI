@@ -72,12 +72,14 @@ TOOL_DISPATCH = {
     "navigate_to": (chat_tools.tool_navigate_to, True),
     "show_toast": (chat_tools.tool_show_toast, True),
     "personal_cooker_chat": (chat_tools.tool_personal_cooker_chat, True),
+    "generate_meal_plan": (chat_tools.tool_generate_meal_plan, True),
 }
 
 # Tools that mutate user data — after these run we MUST rebuild context
 _MUTATING_TOOLS = {
     "update_profile", "log_health", "log_meal",
     "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
+    "generate_meal_plan",
 }
 
 
@@ -660,6 +662,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "   - 'Show my medicines' → call get_medicine_reminders\n"
             "   - 'I feel dizzy' → call log_health with symptoms\n"
             "   - 'My blood pressure is 140/90' → call log_health with blood_pressure\n"
+            "   - 'Try new meal plan' or 'give me another meal plan' → call generate_meal_plan\n"
             "Do NOT describe what you would do — actually call the tool.\n\n"
             f"=== USER'S COMPLETE CONTEXT ===\n{user_context}\n"
             f"{rag_food_context}"
@@ -917,6 +920,19 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                     }
                 }
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "generate_meal_plan",
+                    "description": "Generate a new daily meal plan for today or regenerate it preserving already completed/eaten meals. Use when the user explicitly asks for a new meal plan, asks to try a new plan, or wants to regenerate/update their current plan.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "language": {"type": "string", "description": "Preferred language for the meal plan (e.g. bn, en)."}
+                        }
+                    }
+                }
+            },
         ]
 
         # 5. Stream LLM response
@@ -1118,6 +1134,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "   - 'Show my medicines' → call get_medicine_reminders\n"
                         "   - 'I feel dizzy' → call log_health with symptoms\n"
                         "   - 'My blood pressure is 140/90' → call log_health with blood_pressure\n"
+                        "   - 'Try new meal plan' or 'give me another meal plan' → call generate_meal_plan\n"
                         "Do NOT describe what you would do — actually call the tool.\n\n"
                         f"=== USER'S COMPLETE CONTEXT ===\n{fresh_context}\n"
                     )
