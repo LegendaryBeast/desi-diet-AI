@@ -51,6 +51,8 @@ DesiDiet is designed around an AI-Native 5-Layer model that decouples integratio
 
 ![DesiDiet System Architecture](docs/architecture_diagram.png)
 
+<img src="docs/Poster.jpeg" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>
+
 
 ## Dataset & Integration Sources
 
@@ -337,6 +339,13 @@ Chat directly with Pushti AI on WhatsApp without installing any app! Log meals, 
     </td>
   </tr>
 </table>
+
+
+<img src="docs/Scalable_Nutrition_Business_Strategy_Roadmap.png" width="100%" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>
+
+
+
+
 
 
 
