@@ -40,9 +40,13 @@ _LOCAL_SUMMARIES: Dict[str, str] = {}
 # Heuristic list of words indicating personal queries that should NOT be globally cached
 _PERSONAL_KEYWORDS = [
     "i", "me", "my", "mine", "we", "us", "our", "you", "your",
-    "আমি", "আমার", "আমাদের", "তুমি", "তোমার", "লগ", "খেলাম", 
+    "আমি", "আমার", "আমাদের", "তুমি", "তোমার", "লগ", "খেলাম",
     "খাইছি", "খেয়েছি", "পরিকল্পনা", "রিপোর্ট", "remind", "reminder",
-    "medicine", "ওষুধ", "ট্যাবলেট", "ডোজ", "পাসওয়ার্ড", "password"
+    "medicine", "ওষুধ", "ট্যাবলেট", "ডোজ", "পাসওয়ার্ড", "password",
+    # Meal-plan / report keywords — prevent caching user-specific responses
+    "breakfast", "lunch", "dinner", "snack", "meal",
+    "report", "summary", "progress", "log",
+    "খাবার", "আজকের", "খেয়েছি", "খাইছি",
 ]
 
 

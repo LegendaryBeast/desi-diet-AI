@@ -33,6 +33,11 @@ Safety classification rules:
    - The query asks for specific clinical drug recommendations or dosages (e.g. "What dose of Metformin should I take?", "Can I take paracetamol?").
    - The query is completely unrelated to food, diet, nutrition, cooking, health metrics, or lifestyle.
 
+IMPORTANT — These topics ARE in scope and should NOT be rejected:
+   - Requests for personal nutrition/health progress reports or summaries (e.g. "আমার রিপোর্ট দাও", "show my health report", "ক্যালোরি রিপোর্ট দেখাও").
+   - Requests for meal plans or daily diet plans (e.g. "আজকের খাবার কী?", "what should I eat today?", "meal plan দেখাও").
+   - Requests to view or update the user's profile, health logs, weight, blood pressure, or medicine reminders.
+
 Check the user's message language and record it under "language" ("bn" for Bengali, "en" for English).
 """
 

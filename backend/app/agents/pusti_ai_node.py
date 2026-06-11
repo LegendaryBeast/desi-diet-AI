@@ -111,7 +111,9 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
     rag_food_context = await _build_rag_food_context(user_id, message)
 
     # Apply context pruning
-    user_context = token_optimizer.prune_context(user_context, message, max_chars=1200)
+    # Only prune RAG food context; user_context contains critical structured data
+    # (profile, targets, meal plans, health logs) that must never be stripped.
+    user_context = token_optimizer.prune_context(user_context, message, max_chars=3000)
     rag_food_context = token_optimizer.prune_context(rag_food_context, message, max_chars=1200)
 
     # Build early summary context
@@ -259,7 +261,7 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
             if mutated:
                 user_context = await _build_user_context(user_id)
                 # Apply context pruning
-                user_context = token_optimizer.prune_context(user_context, message, max_chars=1200)
+                user_context = token_optimizer.prune_context(user_context, message, max_chars=3000)
                 system_msg = _PUSTI_SYSTEM.format(
                     early_summary_context=early_summary_context,
                     user_context=user_context,
