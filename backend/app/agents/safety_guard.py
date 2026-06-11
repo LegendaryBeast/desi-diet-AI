@@ -14,7 +14,9 @@ from app.core.llm_client import llm_client
 logger = logging.getLogger(__name__)
 
 _SAFETY_GUARD_PROMPT = """You are a security moderator for a Bangladeshi health, diet, and nutrition assistant.
-Analyze the user's latest query and assess its safety and topical scope.
+Analyze the user's latest query in the context of their recent conversation history (if provided) and assess its safety and topical scope.
+
+For short, conversational, or ambiguous queries (e.g. "change this", "change it", "no", "yes", "please", "another one", "অপছন্দ", "ভালো লাগেনি", "change"), refer to the recent conversation history to understand what the user is referring to. If the context is about food, diet, nutrition, or meal plans, classify it as in-scope.
 
 Output EXACTLY this JSON format (no other text or markdown):
 {
@@ -34,6 +36,7 @@ Safety classification rules:
    - The query is completely unrelated to food, diet, nutrition, cooking, health metrics, or lifestyle.
 
 IMPORTANT — These topics ARE in scope and should NOT be rejected:
+   - Requests to modify, regenerate, replace, or customize a meal plan or items in a meal plan (e.g. "change this", "change it", "change the dinner plan", "change it to something else", "আরেকটা দাও", "অপছন্দ", "change").
    - Requests for personal nutrition/health progress reports or summaries (e.g. "আমার রিপোর্ট দাও", "show my health report", "ক্যালোরি রিপোর্ট দেখাও").
    - Requests for meal plans or daily diet plans (e.g. "আজকের খাবার কী?", "what should I eat today?", "meal plan দেখাও").
    - Requests to view or update the user's profile, health logs, weight, blood pressure, or medicine reminders.
@@ -47,9 +50,26 @@ async def safety_guard_node(state: AgentState) -> AgentState:
     if not message:
         return {**state, "intent": "refused", "reply": "Empty message."}
 
+    # Retrieve and construct conversation history context for safety LLM
+    history = state.get("history", [])
+    history_str = ""
+    if history:
+        # Use last 4 turns to provide context for conversational cues
+        recent_history = history[-4:]
+        history_lines = []
+        for h in recent_history:
+            role = "User" if h.get("role") == "user" else "Assistant"
+            content = h.get("content", "")
+            history_lines.append(f"{role}: {content}")
+        history_str = "\n".join(history_lines)
+
+    user_content = message
+    if history_str:
+        user_content = f"Recent Conversation History:\n{history_str}\n\nUser Query: {message}"
+
     messages = [
         {"role": "system", "content": _SAFETY_GUARD_PROMPT},
-        {"role": "user", "content": message}
+        {"role": "user", "content": user_content}
     ]
 
     # Hardcoded whitelist: these keywords are ALWAYS in-scope for our app.
@@ -62,6 +82,9 @@ async def safety_guard_node(state: AgentState) -> AgentState:
         "রিপোর্ট", "সারাংশ", "খাবার", "পরিকল্পনা",
         "ওজন", "উচ্চতা", "বয়স", "স্বাস্থ্য", "ওষুধ",
         "খেয়েছি", "খাইছি", "খেলাম", "ক্যালোরি",
+        "change", "replace", "modify", "swap", "different", "option",
+        "পরিবর্তন", "বদল", "অন্য", "অপছন্দ", "ভালো লাগেনি", "ভালো লাগছে না",
+        "valo lag", "lagse na", "lagese na", "change k", "kore deo", "koro"
     ]
 
     try:
