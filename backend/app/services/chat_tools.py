@@ -83,7 +83,24 @@ async def tool_update_profile(user_id: str, args: Dict[str, Any]) -> Dict[str, A
     if not update_data:
         return _err("No fields provided to update")
     try:
-        await prisma.profile.update(where={"userId": user_id}, data=update_data)
+        existing = await prisma.profile.find_unique(where={"userId": user_id})
+        if existing:
+            await prisma.profile.update(where={"userId": user_id}, data=update_data)
+        else:
+            await prisma.profile.create(data={"userId": user_id, **update_data})
+
+        # If weight was updated, also log it in health logs so trends are tracked
+        if "weight_kg" in update_data:
+            try:
+                await prisma.healthlog.create(data={
+                    "userId": user_id,
+                    "logDate": datetime.now(timezone.utc),
+                    "weightKg": float(update_data["weight_kg"]),
+                    "notes": "Updated via chat",
+                })
+            except Exception as e:
+                logger.warning("Failed to auto-log health weight from profile update: %s", e)
+
         # If any target-affecting field changed, nuke the cached daily plan
         if _TARGET_FIELDS.intersection(update_data.keys()):
             await _invalidate_todays_meal_plan(user_id)
@@ -181,6 +198,22 @@ async def tool_log_health(user_id: str, args: Dict[str, Any]) -> Dict[str, Any]:
         log = await prisma.healthlog.create(data=entry)
         # Weight changes affect calorie targets — invalidate cached plan
         if "weight_kg" in args:
+            try:
+                existing_profile = await prisma.profile.find_unique(where={"userId": user_id})
+                if existing_profile:
+                    await prisma.profile.update(
+                        where={"userId": user_id},
+                        data={"weightKg": float(args["weight_kg"])}
+                    )
+                else:
+                    await prisma.profile.create(
+                        data={
+                            "userId": user_id,
+                            "weightKg": float(args["weight_kg"]),
+                        }
+                    )
+            except Exception as e:
+                logger.warning("Failed to auto-update profile weight from health log: %s", e)
             await _invalidate_todays_meal_plan(user_id)
         return _ok({
             "log_id": log.logId,
@@ -368,13 +401,45 @@ async def tool_get_health_report(user_id: str, args: Dict[str, Any] = None) -> D
         avg_cals = round(total_cals / days, 1) if tracked else 0
         weights = [h.weightKg for h in health_logs if h.weightKg]
         latest_weight = weights[0] if weights else None
+        start_weight = weights[-1] if len(weights) > 1 else latest_weight
+        weight_change = round(latest_weight - start_weight, 1) if latest_weight and start_weight else None
+
+        # Build nutrition targets from profile + latest weight
+        profile = await prisma.profile.find_unique(where={"userId": user_id})
+        targets = None
+        if profile and profile.weightKg and profile.heightCm and profile.gender and profile.activityLevel:
+            current_weight = latest_weight or profile.weightKg
+            try:
+                t = calculate_targets({
+                    "gender": profile.gender,
+                    "height_cm": profile.heightCm,
+                    "weight_kg": current_weight,
+                    "activity_level": profile.activityLevel,
+                    "age": profile.age,
+                    "goal": profile.goal,
+                })
+                targets = {
+                    "calories": t.get("target_calories"),
+                    "protein_g": t.get("protein_g"),
+                    "carbs_g": t.get("carbs_g"),
+                    "fat_g": t.get("fat_g"),
+                }
+            except Exception:
+                pass
+
+        compliance = None
+        if targets and targets.get("calories"):
+            compliance = round((avg_cals / targets["calories"]) * 100, 1)
 
         return _ok({
             "period_days": days,
             "meals_logged": len(tracked),
             "avg_daily_calories": avg_cals,
             "latest_weight_kg": latest_weight,
+            "weight_change_kg": weight_change,
             "health_log_count": len(health_logs),
+            "nutrition_targets": targets,
+            "calorie_compliance_percent": compliance,
             "recent_health_logs": [
                 {
                     "date": h.logDate.date().isoformat() if h.logDate else None,

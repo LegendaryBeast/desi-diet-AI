@@ -89,6 +89,15 @@ async def _generate_reply(user, user_message: str) -> str:
                     pass
 
     full_text = full_text.strip()
+
+    # Strip frontend-only PDF-report tag and replace with WhatsApp-friendly text
+    if "[HEALTH_REPORT_LINK]" in full_text:
+        report_url = f"{settings.frontend_url}/report"
+        full_text = full_text.replace(
+            "[HEALTH_REPORT_LINK]",
+            f"\n\n📊 View full report: {report_url}"
+        )
+
     if len(full_text) > 4000:
         full_text = full_text[:3997] + "..."
     if not full_text:
@@ -136,7 +145,8 @@ async def _handle_incoming_message(phone_raw: str, user_message: str) -> dict:
         return {"error": "not_registered", "fallback_text": msg_text}
 
     reply = await _generate_reply(user, user_message)
-    await _save_messages(user.id, user_message, reply)
+    # NOTE: We intentionally do NOT call _save_messages here.
+    # The /chat endpoint already persists both user and assistant messages.
     return {"reply": reply}
 
 
