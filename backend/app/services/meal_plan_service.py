@@ -419,7 +419,7 @@ def _validate_and_sanitize_meal_plan_foods(plan_data: Dict[str, Any], safe_foods
     return plan_data
 
 
-def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[str, set], safe_foods: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[str, set], safe_foods: List[Dict[str, Any]], avoid_codes: set = None) -> Dict[str, Any]:
     """
     Post-process the LLM-generated plan to ensure every food is slot-appropriate.
     If a food is not in the correct slot pool, replace it with the best slot-appropriate alternative.
@@ -451,6 +451,14 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
                 # Find a replacement: highest-similarity food from the allowed pool
                 candidates = [safe_by_code[c] for c in allowed_codes if c in safe_by_code]
                 candidates.sort(key=lambda f: f.get("similarity_score", 0), reverse=True)
+                
+                # Apply variety cache / avoidance
+                if avoid_codes:
+                    CORE_STAPLES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "A018", "A019", "A020"}
+                    filtered_candidates = [c for c in candidates if c["code"] not in avoid_codes or c["code"] in CORE_STAPLES]
+                    if filtered_candidates:
+                        candidates = filtered_candidates
+
                 # Try to match food group for sensible replacement
                 original_group = item.get("food_group", "")
                 same_group = [c for c in candidates if c.get("food_group") == original_group]
@@ -473,7 +481,7 @@ def _enforce_slot_appropriateness(plan_data: Dict[str, Any], slot_pools: Dict[st
     return plan_data
 
 
-def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str, Any]], avoid_codes: set = None) -> Dict[str, Any]:
     """
     Post-process to ensure no duplicate food codes appear within the same meal slot.
     If duplicates are found, replace them with other foods from safe_foods of the same group.
@@ -483,6 +491,8 @@ def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str
     for f in safe_foods:
         g = f.get("food_group", "Other")
         group_to_foods.setdefault(g, []).append(f)
+
+    CORE_STAPLES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "A018", "A019", "A020"}
 
     for meal in plan_data.get("meals", []) or []:
         slot_name = meal.get("slot", "").lower()
@@ -501,8 +511,17 @@ def _deduplicate_meal_items(plan_data: Dict[str, Any], safe_foods: List[Dict[str
                 for c in candidates:
                     c_code = c.get("code", "")
                     if c_code and c_code not in seen_codes:
-                        replacement = c
-                        break
+                        if not avoid_codes or c_code not in avoid_codes or c_code in CORE_STAPLES:
+                            replacement = c
+                            break
+                if not replacement and avoid_codes:
+                    # Fallback to ignore variety cache if no options left
+                    for c in candidates:
+                        c_code = c.get("code", "")
+                        if c_code and c_code not in seen_codes:
+                            replacement = c
+                            break
+
                 if replacement:
                     old_name = item.get("name_bn", "")
                     amount_g = item.get("amount_g", 100)
@@ -570,7 +589,7 @@ _MINIMUM_FALLBACKS = {
 }
 
 
-def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
+def _ensure_meal_minimum_items(plan_data: Dict[str, Any], avoid_codes: set = None) -> Dict[str, Any]:
     """
     Ensures every meal slot meets its minimum item requirement with smart fallback selection.
     - Breakfast: min 3 items (staple + protein + supplementary)
@@ -616,6 +635,15 @@ def _ensure_meal_minimum_items(plan_data: Dict[str, Any]) -> Dict[str, Any]:
         min_items = SLOT_MINIMUMS.get(slot_name, 3)
 
         fallbacks = _MINIMUM_FALLBACKS.get(slot_name) or _MINIMUM_FALLBACKS.get("breakfast", [])
+        
+        # 🔄 Filter fallbacks to avoid previously recommended items
+        if avoid_codes:
+            CORE_STAPLES = {"01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039", "A015", "A018", "A019", "A020"}
+            filtered_fallbacks = [fb for fb in fallbacks if (fb.get("food_code") or fb.get("code")) not in avoid_codes or (fb.get("food_code") or fb.get("code")) in CORE_STAPLES]
+            # Keep filtered list only if we still have enough options
+            if len(filtered_fallbacks) >= min_items:
+                fallbacks = filtered_fallbacks
+
         added = 0
 
         # ── Phase 1: Enforce REQUIRED categories even if count is already met ──
@@ -985,6 +1013,7 @@ def _build_meal_plan_prompt(
     language: str = "bn",
     pairings: List[Dict[str, Any]] = None,
     slot_pools: Dict[str, set] = None,
+    avoid_codes: set = None,
 ) -> List[Dict[str, str]]:
     """Build the LLM prompt for meal plan generation."""
 
@@ -1008,6 +1037,16 @@ def _build_meal_plan_prompt(
             allowed = [f for f in allowed if f.get("code") not in RICE_CODES]
         elif slot in ("lunch", "dinner"):
             allowed = [f for f in allowed if f.get("code") not in LUNCH_DINNER_EXCLUDED_GRAINS]
+
+        # 🔄 VARIETY CACHE / AVOIDANCE:
+        # Exclude previously suggested codes from the allowed pool to force variety on regeneration.
+        # But do NOT avoid core staples (Plain Rice/Roti/Paratha) to prevent meal plan generation failures due to lack of staples.
+        if avoid_codes:
+            CORE_STAPLES = {
+                "01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039",
+                "A015", "A018", "A019", "A020"
+            }
+            allowed = [f for f in allowed if f.get("code") not in avoid_codes or f.get("code") in CORE_STAPLES]
         
         # Categorize allowed foods
         staples = []
@@ -1743,6 +1782,81 @@ def _generate_fallback_meal_plan(
     return fallback_plan
 
 
+def _enforce_variety_cache(plan_data: Dict[str, Any], safe_foods: List[Dict[str, Any]], avoid_codes: set, completed_slots_set: set) -> Dict[str, Any]:
+    """
+    Ensure that no non-staple foods from avoid_codes are present in non-completed slots.
+    If they are, replace them with alternative foods from safe_foods of the same group.
+    """
+    if not avoid_codes or not plan_data:
+        return plan_data
+
+    CORE_STAPLES = {
+        "01_0013", "01_0014", "01_0015", "01_0016", "01_0017", "01_0018", "01_0025", "01_0037", "01_0038", "01_0039",
+        "A015", "A018", "A019", "A020"
+    }
+
+    group_to_foods = {}
+    for f in safe_foods:
+        g = f.get("food_group", "Other")
+        group_to_foods.setdefault(g, []).append(f)
+
+    # Track all codes in the plan to avoid duplicate assignments
+    all_current_codes = set()
+    for meal in plan_data.get("meals", []):
+        for item in meal.get("items", []):
+            code = item.get("food_code") or item.get("code")
+            if code:
+                all_current_codes.add(code)
+
+    for meal in plan_data.get("meals", []):
+        slot_name = meal.get("slot", "").lower()
+        if slot_name in completed_slots_set:
+            continue  # Do not touch completed meals
+
+        new_items = []
+        for item in meal.get("items", []):
+            code = item.get("food_code") or item.get("code") or ""
+            if code in avoid_codes and code not in CORE_STAPLES:
+                original_group = item.get("food_group", "")
+                candidates = group_to_foods.get(original_group, safe_foods)
+                
+                replacement = None
+                # Sort candidates by similarity score to get the best match first
+                candidates_sorted = sorted(candidates, key=lambda f: f.get("similarity_score", 0), reverse=True)
+                for c in candidates_sorted:
+                    c_code = c.get("code") or c.get("food_code")
+                    if c_code and c_code not in avoid_codes and c_code not in all_current_codes:
+                        replacement = c
+                        break
+                
+                # Relax all_current_codes if no perfect option is found
+                if not replacement:
+                    for c in candidates_sorted:
+                        c_code = c.get("code") or c.get("food_code")
+                        if c_code and c_code not in avoid_codes:
+                            replacement = c
+                            break
+
+                if replacement:
+                    old_name = item.get("name_bn", "")
+                    amount_g = item.get("amount_g", 100)
+                    kcal_per_100g = float(replacement.get("calories") or replacement.get("energy_kcal") or 0)
+                    item["food_code"] = replacement["code"]
+                    item["code"] = replacement["code"]
+                    item["name_bn"] = replacement.get("name_bn", replacement.get("name_en", ""))
+                    item["name_en"] = replacement.get("name_en", "")
+                    item["food_group"] = replacement.get("food_group", "")
+                    item["calories"] = round((kcal_per_100g * amount_g) / 100.0)
+                    item["emoji"] = _validate_emoji(item)
+                    all_current_codes.discard(code)
+                    all_current_codes.add(replacement["code"])
+                    print(f"🔄 Variety Cache: Replaced '{old_name}' ({code}) in {slot_name} with '{item['name_bn']}' ({replacement['code']})")
+            new_items.append(item)
+        meal["items"] = new_items
+
+    return plan_data
+
+
 async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_plan_data: Dict[str, Any] = None, completed_slots: List[str] = None) -> Dict[str, Any]:
     """Generate a daily meal plan for a user, using the most recent health log weight."""
     profile = await prisma.profile.find_unique(where={"userId": user_id})
@@ -1802,12 +1916,26 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_
     # ALWAYS supplement with staple foods to ensure caloric adequacy
     safe_foods = _ensure_balanced_food_list(rag, safe_foods)
 
+    # Build avoid_codes for variety based on existing plan's non-completed slots
+    completed_slots_set = {s.lower() for s in completed_slots} if completed_slots else set()
+    avoid_codes = set()
+    if existing_plan_data:
+        for meal in existing_plan_data.get("meals", []):
+            if meal.get("slot", "").lower() not in completed_slots_set:
+                for item in meal.get("items", []):
+                    code = item.get("food_code") or item.get("code")
+                    if code:
+                        avoid_codes.add(code)
+
     plan_data = None
     try:
         pairings = _get_popular_pairings(rag.get_neo4j_driver())
         safe_codes = {f.get("code") for f in safe_foods if f.get("code")}
         slot_pools = _get_slot_separated_foods(rag.get_neo4j_driver(), safe_codes)
-        messages = _build_meal_plan_prompt(profile, targets, safe_foods, conditions, language, pairings, slot_pools)
+        messages = _build_meal_plan_prompt(
+            profile, targets, safe_foods, conditions, language, pairings, slot_pools,
+            avoid_codes=avoid_codes
+        )
         llm_response = await llm_client.chat_completion(
             messages=messages,
             temperature=0.35,
@@ -1816,14 +1944,19 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_
         )
         plan_data = json.loads(llm_response)
         plan_data = _validate_and_sanitize_meal_plan_foods(plan_data, safe_foods, rag.get_neo4j_driver(), slot_pools)
-        plan_data = _enforce_slot_appropriateness(plan_data, slot_pools, safe_foods)
-        plan_data = _deduplicate_meal_items(plan_data, safe_foods)
-        plan_data = _ensure_meal_minimum_items(plan_data)
+        plan_data = _enforce_slot_appropriateness(plan_data, slot_pools, safe_foods, avoid_codes=avoid_codes)
+        plan_data = _deduplicate_meal_items(plan_data, safe_foods, avoid_codes=avoid_codes)
+        plan_data = _ensure_meal_minimum_items(plan_data, avoid_codes=avoid_codes)
+        plan_data = _enforce_variety_cache(plan_data, safe_foods, avoid_codes, completed_slots_set)
     except Exception as e:
         print(f"LLM daily meal plan error: {e}")
         import datetime as _dt
         day_seed = _dt.datetime.now().day
-        plan_data = _generate_fallback_meal_plan(profile, targets, safe_foods, conditions, language, day_seed=day_seed)
+        plan_data = _generate_fallback_meal_plan(
+            profile, targets, safe_foods, conditions, language,
+            used_codes_global=avoid_codes,
+            day_seed=day_seed
+        )
 
     # Always use the server-calculated calorie target — never trust the LLM's value
     plan_data["target_calories"] = targets["target_calories"]
