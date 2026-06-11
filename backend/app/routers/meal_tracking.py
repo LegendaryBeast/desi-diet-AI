@@ -160,7 +160,8 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
                     "userId":   current_user.id,
                     "planType": "daily",
                     "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-                }
+                },
+                order={"createdAt": "desc"},
             )
             if today_plan and today_plan.planData:
                 planned_data = from_json_string(today_plan.planData)

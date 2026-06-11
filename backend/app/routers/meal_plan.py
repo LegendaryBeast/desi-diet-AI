@@ -284,7 +284,8 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
             "userId": current_user.id,
             "planType": "daily",
             "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
-        }
+        },
+        order={"createdAt": "desc"},
     )
 
     if existing and not force:

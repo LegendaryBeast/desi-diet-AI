@@ -2315,13 +2315,15 @@ async def save_meal_plan(user_id: str, plan_type: str, plan_data: Dict[str, Any]
         for item in m.get("items", [])
     )
 
-    # Look for an existing meal plan for this user, type, and date to update it
+    # Look for the latest existing meal plan for this user, type, and date to update it.
+    # Consistent ordering with all other meal-plan readers (chat, meal-plan page, etc.)
     existing = await prisma.mealplan.find_first(
         where={
             "userId": user_id,
             "planType": plan_type,
             "planDate": {"gte": target_date, "lt": target_date + timedelta(days=1)},
-        }
+        },
+        order={"createdAt": "desc"},
     )
 
     if existing:

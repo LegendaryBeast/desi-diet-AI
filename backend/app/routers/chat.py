@@ -139,7 +139,8 @@ Return ONLY valid JSON:
                 "userId":   user_id,
                 "planType": "daily",
                 "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-            }
+            },
+            order={"createdAt": "desc"},
         )
         if today_plan and today_plan.planData:
             p_data = from_json_string(today_plan.planData)
@@ -312,7 +313,8 @@ Return ONLY valid JSON:
                     "userId":   user_id,
                     "planType": "daily",
                     "planDate": {"gte": today_start, "lt": today_start + timedelta(days=1)},
-                }
+                },
+                order={"createdAt": "desc"},
             )
             if today_plan and today_plan.planData:
                 p_data = from_json_string(today_plan.planData)

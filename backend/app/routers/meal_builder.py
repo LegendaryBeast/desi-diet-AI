@@ -77,8 +77,10 @@ async def analyze_meal(req: MealBuilderAnalyzeRequest, current_user=Depends(get_
         plan = await prisma.mealplan.find_first(
             where={
                 "userId": current_user.id,
+                "planType": "daily",
                 "planDate": {"gte": today, "lt": today + timedelta(days=1)},
-            }
+            },
+            order={"createdAt": "desc"},
         )
         if plan:
             plan_data = safe_dict(plan.planData if isinstance(plan.planData, dict) else __import__('json').loads(plan.planData or "{}"))
