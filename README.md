@@ -14,11 +14,6 @@
 </p>
 
 
-<p align="center">
-  <video src="PASTE_YOUR_GITHUB_UPLOAD_LINK_HERE" width="640" controls>
-    Your browser does not support the video tag.
-  </video>
-</p>
 
 # **DesiDiet — AI-Native Clinical Nutrition & Meal Planning** 
 
