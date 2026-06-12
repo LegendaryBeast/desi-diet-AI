@@ -44,3 +44,5 @@ mobile/.env*.local
 # Tools
 graphify-out/
 .agents/
+
+backend/prisma/dev.db
