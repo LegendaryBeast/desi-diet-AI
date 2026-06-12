@@ -31,6 +31,7 @@ export default defineConfig({
       '/whatsapp': apiProxy,
       '/groceries': apiProxy,
       '/personal-cooker': apiProxy,
+      '/admin-api': apiProxy,
       '/docs-api': { ...apiProxy, rewrite: (path: string) => path.replace(/^\/docs-api/, '/docs') },
     },
   },
