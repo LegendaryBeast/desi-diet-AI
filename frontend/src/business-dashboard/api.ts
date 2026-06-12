@@ -1,7 +1,11 @@
 /**
  * Business Dashboard Admin API Client
- * Connects to /admin-api/* endpoints with admin password auth
+ * Auth is handled client-side with a hardcoded password.
+ * Data fetching tries the backend and returns empty results if unavailable.
  */
+
+// ── Default admin password (no backend / env var needed) ──────────
+const DEFAULT_ADMIN_PASSWORD = 'desidiet_admin_2026';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 const ADMIN_PASSWORD_KEY = 'desidiet_admin_password';
@@ -30,35 +34,40 @@ async function adminFetch<T>(
     headers['X-Admin-Password'] = password;
   }
 
-  const res = await fetch(`${BASE_URL}/admin-api${path}`, { ...options, headers });
+  try {
+    const res = await fetch(`${BASE_URL}/admin-api${path}`, { ...options, headers });
 
-  if (res.status === 401 || res.status === 403) {
-    clearAdminPassword();
-    throw new AdminApiError(res.status, 'Admin authentication required');
+    if (res.status === 401 || res.status === 403) {
+      clearAdminPassword();
+      throw new AdminApiError(res.status, 'Admin authentication required');
+    }
+
+    if (!res.ok) {
+      let detail = 'An error occurred';
+      try {
+        const err = await res.json();
+        detail = err.detail || detail;
+      } catch { /* ignore */ }
+      throw new AdminApiError(res.status, detail);
+    }
+
+    if (res.status === 204) return undefined as unknown as T;
+    return res.json();
+  } catch (err) {
+    // Backend not available — return a typed empty shell so the UI doesn't crash
+    if (err instanceof AdminApiError) throw err;
+    console.warn(`[AdminAPI] Backend unavailable for ${path}. Returning empty data.`);
+    return { data: [], total: 0, skip: 0, limit: 20 } as unknown as T;
   }
-
-  if (!res.ok) {
-    let detail = 'An error occurred';
-    try {
-      const err = await res.json();
-      detail = err.detail || detail;
-    } catch { /* ignore */ }
-    throw new AdminApiError(res.status, detail);
-  }
-
-  if (res.status === 204) return undefined as unknown as T;
-  return res.json();
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────
+// ─── Auth (client-side, no backend required) ──────────────────────
 
-export async function adminAuth(password: string) {
-  const res = await adminFetch<{ success: boolean; token: string; expires_at: string }>('/auth', {
-    method: 'POST',
-    body: JSON.stringify({ password }),
-  });
-  if (res.success) setAdminPassword(password);
-  return res;
+export async function adminAuth(password: string): Promise<{ success: boolean }> {
+  const correct = password === DEFAULT_ADMIN_PASSWORD;
+  if (!correct) throw new Error('Invalid password');
+  setAdminPassword(password);
+  return { success: true };
 }
 
 // ─── Overview ─────────────────────────────────────────────────────

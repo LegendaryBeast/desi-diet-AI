@@ -17,13 +17,10 @@ export function useAdminAuth(): AdminAuthState {
   useEffect(() => {
     const password = getAdminPassword();
     if (password) {
-      // Verify it's still valid
+      // Verify locally (no backend call needed)
       adminAuth(password)
         .then(() => setIsAuthenticated(true))
-        .catch(() => {
-          clearAdminPassword();
-          setIsAuthenticated(false);
-        })
+        .catch(() => { clearAdminPassword(); setIsAuthenticated(false); })
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
