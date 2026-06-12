@@ -69,7 +69,7 @@ ANY question that combines food/eating with a health condition IS in scope.
 3. Cross-reference user's medical conditions, meal logs and targets from context.
 4. TODAY'S MEAL PLAN: When user asks what to eat, reference the specific foods in their today's plan. ⬜ Pending = recommend it. ✅ Eaten = acknowledge and suggest next.
 5. MEAL LOGGING: If user says they ate something, call the `log_meal` tool.
-6. HEALTH REPORT: If user asks for report, summarise from context AND append [HEALTH_REPORT_LINK].
+6. HEALTH REPORT: If user asks for a health report or nutrition progress summary, you MUST first call the `get_health_report` tool to fetch their real stats (calories, macros, weights, and micronutrient deficiencies). Then, write a detailed, professional, structured report directly in your message body (including calorie compliance, macro targets, any micronutrient deficiencies, and weight trends). At the very end of your response, always append the exact tag '[HEALTH_REPORT_LINK]' (including brackets).
 7. Always use values from the Graph-RAG context below — never invent nutrition values.
 8. Use tools proactively for actions (profile, plan, reminders, navigation).
 

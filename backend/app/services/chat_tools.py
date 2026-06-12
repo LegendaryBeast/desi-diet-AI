@@ -381,6 +381,7 @@ async def tool_get_food_safety(user_id: str, args: Dict[str, Any]) -> Dict[str, 
 # ── Health Report Tool ────────────────────────────────────────────────────────
 
 async def tool_get_health_report(user_id: str, args: Dict[str, Any] = None) -> Dict[str, Any]:
+    args = args or {}
     days = min(int(args.get("days", 7)), 30)
     try:
         # Fetch meal tracking logs
@@ -396,9 +397,32 @@ async def tool_get_health_report(user_id: str, args: Dict[str, Any] = None) -> D
             order={"logDate": "desc"},
         )
 
-        # Calculate averages
+        # Calculate averages and totals for calories
         total_cals = sum(t.totalCals or 0 for t in tracked)
-        avg_cals = round(total_cals / days, 1) if tracked else 0
+        avg_cals = round(total_cals / days, 1) if tracked else 0.0
+
+        # Calculate averages and totals for macronutrients
+        total_protein = 0.0
+        total_carbs = 0.0
+        total_fat = 0.0
+        total_fiber = 0.0
+
+        for t in tracked:
+            if t.macros:
+                try:
+                    macro_data = json.loads(t.macros) if isinstance(t.macros, str) else t.macros
+                    total_protein += float(macro_data.get("protein_g") or 0.0)
+                    total_carbs += float(macro_data.get("carbs_g") or 0.0)
+                    total_fat += float(macro_data.get("fat_g") or 0.0)
+                    total_fiber += float(macro_data.get("fiber_g") or 0.0)
+                except Exception:
+                    pass
+
+        avg_protein = round(total_protein / days, 1) if tracked else 0.0
+        avg_carbs = round(total_carbs / days, 1) if tracked else 0.0
+        avg_fat = round(total_fat / days, 1) if tracked else 0.0
+        avg_fiber = round(total_fiber / days, 1) if tracked else 0.0
+
         weights = [h.weightKg for h in health_logs if h.weightKg]
         latest_weight = weights[0] if weights else None
         start_weight = weights[-1] if len(weights) > 1 else latest_weight
@@ -407,16 +431,18 @@ async def tool_get_health_report(user_id: str, args: Dict[str, Any] = None) -> D
         # Build nutrition targets from profile + latest weight
         profile = await prisma.profile.find_unique(where={"userId": user_id})
         targets = None
-        if profile and profile.weightKg and profile.heightCm and profile.gender and profile.activityLevel:
-            current_weight = latest_weight or profile.weightKg
+        conditions = []
+        if profile:
+            conditions = safe_list(profile.medicalConditions)
+            current_weight = latest_weight or profile.weightKg or 70.0
             try:
                 t = calculate_targets({
-                    "gender": profile.gender,
-                    "height_cm": profile.heightCm,
+                    "gender": profile.gender or "male",
+                    "height_cm": profile.heightCm or 170.0,
                     "weight_kg": current_weight,
-                    "activity_level": profile.activityLevel,
-                    "age": profile.age,
-                    "goal": profile.goal,
+                    "activity_level": profile.activityLevel or "sedentary",
+                    "age": profile.age or 30,
+                    "goal": profile.goal or "maintain weight",
                 })
                 targets = {
                     "calories": t.get("target_calories"),
@@ -431,15 +457,139 @@ async def tool_get_health_report(user_id: str, args: Dict[str, Any] = None) -> D
         if targets and targets.get("calories"):
             compliance = round((avg_cals / targets["calories"]) * 100, 1)
 
+        # ── Micronutrient Aggregation via Neo4j ──────────────────────────────
+        all_food_items = []
+        for t in tracked:
+            if t.parsedItems:
+                try:
+                    items = json.loads(t.parsedItems) if isinstance(t.parsedItems, str) else t.parsedItems
+                    for item in items:
+                        code = item.get("code") or item.get("food_code") or ""
+                        name_en = item.get("name_en") or item.get("name") or ""
+                        amount_g = float(item.get("amount_g") or 100)
+                        if code or name_en:
+                            all_food_items.append({
+                                "code": code,
+                                "name_en": name_en,
+                                "name_bn": item.get("name_bn") or "",
+                                "amount_g": amount_g
+                            })
+                except Exception:
+                    pass
+
+        micronutrient_deficiencies = []
+        if all_food_items and profile:
+            try:
+                rag = KhadokGraphRAG()
+                driver = rag.get_neo4j_driver()
+                TRACKED_NUTRIENTS = [
+                    "Vitamin A", "Ascorbic acids (C)", "Vitamin D", "Vitamin E",
+                    "Thiamine (B1)", "Riboflavin (B2)", "Niacin (B3)", "Total B6", "Folate (total)",
+                    "Calcium (Ca)", "Iron (Fe)", "Magnesium (Mg)", "Phosphorus (P)", "Zinc (Zn)",
+                    "Copper (Cu)", "Potassium (K)",
+                ]
+                query_tracked = TRACKED_NUTRIENTS + ["Folates (B9)", "α-Tocopherol equivalent (E)"]
+                food_query = """
+                UNWIND $food_inputs AS input
+                MATCH (f:Food)
+                WHERE (input.code <> '' AND f.code = input.code)
+                   OR (input.name_en <> '' AND toLower(f.name_en) = toLower(input.name_en))
+                OPTIONAL MATCH (f)-[r:CONTAINS_NUTRIENT]->(n:Nutrient)
+                WHERE n.name IN $tracked
+                RETURN input.code AS in_code, input.name_en AS in_name_en,
+                       input.amount_g AS amount_g,
+                       n.name AS nutrient_name, r.amount_mg AS amount_mg
+                """
+                micro_totals = {}
+                with driver.session() as session:
+                    records = session.run(food_query, food_inputs=all_food_items, tracked=query_tracked)
+                    for rec in records:
+                        nut_name = rec["nutrient_name"]
+                        if nut_name == "Folates (B9)":
+                            nut_name = "Folate (total)"
+                        elif nut_name == "α-Tocopherol equivalent (E)":
+                            nut_name = "Vitamin E"
+                        amount_per_100g = rec["amount_mg"]
+                        amount_g = rec["amount_g"] or 100
+                        if nut_name and amount_per_100g is not None:
+                            contributed = float(amount_per_100g) * float(amount_g) / 100.0
+                            micro_totals[nut_name] = micro_totals.get(nut_name, 0.0) + contributed
+
+                gender_key = (profile.gender or "male").lower()
+                age = profile.age or 30
+                if age < 19:
+                    age_key = "14_18"
+                elif age <= 30:
+                    age_key = "19_30"
+                elif age <= 50:
+                    age_key = "31_50"
+                elif age <= 70:
+                    age_key = "51_70"
+                else:
+                    age_key = "gt_70"
+                rda_property = f"rda_{gender_key}_{age_key}_mg"
+
+                micro_targets_map = {}
+                with driver.session() as session:
+                    records = session.run(
+                        "MATCH (n:Nutrient) WHERE n.name IN $tracked RETURN n.name AS name, n[$rda_prop] AS rda",
+                        tracked=TRACKED_NUTRIENTS, rda_prop=rda_property
+                    )
+                    for rec in records:
+                        if rec["rda"] is not None:
+                            micro_targets_map[rec["name"]] = float(rec["rda"])
+
+                # Unit converter helper
+                def get_unit_and_val(name: str, db_val_mg: float):
+                    name_lower = name.lower()
+                    if any(u in name_lower for u in ["vitamin a", "vitamin d", "folate", "copper"]):
+                        return "mcg", db_val_mg * 1000.0
+                    elif "ascorbic" in name_lower:
+                        return "mg", db_val_mg
+                    elif any(u in name_lower for u in ["potassium", "chloride"]):
+                        return "g", db_val_mg / 1000.0
+                    else:
+                        return "mg", db_val_mg
+
+                for nut_name in TRACKED_NUTRIENTS:
+                    target_mg = micro_targets_map.get(nut_name)
+                    if not target_mg:
+                        continue
+                    period_target_mg = target_mg * days
+                    consumed_mg = micro_totals.get(nut_name, 0.0)
+
+                    unit, target_val = get_unit_and_val(nut_name, period_target_mg)
+                    _, consumed_val = get_unit_and_val(nut_name, consumed_mg)
+                    pct = min(100, int((consumed_val / target_val) * 100)) if target_val > 0 else 0
+                    
+                    if pct < 75:
+                        micronutrient_deficiencies.append({
+                            "name": nut_name,
+                            "percentage_met": pct,
+                            "avg_daily_consumed": round(consumed_val / days, 2),
+                            "daily_target": round(target_val / days, 2),
+                            "unit": unit
+                        })
+            except Exception as e:
+                logger.warning("Failed to aggregate micronutrients in report: %s", e)
+
         return _ok({
             "period_days": days,
             "meals_logged": len(tracked),
             "avg_daily_calories": avg_cals,
+            "avg_daily_macros_consumed": {
+                "protein_g": avg_protein,
+                "carbs_g": avg_carbs,
+                "fat_g": avg_fat,
+                "fiber_g": avg_fiber
+            },
             "latest_weight_kg": latest_weight,
             "weight_change_kg": weight_change,
             "health_log_count": len(health_logs),
             "nutrition_targets": targets,
             "calorie_compliance_percent": compliance,
+            "micronutrient_deficiencies": micronutrient_deficiencies,
+            "medical_conditions": conditions,
             "recent_health_logs": [
                 {
                     "date": h.logDate.date().isoformat() if h.logDate else None,

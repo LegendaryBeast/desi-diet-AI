@@ -1,0 +1,9 @@
+# EAS ignore configuration to speed up project uploads
+android/
+ios/
+node_modules/
+.expo/
+dist/
+web-build/
+*.jks
+*.keystore
