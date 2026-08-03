@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../lib/api';
 
@@ -85,6 +85,17 @@ export const AuthPage = () => {
           ))}
         </div>
 
+        {/* Render Free Tier Disclaimer */}
+        <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2.5 text-amber-900 shadow-sm">
+          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-[0.68rem] leading-relaxed">
+            <p className="font-bold font-bn text-amber-950">প্রথমবার লগইন/নিবন্ধনে সময় লাগতে পারে</p>
+            <p className="text-amber-800 font-bn mt-0.5">
+              ফ্রি সার্ভার (Render) ব্যবহারের কারণে প্রথম রিকোয়েস্টে ব্যাকএন্ড চালু হতে <strong>প্রায় ১ মিনিট</strong> পর্যন্ত সময় লাগতে পারে।
+            </p>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl p-5 shadow-sm border border-ink/5">
           <AnimatePresence mode="wait">
             {tab === 'login' ? (
@@ -144,7 +155,16 @@ export const AuthPage = () => {
                   disabled={loading}
                   className="w-full py-2 bg-ink text-cream rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-md disabled:opacity-60"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>লগইন করুন <ArrowRight className="w-3 h-3" /></>}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      সার্ভার কানেক্ট হচ্ছে... (১ মি. লাগতে পারে)
+                    </>
+                  ) : (
+                    <>
+                      লগইন করুন <ArrowRight className="w-3 h-3" />
+                    </>
+                  )}
                 </button>
               </motion.form>
             ) : (
@@ -219,7 +239,16 @@ export const AuthPage = () => {
                   disabled={loading}
                   className="w-full py-2 bg-ink text-cream rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-md disabled:opacity-60"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>অ্যাকাউন্ট তৈরি করুন <ArrowRight className="w-3 h-3" /></>}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      সার্ভার কানেক্ট হচ্ছে... (১ মি. লাগতে পারে)
+                    </>
+                  ) : (
+                    <>
+                      অ্যাকাউন্ট তৈরি করুন <ArrowRight className="w-3 h-3" />
+                    </>
+                  )}
                 </button>
               </motion.form>
             )}
