@@ -150,7 +150,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3"
         >
           {/* Backdrop */}
           <motion.div
@@ -158,7 +158,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={paymentStep === 'idle' ? onClose : undefined}
-            className="absolute inset-0 bg-ink/60 backdrop-blur-md"
+            className="absolute inset-0 bg-ink/60 backdrop-blur-md z-[99999]"
           />
 
           {/* Modal */}
@@ -167,43 +167,46 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
             transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-            className="relative w-full max-w-[56rem] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
+            className="relative w-full max-w-[52rem] bg-white rounded-[2rem] shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto z-[99999]"
           >
             {/* Close button */}
             {paymentStep === 'idle' && (
               <button
                 onClick={onClose}
-                className="absolute top-5 right-5 z-10 p-2 rounded-xl bg-white/80 text-ink-muted hover:text-ink hover:bg-cream transition-all"
+                className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-white/80 text-ink-muted hover:text-ink hover:bg-cream transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
             )}
 
             {/* Header gradient */}
-            <div className="relative bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 p-8 pb-10 text-white overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-              <div className="absolute top-6 right-20 w-20 h-20 bg-white/5 rounded-full blur-xl" />
+            <div className="relative bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-6 py-5 text-white overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
 
+              <div className="flex items-center gap-4">
               <motion.div
                 initial={{ rotate: -15, scale: 0 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ type: 'spring', delay: 0.15 }}
-                className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-5 border border-white/20"
+                className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shrink-0"
               >
-                <Crown className="w-7 h-7 text-white" />
+                <Crown className="w-5 h-5 text-white" />
               </motion.div>
 
-              <h2 className="font-display text-2xl font-black leading-snug">
+              <div>
+              <h2 className="font-display text-xl font-black leading-snug">
                 {triggerMsg.title}
               </h2>
-              <p className="font-bn text-sm text-white/80 mt-2">{triggerMsg.subtitle}</p>
+              <p className="font-bn text-xs text-white/80 mt-0.5">{triggerMsg.subtitle}</p>
+              </div>
+              </div>
             </div>
 
             {/* Body — Plan Selector */}
-            <div className="p-6 md:p-8 -mt-4 relative">
+            <div className="p-4 md:p-5 relative">
               {/* Plan Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 {PLAN_TIERS.map((plan, idx) => {
                   const isSelected = selectedPlan.id === plan.id;
                   return (
@@ -214,8 +217,8 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                       transition={{ delay: 0.1 + idx * 0.08 }}
                       onClick={() => paymentStep === 'idle' && setSelectedPlan(plan)}
                       disabled={paymentStep !== 'idle'}
-                      className={`
-                        relative text-left rounded-2xl p-5 border-2 transition-all duration-300 cursor-pointer
+                      className={`group 
+                        relative text-left rounded-xl p-4 border-2 transition-all duration-300 cursor-pointer
                         ${isSelected
                           ? `${plan.borderColor} bg-gradient-to-br from-white to-cream shadow-lg ring-2 ring-offset-2 ${
                               plan.id === 'basic' ? 'ring-emerald-400' :
@@ -229,50 +232,50 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     >
                       {/* Badge */}
                       {plan.badge && (
-                        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r ${plan.badgeColor} text-white text-[0.6rem] font-bold uppercase tracking-wider rounded-full shadow-lg font-bn`}>
+                        <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-px bg-gradient-to-r ${plan.badgeColor} text-white text-[0.55rem] font-bold uppercase tracking-wider rounded-full shadow-lg font-bn`}>
                           {plan.badge}
                         </div>
                       )}
 
                       {/* Plan Header */}
-                      <div className="mb-4 pt-1">
+                      <div className="mb-3 pt-0.5">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${plan.iconBg}`}>
-                            {plan.id === 'basic' && <Star className="w-4 h-4" />}
-                            {plan.id === 'pro' && <Crown className="w-4 h-4" />}
-                            {plan.id === 'premium' && <Users className="w-4 h-4" />}
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${plan.iconBg}`}>
+                            {plan.id === 'basic' && <Star className="w-3.5 h-3.5" />}
+                            {plan.id === 'pro' && <Crown className="w-3.5 h-3.5" />}
+                            {plan.id === 'premium' && <Users className="w-3.5 h-3.5" />}
                           </div>
                           <div>
-                            <span className="font-bn text-sm font-bold text-ink">{plan.name}</span>
-                            <span className="text-[0.6rem] text-ink-faint ml-1.5 uppercase tracking-wider font-bold">{plan.nameEn}</span>
+                            <span className="font-bn text-xs font-bold text-ink">{plan.name}</span>
+                            <span className="text-[0.55rem] text-ink-faint ml-1 uppercase tracking-wider font-bold">{plan.nameEn}</span>
                           </div>
                         </div>
-                        <div className="flex items-baseline gap-1 mt-3">
-                          <span className="font-display text-3xl font-black text-ink">৳{plan.price}</span>
-                          <span className="font-bn text-xs text-ink-muted font-bold">/মাস</span>
+                        <div className="flex items-baseline gap-1 mt-2">
+                          <span className="font-display text-2xl font-black text-ink">৳{plan.price}</span>
+                          <span className="font-bn text-[0.65rem] text-ink-muted font-bold">/মাস</span>
                         </div>
                       </div>
 
                       {/* Divider */}
-                      <div className={`h-px mb-4 ${isSelected ? `bg-gradient-to-r ${plan.gradient} opacity-30` : 'bg-ink/8'}`} />
+                      <div className={`h-px mb-3 ${isSelected ? `bg-gradient-to-r ${plan.gradient} opacity-30` : 'bg-ink/8'}`} />
 
                       {/* Feature list */}
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         {plan.features.map((feat, i) => (
                           <div key={i} className="flex items-start gap-2.5">
-                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${plan.iconBg}`}>
-                              <feat.icon className="w-3 h-3" />
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${plan.iconBg}`}>
+                              <feat.icon className="w-2.5 h-2.5" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bn text-xs font-bold text-ink leading-tight">{feat.text}</p>
-                              <p className="text-[0.55rem] text-ink-faint uppercase tracking-wider font-bold">{feat.textEn}</p>
+                              <p className="font-bn text-[0.7rem] font-bold text-ink leading-tight">{feat.text}</p>
+                              <p className="text-[0.5rem] text-ink-faint uppercase tracking-wider font-bold leading-tight">{feat.textEn}</p>
                             </div>
                           </div>
                         ))}
                       </div>
 
                       {/* Selection indicator */}
-                      <div className={`mt-4 w-full py-2 rounded-xl text-center text-xs font-bold font-bn transition-all ${
+                      <div className={`mt-3 w-full py-1.5 rounded-lg text-center text-[0.7rem] font-bold font-bn transition-all ${
                         isSelected
                           ? `bg-gradient-to-r ${plan.gradient} text-white shadow-md`
                           : 'bg-ink/5 text-ink-muted'
@@ -293,7 +296,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     onClick={handleSubscribe}
-                    className={`w-full py-4 bg-gradient-to-r ${selectedPlan.gradient} text-white font-bn font-black text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3`}
+                    className={`w-full py-3 bg-gradient-to-r ${selectedPlan.gradient} text-white font-bn font-black text-base rounded-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
                     style={{
                       boxShadow: selectedPlan.id === 'basic'
                         ? '0 10px 40px -10px rgba(16, 185, 129, 0.4)'
