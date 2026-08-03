@@ -12,9 +12,9 @@ interface PlanConfig {
 
 const PLAN_CONFIGS: Record<SubscriptionTier, PlanConfig> = {
   free: { aiTokenQuota: 1000, maxSavedMeals: 3, maxFamilyMembers: 1 },
-  basic: { aiTokenQuota: 10000, maxSavedMeals: 20, maxFamilyMembers: 2 },
-  pro: { aiTokenQuota: 50000, maxSavedMeals: 100, maxFamilyMembers: 4 },
-  premium: { aiTokenQuota: 200000, maxSavedMeals: 999, maxFamilyMembers: 8 },
+  basic: { aiTokenQuota: 10000, maxSavedMeals: 20, maxFamilyMembers: 1 },   // ৳99 — limited
+  pro: { aiTokenQuota: 100000, maxSavedMeals: 999, maxFamilyMembers: 1 },    // ৳399 — 1 member unlimited
+  premium: { aiTokenQuota: 500000, maxSavedMeals: 999, maxFamilyMembers: 5 }, // ৳999 — 5 members unlimited
 };
 
 interface SubscriptionContextValue {

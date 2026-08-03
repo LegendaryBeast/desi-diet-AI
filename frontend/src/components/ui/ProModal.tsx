@@ -12,8 +12,14 @@ import {
   CalendarDays,
   MessageSquare,
   Zap,
+  Heart,
+  Users,
+  Stethoscope,
+  Baby,
+  Star,
+  ChevronRight,
 } from 'lucide-react';
-import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useSubscription, SubscriptionTier } from '../../contexts/SubscriptionContext';
 
 interface ProModalProps {
   isOpen: boolean;
@@ -25,27 +31,86 @@ interface ProModalProps {
 const TRIGGER_MESSAGES: Record<string, { title: string; subtitle: string }> = {
   chat_limit: {
     title: 'আপনার ফ্রি মেসেজ শেষ!',
-    subtitle: 'আরো কথা বলতে প্রো সাবস্ক্রিপশন নিন',
+    subtitle: 'আরো কথা বলতে একটি প্ল্যান বেছে নিন',
   },
   regenerate: {
     title: 'ফ্রি প্ল্যানে পুনরায় তৈরি সম্ভব নয়',
-    subtitle: 'প্ল্যান রিজেনারেট করতে প্রো প্ল্যানে আপগ্রেড করুন',
+    subtitle: 'প্ল্যান রিজেনারেট করতে আপগ্রেড করুন',
   },
   tomorrow: {
     title: 'আগামীকালের প্ল্যান প্রো ফিচার',
-    subtitle: 'অ্যাডভান্স মিল প্ল্যানিং-এর জন্য প্রো নিন',
+    subtitle: 'অ্যাডভান্স মিল প্ল্যানিং-এর জন্য আপগ্রেড করুন',
   },
   general: {
-    title: 'DesiDiet Pro তে আপগ্রেড করুন',
-    subtitle: 'আনলিমিটেড ফিচার উপভোগ করুন',
+    title: 'আপনার প্ল্যান বেছে নিন',
+    subtitle: 'আপনার প্রয়োজন অনুযায়ী সেরা প্ল্যান সিলেক্ট করুন',
   },
 };
 
-const PRO_FEATURES = [
-  { icon: MessageSquare, text: 'আনলিমিটেড AI চ্যাট', textEn: 'Unlimited AI chat' },
-  { icon: RefreshCw, text: 'মিল প্ল্যান রিজেনারেট', textEn: 'Regenerate meal plans' },
-  { icon: CalendarDays, text: 'আগামীকালের প্ল্যান', textEn: "Tomorrow's meal plan" },
-  { icon: Zap, text: 'অগ্রাধিকার AI রেসপন্স', textEn: 'Priority AI responses' },
+interface PlanTier {
+  id: SubscriptionTier;
+  name: string;
+  nameEn: string;
+  price: number;
+  badge?: string;
+  badgeColor?: string;
+  gradient: string;
+  borderColor: string;
+  iconBg: string;
+  features: { icon: React.ElementType; text: string; textEn: string }[];
+  highlighted?: boolean;
+}
+
+const PLAN_TIERS: PlanTier[] = [
+  {
+    id: 'basic',
+    name: 'বেসিক',
+    nameEn: 'Basic',
+    price: 99,
+    gradient: 'from-emerald-500 to-teal-600',
+    borderColor: 'border-emerald-200',
+    iconBg: 'bg-emerald-500/10 text-emerald-600',
+    features: [
+      { icon: MessageSquare, text: 'সীমিত AI চ্যাট', textEn: 'Limited AI chat' },
+      { icon: CalendarDays, text: 'সীমিত মিল জেনারেশন', textEn: 'Limited meal generation' },
+      { icon: Stethoscope, text: '১ বার নিউট্রিশনিস্ট সাপোর্ট', textEn: '1x Nutritionist support' },
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'প্রো',
+    nameEn: 'Pro',
+    price: 399,
+    badge: 'জনপ্রিয়',
+    badgeColor: 'from-amber-400 to-orange-500',
+    gradient: 'from-amber-500 via-orange-500 to-rose-500',
+    borderColor: 'border-orange-300',
+    iconBg: 'bg-orange-500/10 text-orange-600',
+    highlighted: true,
+    features: [
+      { icon: Zap, text: 'আনলিমিটেড সব ফিচার', textEn: 'Unlimited all features' },
+      { icon: Baby, text: 'ম্যাটার্নাল সাপোর্ট', textEn: 'Maternal support' },
+      { icon: RefreshCw, text: 'মিল প্ল্যান রিজেনারেট', textEn: 'Regenerate meal plans' },
+      { icon: Stethoscope, text: '৩ বার নিউট্রিশনিস্ট সাপোর্ট', textEn: '3x Nutritionist support' },
+    ],
+  },
+  {
+    id: 'premium',
+    name: 'ফ্যামিলি',
+    nameEn: 'Family',
+    price: 999,
+    badge: '৫ জন সদস্য',
+    badgeColor: 'from-violet-500 to-purple-600',
+    gradient: 'from-violet-500 via-purple-600 to-fuchsia-600',
+    borderColor: 'border-purple-200',
+    iconBg: 'bg-purple-500/10 text-purple-600',
+    features: [
+      { icon: Users, text: '৫ সদস্য যুক্ত করুন', textEn: '5 members included' },
+      { icon: Zap, text: 'আনলিমিটেড সব ফিচার', textEn: 'Unlimited everything' },
+      { icon: Baby, text: 'ম্যাটার্নাল সাপোর্ট', textEn: 'Maternal support' },
+      { icon: Stethoscope, text: '৬ বার নিউট্রিশনিস্ট সাপোর্ট', textEn: '6x Nutritionist support' },
+    ],
+  },
 ];
 
 type PaymentStep = 'idle' | 'processing' | 'verifying' | 'success';
@@ -53,9 +118,13 @@ type PaymentStep = 'idle' | 'processing' | 'verifying' | 'success';
 export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = 'general' }) => {
   const { subscribe } = useSubscription();
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('idle');
+  const [selectedPlan, setSelectedPlan] = useState<PlanTier>(PLAN_TIERS[1]); // default: Pro
 
   useEffect(() => {
-    if (!isOpen) setPaymentStep('idle');
+    if (!isOpen) {
+      setPaymentStep('idle');
+      setSelectedPlan(PLAN_TIERS[1]);
+    }
   }, [isOpen]);
 
   const triggerMsg = TRIGGER_MESSAGES[trigger] || TRIGGER_MESSAGES.general;
@@ -67,7 +136,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
     setPaymentStep('verifying');
     await new Promise((r) => setTimeout(r, 1500));
     setPaymentStep('success');
-    subscribe();
+    subscribe(selectedPlan.id);
     // Auto-close after success animation
     setTimeout(() => {
       onClose();
@@ -98,7 +167,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
             transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-            className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            className="relative w-full max-w-[56rem] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
           >
             {/* Close button */}
             {paymentStep === 'idle' && (
@@ -111,9 +180,10 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
             )}
 
             {/* Header gradient */}
-            <div className="relative bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 p-8 pb-12 text-white overflow-hidden">
+            <div className="relative bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 p-8 pb-10 text-white overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
               <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+              <div className="absolute top-6 right-20 w-20 h-20 bg-white/5 rounded-full blur-xl" />
 
               <motion.div
                 initial={{ rotate: -15, scale: 0 }}
@@ -130,37 +200,88 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
               <p className="font-bn text-sm text-white/80 mt-2">{triggerMsg.subtitle}</p>
             </div>
 
-            {/* Body */}
-            <div className="p-7 -mt-4 relative">
-              {/* Pricing card */}
-              <div className="bg-gradient-to-br from-cream to-white border border-ink/5 rounded-2xl p-5 mb-6 shadow-sm">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="font-display text-4xl font-black text-ink">৳500</span>
-                  <span className="font-bn text-sm text-ink-muted font-bold">/মাস</span>
-                </div>
-                <p className="font-bn text-xs text-ink-faint">DesiDiet Pro সাবস্ক্রিপশন</p>
-              </div>
+            {/* Body — Plan Selector */}
+            <div className="p-6 md:p-8 -mt-4 relative">
+              {/* Plan Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {PLAN_TIERS.map((plan, idx) => {
+                  const isSelected = selectedPlan.id === plan.id;
+                  return (
+                    <motion.button
+                      key={plan.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + idx * 0.08 }}
+                      onClick={() => paymentStep === 'idle' && setSelectedPlan(plan)}
+                      disabled={paymentStep !== 'idle'}
+                      className={`
+                        relative text-left rounded-2xl p-5 border-2 transition-all duration-300 cursor-pointer
+                        ${isSelected
+                          ? `${plan.borderColor} bg-gradient-to-br from-white to-cream shadow-lg ring-2 ring-offset-2 ${
+                              plan.id === 'basic' ? 'ring-emerald-400' :
+                              plan.id === 'pro' ? 'ring-orange-400' :
+                              'ring-purple-400'
+                            } scale-[1.03]`
+                          : 'border-ink/8 bg-white hover:border-ink/15 hover:shadow-md'
+                        }
+                        ${plan.highlighted && !isSelected ? 'border-orange-200 bg-orange-50/30' : ''}
+                      `}
+                    >
+                      {/* Badge */}
+                      {plan.badge && (
+                        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r ${plan.badgeColor} text-white text-[0.6rem] font-bold uppercase tracking-wider rounded-full shadow-lg font-bn`}>
+                          {plan.badge}
+                        </div>
+                      )}
 
-              {/* Feature list */}
-              <div className="space-y-3 mb-7">
-                {PRO_FEATURES.map((feat, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.08 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center shrink-0">
-                      <feat.icon className="w-4 h-4 text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="font-bn text-sm font-bold text-ink">{feat.text}</span>
-                      <span className="font-body text-[0.62rem] text-ink-faint ml-2 uppercase tracking-wider">{feat.textEn}</span>
-                    </div>
-                    <Check className="w-4 h-4 text-green-500 shrink-0" />
-                  </motion.div>
-                ))}
+                      {/* Plan Header */}
+                      <div className="mb-4 pt-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${plan.iconBg}`}>
+                            {plan.id === 'basic' && <Star className="w-4 h-4" />}
+                            {plan.id === 'pro' && <Crown className="w-4 h-4" />}
+                            {plan.id === 'premium' && <Users className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <span className="font-bn text-sm font-bold text-ink">{plan.name}</span>
+                            <span className="text-[0.6rem] text-ink-faint ml-1.5 uppercase tracking-wider font-bold">{plan.nameEn}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-baseline gap-1 mt-3">
+                          <span className="font-display text-3xl font-black text-ink">৳{plan.price}</span>
+                          <span className="font-bn text-xs text-ink-muted font-bold">/মাস</span>
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className={`h-px mb-4 ${isSelected ? `bg-gradient-to-r ${plan.gradient} opacity-30` : 'bg-ink/8'}`} />
+
+                      {/* Feature list */}
+                      <div className="space-y-2.5">
+                        {plan.features.map((feat, i) => (
+                          <div key={i} className="flex items-start gap-2.5">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${plan.iconBg}`}>
+                              <feat.icon className="w-3 h-3" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bn text-xs font-bold text-ink leading-tight">{feat.text}</p>
+                              <p className="text-[0.55rem] text-ink-faint uppercase tracking-wider font-bold">{feat.textEn}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Selection indicator */}
+                      <div className={`mt-4 w-full py-2 rounded-xl text-center text-xs font-bold font-bn transition-all ${
+                        isSelected
+                          ? `bg-gradient-to-r ${plan.gradient} text-white shadow-md`
+                          : 'bg-ink/5 text-ink-muted'
+                      }`}>
+                        {isSelected ? '✓ নির্বাচিত' : 'সিলেক্ট করুন'}
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </div>
 
               {/* Payment button / animation */}
@@ -172,10 +293,18 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     onClick={handleSubscribe}
-                    className="w-full py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bn font-black text-lg rounded-2xl shadow-xl shadow-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    className={`w-full py-4 bg-gradient-to-r ${selectedPlan.gradient} text-white font-bn font-black text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3`}
+                    style={{
+                      boxShadow: selectedPlan.id === 'basic'
+                        ? '0 10px 40px -10px rgba(16, 185, 129, 0.4)'
+                        : selectedPlan.id === 'pro'
+                        ? '0 10px 40px -10px rgba(249, 115, 22, 0.4)'
+                        : '0 10px 40px -10px rgba(139, 92, 246, 0.4)',
+                    }}
                   >
                     <Sparkles className="w-5 h-5" />
-                    সাবস্ক্রাইব করুন — ৳500/মাস
+                    {selectedPlan.name} সাবস্ক্রাইব করুন — ৳{selectedPlan.price}/মাস
+                    <ChevronRight className="w-4 h-4 ml-1" />
                   </motion.button>
                 )}
 
@@ -254,7 +383,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     >
                       <ShieldCheck className="w-6 h-6" />
                     </motion.div>
-                    সাবস্ক্রিপশন সফল! 🎉
+                    {selectedPlan.name} সাবস্ক্রিপশন সফল! 🎉
                   </motion.div>
                 )}
               </AnimatePresence>
