@@ -7,7 +7,10 @@
 // ── Default admin password (no backend / env var needed) ──────────
 const DEFAULT_ADMIN_PASSWORD = 'desidiet_admin_2026';
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const rawUrl = (import.meta.env.VITE_API_URL || '').trim();
+const BASE_URL = rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('/')
+  ? `https://${rawUrl.replace(/\/+$/, '')}`
+  : rawUrl.replace(/\/+$/, '');
 const ADMIN_PASSWORD_KEY = 'desidiet_admin_password';
 
 export const getAdminPassword = (): string | null => sessionStorage.getItem(ADMIN_PASSWORD_KEY);

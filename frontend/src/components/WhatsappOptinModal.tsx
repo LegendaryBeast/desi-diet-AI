@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { FaWhatsapp } from 'react-icons/fa'
-import { getToken } from '../lib/api'
+import { BASE_URL, getToken } from '../lib/api'
 
 interface Props {
   isOpen: boolean
@@ -23,8 +23,7 @@ export default function WhatsappOptinModal({ isOpen, onClose, userPhone, accessT
     setStatus('loading')
     try {
       const token = accessToken || getToken() || ''
-      const apiUrl = import.meta.env.VITE_API_URL || ''
-      const res = await fetch(`${apiUrl}/whatsapp/optin`, {
+      const res = await fetch(`${BASE_URL}/whatsapp/optin`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

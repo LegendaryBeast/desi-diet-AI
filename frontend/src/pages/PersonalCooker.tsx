@@ -17,6 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
+import { BASE_URL } from '../lib/api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -79,7 +80,7 @@ export const PersonalCooker = () => {
       try {
         const token = localStorage.getItem('desidiet_access_token');
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/personal-cooker/history?session_id=${sessionId}`,
+          `${BASE_URL}/personal-cooker/history?session_id=${sessionId}`,
           { headers: token ? { Authorization: `Bearer ${token}` } : {} }
         );
         if (res.ok) {
@@ -116,7 +117,7 @@ export const PersonalCooker = () => {
     try {
       const token = localStorage.getItem('desidiet_access_token');
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/personal-cooker/chat`,
+        `${BASE_URL}/personal-cooker/chat`,
         {
           method: 'POST',
           headers: {
@@ -163,7 +164,7 @@ export const PersonalCooker = () => {
     try {
       const token = localStorage.getItem('desidiet_access_token');
       await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/personal-cooker/history?session_id=${sessionId}`,
+        `${BASE_URL}/personal-cooker/history?session_id=${sessionId}`,
         {
           method: 'DELETE',
           headers: token ? { Authorization: `Bearer ${token}` } : {},

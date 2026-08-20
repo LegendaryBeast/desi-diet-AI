@@ -3,7 +3,10 @@
  * Connects to the FastAPI backend running on http://localhost:8000
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const rawUrl = (import.meta.env.VITE_API_URL || '').trim();
+export const BASE_URL = rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('/')
+  ? `https://${rawUrl.replace(/\/+$/, '')}`
+  : rawUrl.replace(/\/+$/, '');
 
 // ─── Token Management ─────────────────────────────────────────────────────────
 
