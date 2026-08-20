@@ -1,2 +1,2 @@
-Total Iron (mg): 202.30
-Coverage: 697.6%
+Total Iron (mg): 151.82
+Coverage: 523.5%

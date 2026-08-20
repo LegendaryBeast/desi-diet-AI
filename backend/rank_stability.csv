@@ -1,16 +1,13 @@
 Group,Food,Rank,Score
-Female (35),"Bengal gram, whole",29,108.64
-Female (35),"Bengal gram, whole",123,49.38
-Male (15),"Bengal gram, whole",29,114.29
-Male (15),"Bengal gram, whole",123,51.95
-Male (65),"Bengal gram, whole",29,146.67
-Male (65),"Bengal gram, whole",123,66.67
-Female (35),Spinach,148,38.27
-Female (35),Spinach,155,36.42
-Female (35),Spinach,212,27.16
-Male (15),Spinach,148,40.26
-Male (15),Spinach,155,38.31
-Male (15),Spinach,212,28.57
-Male (65),Spinach,148,51.67
-Male (65),Spinach,155,49.17
-Male (65),Spinach,212,36.67
+Female (35),"Bengal gram, whole",22,108.64
+Female (35),"Bengal gram, whole",102,49.38
+Male (15),"Bengal gram, whole",22,114.29
+Male (15),"Bengal gram, whole",102,51.95
+Male (65),"Bengal gram, whole",22,146.67
+Male (65),"Bengal gram, whole",102,66.67
+Female (35),Spinach,125,38.27
+Female (35),Spinach,131,36.42
+Male (15),Spinach,125,40.26
+Male (15),Spinach,131,38.31
+Male (65),Spinach,125,51.67
+Male (65),Spinach,131,49.17

@@ -60,9 +60,10 @@ class LLMClient:
             stream=True,
         )
         async for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content:
-                yield content
+            if chunk.choices:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
 
     async def get_embedding(self, text: str, model: str = "text-embedding-3-small") -> List[float]:
         """Generate vector embedding for a text query using OpenAI."""
