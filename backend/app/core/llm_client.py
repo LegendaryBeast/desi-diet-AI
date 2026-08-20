@@ -12,16 +12,21 @@ class LLMClient:
     Prefers Groq when GROQ_API_KEY is set, otherwise uses OpenAI-compatible config."""
 
     def __init__(self):
+        default_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
         if settings.groq_api_key:
             self.client = AsyncOpenAI(
                 api_key=settings.groq_api_key,
                 base_url="https://api.groq.com/openai/v1",
+                default_headers=default_headers,
             )
             self.model = "llama-3.3-70b-versatile"
         else:
             self.client = AsyncOpenAI(
                 api_key=settings.llm_api_key,
                 base_url=settings.llm_base_url,
+                default_headers=default_headers,
             )
             self.model = settings.llm_model
 
