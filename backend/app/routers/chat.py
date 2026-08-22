@@ -54,6 +54,11 @@ logger = logging.getLogger(__name__)
 
 
 # ── Tool dispatch map ─────────────────────────────────────────────────────────
+_MUTATING_TOOLS = {
+    "update_profile", "log_health", "log_meal",
+    "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
+}
+
 # Maps function names to (handler_coroutine, needs_user_id)
 TOOL_DISPATCH = {
     "log_meal": (None, True),  # handled inline for historical reasons
@@ -904,10 +909,6 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
 
             # If tool calls were requested, execute them
             # Tools that mutate user data — after these run we MUST rebuild context
-            _MUTATING_TOOLS = {
-                "update_profile", "log_health", "log_meal",
-                "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
-            }
             if tool_calls:
                 formatted_tool_calls = []
                 tool_results = []
