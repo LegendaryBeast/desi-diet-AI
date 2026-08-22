@@ -37,7 +37,7 @@ const NUTRIENT_METADATA: Record<string, { desc: string; foods: string[]; categor
   },
   "Thiamine (B1)": {
     desc: "কার্বোহাইড্রেট থেকে শক্তি উৎপাদনে সাহায্য করে এবং স্নায়ুতন্ত্র সচল রাখে।",
-    foods: ["লাল চালের ভাত", "ঢেঁকি ছাঁটা চাল", "আস্ত গম", "ডাল", "বাদাম"],
+    foods: ["লাল চালের ভাত", "ঢেঁকি ছাঁটা চাল", "গমের ছাতু", "ডাল", "বাদাম"],
     category: "ভিটামিন"
   },
   "Riboflavin (B2)": {

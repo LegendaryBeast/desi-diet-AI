@@ -14,7 +14,7 @@ STATIC_FOODS: List[Dict[str, Any]] = [
     {"code": "A022", "name_en": "Wheat semolina", "name_bn": "সুজি", "food_group": "Cereals & Grains", "calories": 139.6, "protein": 11.38, "fiber": 9.72},
     {"code": "A016", "name_en": "Samai", "name_bn": "সেমাই", "food_group": "Cereals & Grains", "calories": 144.9, "protein": 10.13, "fiber": 7.72},
     {"code": "A024", "name_en": "Wheat vermicelli roasted", "name_bn": "ভাজা সেমাই", "food_group": "Cereals & Grains", "calories": 142.3, "protein": 10.37, "fiber": 9.55},
-    {"code": "A020", "name_en": "Wheat whole", "name_bn": "আস্ত গম", "food_group": "Cereals & Grains", "calories": 134.7, "protein": 10.59, "fiber": 11.23},
+    {"code": "A020", "name_en": "Wheat whole", "name_bn": "গমের ছাতু", "food_group": "Cereals & Grains", "calories": 134.7, "protein": 10.59, "fiber": 11.23},
 
     # ── Pulses & Legumes ──────────────────────────────────────────────
     {"code": "B013", "name_en": "Lentil dal", "name_bn": "মসুর ডাল", "food_group": "Pulses & Legumes", "calories": 134.9, "protein": 24.35, "fiber": 10.43},
