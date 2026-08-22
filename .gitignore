@@ -46,3 +46,6 @@ graphify-out/
 .agents/
 
 backend/prisma/dev.db
+
+# Paper
+paper/
