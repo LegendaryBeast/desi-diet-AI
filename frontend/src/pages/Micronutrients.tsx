@@ -128,16 +128,31 @@ export const Micronutrients: React.FC = () => {
     const fetchPlanData = async () => {
       try {
         setLoading(true);
-        setError(null);
-        const data = await mealPlanApi.getDaily('bn');
-        if (data && data.plan_data) {
-          const parsed = typeof data.plan_data === 'string'
-            ? JSON.parse(data.plan_data)
-            : data.plan_data;
-          if (parsed && parsed.micronutrient_targets && parsed.micronutrient_targets.length > 0) {
-            setMicronutrients(parsed.micronutrient_targets);
-            return;
+        let data = await mealPlanApi.getDaily('bn');
+        let parsed = data && data.plan_data
+          ? (typeof data.plan_data === 'string' ? JSON.parse(data.plan_data) : data.plan_data)
+          : null;
+
+        // Fallback: If today has no meal plan yet, fetch the latest plan from history
+        if (!parsed || !parsed.micronutrient_targets || parsed.micronutrient_targets.length === 0) {
+          try {
+            const history = await mealPlanApi.getHistory(1);
+            if (history && history.length > 0 && history[0].plan_data) {
+              const hParsed = typeof history[0].plan_data === 'string'
+                ? JSON.parse(history[0].plan_data)
+                : history[0].plan_data;
+              if (hParsed && hParsed.micronutrient_targets && hParsed.micronutrient_targets.length > 0) {
+                parsed = hParsed;
+              }
+            }
+          } catch (hErr) {
+            // ignore history fetch error
           }
+        }
+
+        if (parsed && parsed.micronutrient_targets && parsed.micronutrient_targets.length > 0) {
+          setMicronutrients(parsed.micronutrient_targets);
+          return;
         }
         setError(isBn ? 'কোন পুষ্টি তথ্য পাওয়া যায়নি।' : 'No micronutrient data found.');
       } catch (err) {

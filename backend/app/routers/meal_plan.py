@@ -46,9 +46,9 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
     ]
     
     from rag_engine.food_engine import KhadokGraphRAG
-    rag = KhadokGraphRAG()
     from app.logic.offline_nutrients import get_offline_rda_targets, get_offline_food_nutrients
-
+    rag = KhadokGraphRAG()
+    driver = rag.get_neo4j_driver()
     nutrients_targets = []
     if driver is not None:
         query = f"""
