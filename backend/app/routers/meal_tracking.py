@@ -63,27 +63,39 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
             try:
                 rag = _get_rag()
                 db_food = None
+                driver = rag.get_neo4j_driver() if rag else None
                 
-                if req.direct_code:
-                    with rag.get_neo4j_driver().session() as session:
-                        q = """
-                        MATCH (f:Food)
-                        WHERE f.code = $code
-                        RETURN f.code AS code,
-                               f.name_en AS name_en,
-                               f.energy_kcal AS calories,
-                               f.protein_g AS protein,
-                               f.fat_g AS fat,
-                               f.carbohydrate_g AS carbs
-                        """
-                        res = session.run(q, code=req.direct_code).single()
-                        if res:
-                            db_food = dict(res)
+                if req.direct_code and driver:
+                    try:
+                        with driver.session() as session:
+                            q = """
+                            MATCH (f:Food)
+                            WHERE f.code = $code
+                            RETURN f.code AS code,
+                                   f.name_en AS name_en,
+                                   f.energy_kcal AS calories,
+                                   f.protein_g AS protein,
+                                   f.fat_g AS fat,
+                                   f.carbohydrate_g AS carbs
+                            """
+                            res = session.run(q, code=req.direct_code).single()
+                            if res:
+                                db_food = dict(res)
+                    except Exception as e:
+                        logger.warning("Neo4j food lookup by code failed: %s", e)
 
-                if not db_food and (req.direct_name or req.input):
-                    db_matches = rag.search_food(req.direct_name or req.input)
-                    if db_matches:
-                        db_food = db_matches[0]
+                if not db_food and driver and (req.direct_name or req.input):
+                    try:
+                        db_matches = rag.search_food(req.direct_name or req.input)
+                        if db_matches:
+                            db_food = db_matches[0]
+                    except Exception as e:
+                        logger.warning("Neo4j food lookup by name failed: %s", e)
+
+                # Fallback to local offline food dataset if Neo4j is offline or food wasn't found in graph
+                if not db_food:
+                    from app.logic.offline_nutrients import get_offline_food_macros
+                    db_food = get_offline_food_macros(code=req.direct_code, name=req.direct_name or req.input)
                         
                 if db_food:
                     db_cal  = float(db_food.get("calories") or db_food.get("energy_kcal") or 0.0)

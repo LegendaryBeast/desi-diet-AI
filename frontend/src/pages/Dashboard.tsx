@@ -30,13 +30,9 @@ import { WhatsAppConnectModal } from '../components/whatsapp/WhatsAppConnectModa
 import { useAuth } from '../contexts/AuthContext';
 import {
   mealPlanApi,
-  healthLogApi,
   medicineApi,
-  reportsApi,
   type MealPlanResponse,
-  type HealthLogResponse,
   type MedicineReminderListItem,
-  type HealthSummaryReport,
   type MealTrackingListItem,
   mealTrackingApi,
 } from '../lib/api';
@@ -67,40 +63,36 @@ const WaveChart = () => (
 export const Dashboard = () => {
   const { profileData, user } = useAuth();
   const [mealPlan, setMealPlan] = useState<MealPlanResponse | null>(null);
-  const [healthLogs, setHealthLogs] = useState<HealthLogResponse[]>([]);
   const [medicines, setMedicines] = useState<MedicineReminderListItem[]>([]);
-  const [report, setReport] = useState<HealthSummaryReport | null>(null);
   const [trackedMeals, setTrackedMeals] = useState<MealTrackingListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!profileData);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (isInitial = false) => {
+    if (isInitial && !profileData) {
+      setLoading(true);
+    }
     try {
-      const [todayPlan, logsList, medsList, reportSummary, trackedMealsList] = await Promise.all([
-        mealPlanApi.getDaily('bn').catch(() => null),
-        healthLogApi.list(5).catch(() => []),
+      const [todayPlan, medsList, trackedMealsList] = await Promise.all([
+        mealPlanApi.getDaily('bn', 0, false, false).catch(() => null),
         medicineApi.list().catch(() => []),
-        reportsApi.healthSummary(7).catch(() => null),
         mealTrackingApi.today().catch(() => []),
       ]);
       setMealPlan(todayPlan);
-      setHealthLogs(logsList);
       setMedicines(medsList);
-      setReport(reportSummary);
       setTrackedMeals(trackedMealsList);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profileData]);
 
   useEffect(() => {
-    fetchData();
-    const handleRefresh = () => fetchData();
+    fetchData(true);
+    const handleRefresh = () => fetchData(false);
     window.addEventListener('data:refresh', handleRefresh);
-    const onVisible = () => { if (!document.hidden) fetchData(); };
+    const onVisible = () => { if (!document.hidden) fetchData(false); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('data:refresh', handleRefresh);

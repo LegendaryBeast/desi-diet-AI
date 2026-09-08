@@ -230,8 +230,8 @@ export interface MarkSlotCompleteResponse {
 }
 
 export const mealPlanApi = {
-  getDaily: (language = 'bn', offset = 0, force = false) =>
-    apiFetch<MealPlanResponse>(`/meal-plans/daily?language=${language}&offset=${offset}&force=${force}`),
+  getDaily: (language = 'bn', offset = 0, force = false, autoGenerate = true) =>
+    apiFetch<MealPlanResponse>(`/meal-plans/daily?language=${language}&offset=${offset}&force=${force}&auto_generate=${autoGenerate}`),
 
   getWeekly: (language = 'bn') =>
     apiFetch<MealPlanResponse[]>(`/meal-plans/weekly?language=${language}`),

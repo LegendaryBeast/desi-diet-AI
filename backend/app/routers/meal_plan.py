@@ -47,29 +47,32 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
     
     from rag_engine.food_engine import KhadokGraphRAG
     rag = KhadokGraphRAG()
-    driver = rag.get_neo4j_driver()
-    
-    query = f"""
-    MATCH (n:Nutrient)
-    WHERE n.name IN $default_nutrients OR EXISTS {{
-        MATCH (d:Disease)-[:REQUIRES]->(n)
-        WHERE d.name IN $conditions
-    }}
-    RETURN DISTINCT n.name AS name, n.`{rda_key}` AS rda_val
-    """
-    
+    from app.logic.offline_nutrients import get_offline_rda_targets, get_offline_food_nutrients
+
     nutrients_targets = []
-    try:
-        with driver.session() as session:
-            records = session.run(query, default_nutrients=default_nutrients, conditions=conditions)
-            for record in records:
-                nutrients_targets.append({
-                    "name": record["name"],
-                    "target": record["rda_val"] or 0.0
-                })
-    except Exception as e:
-        print(f"Error querying Neo4j for nutrient targets: {e}")
-        return []
+    if driver is not None:
+        query = f"""
+        MATCH (n:Nutrient)
+        WHERE n.name IN $default_nutrients OR EXISTS {{
+            MATCH (d:Disease)-[:REQUIRES]->(n)
+            WHERE d.name IN $conditions
+        }}
+        RETURN DISTINCT n.name AS name, n.`{rda_key}` AS rda_val
+        """
+        try:
+            with driver.session() as session:
+                records = session.run(query, default_nutrients=default_nutrients, conditions=conditions)
+                for record in records:
+                    nutrients_targets.append({
+                        "name": record["name"],
+                        "target": record["rda_val"] or 0.0
+                    })
+        except Exception as e:
+            print(f"Error querying Neo4j for nutrient targets: {e}")
+
+    # Fallback to local offline dataset if Neo4j is offline, paused, or returned empty
+    if not nutrients_targets:
+        nutrients_targets = get_offline_rda_targets(age, gender, default_nutrients)
 
     # Helper for units and scaling standard_rda_mg
     def get_nutrient_unit_and_val(name: str, db_val_mg: float):
@@ -151,31 +154,36 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
                n.name AS nutrient_name,
                r.amount_mg AS amount_mg
         """
-        try:
-            with driver.session() as session:
-                records = session.run(food_query, food_inputs=food_inputs, tracked_nutrients=TRACKED_NUTRIENTS)
-                for record in records:
-                    food_code = record["code"] or ""
-                    food_name = (record["display_name"] or record["name_en"] or "").lower()
-                    key = food_code if food_code else food_name
-                    if not key:
-                        continue
-                    if key not in food_nutrients:
-                        food_nutrients[key] = {}
-                    nutrient_name = record["nutrient_name"]
-                    # Map graph aliases back to RDA-defined standard names
-                    if nutrient_name == "Folates (B9)":
-                        nutrient_name = "Folate (total)"
-                    elif nutrient_name == "α-Tocopherol equivalent (E)":
-                        nutrient_name = "Vitamin E"
-                    
-                    amount = record["amount_mg"]
-                    if nutrient_name and amount is not None:
-                        # Vitamin A in the graph is in mg (per 100g as per the dataset scale)
-                        # It will be converted to mcg display units in get_nutrient_unit_and_val
-                        food_nutrients[key][nutrient_name] = float(amount)
-        except Exception as e:
-            print(f"Error querying food nutrients via CONTAINS_NUTRIENT: {e}")
+        if driver is not None:
+            try:
+                with driver.session() as session:
+                    records = session.run(food_query, food_inputs=food_inputs, tracked_nutrients=TRACKED_NUTRIENTS)
+                    for record in records:
+                        food_code = record["code"] or ""
+                        food_name = (record["display_name"] or record["name_en"] or "").lower()
+                        key = food_code if food_code else food_name
+                        if not key:
+                            continue
+                        if key not in food_nutrients:
+                            food_nutrients[key] = {}
+                        nutrient_name = record["nutrient_name"]
+                        # Map graph aliases back to RDA-defined standard names
+                        if nutrient_name == "Folates (B9)":
+                            nutrient_name = "Folate (total)"
+                        elif nutrient_name == "α-Tocopherol equivalent (E)":
+                            nutrient_name = "Vitamin E"
+                        
+                        amount = record["amount_mg"]
+                        if nutrient_name and amount is not None:
+                            # Vitamin A in the graph is in mg (per 100g as per the dataset scale)
+                            # It will be converted to mcg display units in get_nutrient_unit_and_val
+                            food_nutrients[key][nutrient_name] = float(amount)
+            except Exception as e:
+                print(f"Error querying food nutrients via CONTAINS_NUTRIENT: {e}")
+
+        # Fallback to local offline dataset if Neo4j is offline or food nutrients are missing
+        if not food_nutrients:
+            food_nutrients = get_offline_food_nutrients(food_inputs)
 
     # 6. Calculate total consumed nutrients
     totals = {}
@@ -275,7 +283,7 @@ async def _plan_to_response(plan) -> MealPlanResponse:
 
 
 @router.get("/daily", response_model=MealPlanResponse)
-async def get_daily_plan(language: str = "bn", force: bool = False, offset: int = 0, current_user=Depends(get_current_user)):
+async def get_daily_plan(language: str = "bn", force: bool = False, offset: int = 0, auto_generate: bool = True, current_user=Depends(get_current_user)):
     """Generate AI meal plan for today or future day."""
     target_date = datetime.now(ZoneInfo("Asia/Dhaka")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc) + timedelta(days=offset)
 
@@ -289,6 +297,9 @@ async def get_daily_plan(language: str = "bn", force: bool = False, offset: int 
 
     if existing and not force:
         return await _plan_to_response(existing)
+
+    if not auto_generate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No meal plan found for this date")
 
     completed_slots = []
     existing_plan_data = None
