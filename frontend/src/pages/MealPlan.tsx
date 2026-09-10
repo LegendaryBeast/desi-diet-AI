@@ -131,6 +131,7 @@ export const MealPlan = () => {
   const [justificationLoading, setJustificationLoading] = useState<Record<string, boolean>>({});
 
   const [loadingSwapKey, setLoadingSwapKey] = useState<string | null>(null);
+  const [loadingSlotKey, setLoadingSlotKey] = useState<string | null>(null);
   const [originalItems, setOriginalItems] = useState<Record<string, any>>({});
   const [skippedCodes, setSkippedCodes] = useState<Record<string, string[]>>({});
 
@@ -252,8 +253,25 @@ export const MealPlan = () => {
     }
   };
 
-  const handleSwapRequest = (items: string[]) => {
-    navigate('/chat', { state: { prefill: `আমি আমার খাবার তালিকা থেকে "${items.join(' • ')}" পরিবর্তন করে বিকল্প খাবারের পরামর্শ চাই।` } });
+  const handleRegenerateSlot = async (targetPlan: MealPlanResponse, slotName: string) => {
+    const key = `${targetPlan.plan_id}-${slotName}`;
+    setLoadingSlotKey(key);
+    try {
+      const updated = await mealPlanApi.regenerateSlot(targetPlan.plan_id, slotName);
+      if (plan && plan.plan_id === targetPlan.plan_id) {
+        setPlan(updated);
+        setEditingPlanData(updated.plan_data as PlanData);
+      }
+      if (tomorrowPlan && tomorrowPlan.plan_id === targetPlan.plan_id) {
+        setTomorrowPlan(updated);
+      }
+      setHistoryPlans((prev) => prev.map((p) => (p.plan_id === targetPlan.plan_id ? updated : p)));
+      window.dispatchEvent(new Event('data:refresh'));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'স্লটের খাবার পরিবর্তন করতে সমস্যা হয়েছে');
+    } finally {
+      setLoadingSlotKey(null);
+    }
   };
 
   const handleAutoSwap = async (targetPlan: MealPlanResponse, mealSlot: string, item: any, itemIndex: number) => {
@@ -329,7 +347,9 @@ export const MealPlan = () => {
           carbs_g: Math.round((nextAlt.carbs || 0) * scale),
           fat_g: Math.round((nextAlt.fat || 0) * scale),
           food_group: nextAlt.food_group,
-          emoji: originalItem.emoji || '🍽️',
+          portion_bn: nextAlt.portion_bn || nextAlt.household_measure_bn || `${amount} গ্রাম`,
+          household_measure_bn: nextAlt.household_measure_bn || nextAlt.portion_bn || `${amount} গ্রাম`,
+          emoji: nextAlt.emoji || originalItem.emoji || '🍽️',
         };
       }
 
@@ -343,7 +363,10 @@ export const MealPlan = () => {
 
       // Perform request
       const updated = await mealPlanApi.editPlan(targetPlan.plan_id, newPlanData, totalCal);
-      if (plan && plan.plan_id === targetPlan.plan_id) setPlan(updated);
+      if (plan && plan.plan_id === targetPlan.plan_id) {
+        setPlan(updated);
+        setEditingPlanData(updated.plan_data as PlanData);
+      }
       if (tomorrowPlan && tomorrowPlan.plan_id === targetPlan.plan_id) setTomorrowPlan(updated);
       setHistoryPlans(prev => prev.map(p => p.plan_id === targetPlan.plan_id ? updated : p));
 
@@ -903,11 +926,16 @@ export const MealPlan = () => {
                     {showToggle && !isFuturePlan(p.plan_date) && (
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleSwapRequest((slot.items || []).map((i) => i.name_bn || i.name_en || ''))}
-                          className="p-1.5 rounded-xl bg-cream text-accent hover:bg-accent hover:text-white transition-all border border-transparent hover:border-accent/10"
-                          title="এই স্লটের খাবারের বিকল্প খুঁজুন"
+                          onClick={() => handleRegenerateSlot(p, slot.slot)}
+                          disabled={loadingSlotKey === `${p.plan_id}-${slot.slot}`}
+                          className="p-1.5 rounded-xl bg-cream text-accent hover:bg-accent hover:text-white transition-all border border-transparent hover:border-accent/10 disabled:opacity-50"
+                          title="এই পুরো স্লটের খাবারের নতুন বিকল্প তৈরি করুন"
                         >
-                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                          {loadingSlotKey === `${p.plan_id}-${slot.slot}` ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ArrowLeftRight className="w-3.5 h-3.5" />
+                          )}
                         </button>
                         <button
                           onClick={() => toggleSlotForPlan(p, slot.slot)}

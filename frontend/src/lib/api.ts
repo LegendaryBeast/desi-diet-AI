@@ -256,6 +256,12 @@ export const mealPlanApi = {
       method: 'PATCH',
       body: JSON.stringify({ plan_data, user_choice_cal }),
     }),
+
+  regenerateSlot: (planId: string, slot: string) =>
+    apiFetch<MealPlanResponse>(`/meal-plans/${planId}/regenerate-slot`, {
+      method: 'POST',
+      body: JSON.stringify({ slot }),
+    }),
 };
 
 // ─── Chat (SSE Streaming) ─────────────────────────────────────────────────────

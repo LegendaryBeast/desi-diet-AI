@@ -148,6 +148,10 @@ class EditMealPlanRequest(BaseModel):
     user_choice_cal: int
 
 
+class RegenerateSlotRequest(BaseModel):
+    slot: str
+
+
 class MealPlanFeedbackRequest(BaseModel):
     feedback: int = Field(..., ge=1, le=5)
 

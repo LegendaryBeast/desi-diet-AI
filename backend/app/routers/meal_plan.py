@@ -3,8 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.db import prisma
 from app.dependencies import get_current_user
-from app.schemas import MealPlanResponse, MealPlanFeedbackRequest, MarkSlotCompleteRequest, MarkSlotCompleteResponse, EditMealPlanRequest
-from app.services.meal_plan_service import generate_daily_meal_plan, generate_weekly_meal_plan, save_meal_plan, _ensure_item_emojis
+from app.schemas import MealPlanResponse, MealPlanFeedbackRequest, MarkSlotCompleteRequest, MarkSlotCompleteResponse, EditMealPlanRequest, RegenerateSlotRequest
+from app.services.meal_plan_service import generate_daily_meal_plan, generate_weekly_meal_plan, save_meal_plan, _ensure_item_emojis, regenerate_single_slot_in_plan
+from app.utils_portion import attach_household_measurements
 from app.utils import safe_dict, safe_list, to_json_string, from_json_string
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -446,11 +447,54 @@ async def edit_meal_plan(plan_id: str, req: EditMealPlanRequest, current_user=De
     if not plan or plan.userId != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
 
+    plan_dict = req.plan_data
+    if isinstance(plan_dict, dict):
+        _ensure_item_emojis(plan_dict)
+        attach_household_measurements(plan_dict)
+
     updated = await prisma.mealplan.update(
         where={"planId": plan_id},
         data={
-            "planData": to_json_string(req.plan_data),
+            "planData": to_json_string(plan_dict),
             "userChoiceCal": req.user_choice_cal,
+        },
+    )
+    return await _plan_to_response(updated)
+
+
+@router.post("/{plan_id}/regenerate-slot", response_model=MealPlanResponse)
+async def regenerate_slot(
+    plan_id: str,
+    req: RegenerateSlotRequest,
+    current_user=Depends(get_current_user)
+):
+    """Regenerate items for a single meal slot without altering the rest of the plan."""
+    plan = await prisma.mealplan.find_unique(where={"planId": plan_id})
+    if not plan or plan.userId != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+
+    plan_data = safe_dict(from_json_string(plan.planData)) if plan.planData else {}
+    if not plan_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Plan data is empty")
+
+    updated_plan_data = await regenerate_single_slot_in_plan(
+        plan_data=plan_data,
+        target_slot=req.slot,
+        user_id=current_user.id,
+        language=plan.language or "bn",
+    )
+
+    # Calculate new total calories
+    new_total_cals = 0
+    for meal in updated_plan_data.get("meals", []) or []:
+        for it in meal.get("items", []) or []:
+            new_total_cals += int(it.get("calories", 0))
+
+    updated = await prisma.mealplan.update(
+        where={"planId": plan_id},
+        data={
+            "planData": to_json_string(updated_plan_data),
+            "userChoiceCal": new_total_cals,
         },
     )
     return await _plan_to_response(updated)
