@@ -13,10 +13,22 @@ from app.dependencies import get_current_user
 
 router = APIRouter()
 
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _get_verify_token() -> str:
+    return (getattr(settings, "whatsapp_verify_token", None) or os.getenv("WHATSAPP_VERIFY_TOKEN") or "").strip()
+
+def _get_whatsapp_token() -> str:
+    return (getattr(settings, "whatsapp_token", None) or os.getenv("WHATSAPP_TOKEN") or "").strip()
+
+def _get_phone_number_id(override: Optional[str] = None) -> str:
+    return (override or getattr(settings, "phone_number_id", None) or os.getenv("PHONE_NUMBER_ID") or "").strip()
+
+def _get_backend_url() -> str:
+    backend_url = getattr(settings, "backend_url", None) or os.getenv("BACKEND_URL")
+    if backend_url and backend_url != "http://localhost:8000":
+        return backend_url.rstrip("/")
+    port = os.getenv("PORT", "8000")
+    return f"http://127.0.0.1:{port}"
+
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +71,7 @@ async def _generate_reply(user, user_message: str) -> str:
     async with httpx.AsyncClient(timeout=60) as client:
         async with client.stream(
             "POST",
-            f"{BACKEND_URL}/chat",
+            f"{_get_backend_url()}/chat",
             headers={
                 "Authorization": f"Bearer {token}",
                 "Accept": "text/event-stream",
@@ -156,11 +168,12 @@ async def _handle_incoming_message(phone_raw: str, user_message: str) -> dict:
 @router.get("/webhook/whatsapp")
 async def verify_webhook(request: Request):
     params = request.query_params
+    verify_token = _get_verify_token()
     if (
         params.get("hub.mode") == "subscribe"
-        and params.get("hub.verify_token") == VERIFY_TOKEN
+        and params.get("hub.verify_token") == verify_token
     ):
-        return PlainTextResponse(params.get("hub.challenge"))
+        return PlainTextResponse(params.get("hub.challenge", ""))
     raise HTTPException(status_code=403, detail="Verification failed")
 
 
@@ -253,11 +266,16 @@ async def whatsapp_incoming(
 # 4. Send WhatsApp message via Meta Cloud API
 # ---------------------------------------------------------------------------
 async def send_whatsapp_message(phone_number_id: str, to: str, text: str):
-    async with httpx.AsyncClient() as client:
+    token = _get_whatsapp_token()
+    pid = _get_phone_number_id(phone_number_id)
+    if not token or not pid:
+        print(f"Cannot send WhatsApp message: missing token (len={len(token)}) or phone_number_id='{pid}'")
+        return
+    async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(
-            f"https://graph.facebook.com/v19.0/{phone_number_id}/messages",
+            f"https://graph.facebook.com/v19.0/{pid}/messages",
             headers={
-                "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
             },
             json={
