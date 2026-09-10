@@ -72,9 +72,9 @@ def compute_household_measure(
         elif amt <= 140:
             h_bn, h_en = "১ কাপ", "1 cup"
         elif amt <= 190:
-            h_bn, h_en = "১ মাঝারি বাটি", "1 medium bowl"
+            h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
         elif amt <= 260:
-            h_bn, h_en = "১ বড় বাটি (১.৫ কাপ)", "1 large bowl (1.5 cups)"
+            h_bn, h_en = "বড় ১ বাটি", "1 large bowl"
         else:
             h_bn, h_en = "২ কাপ", "2 cups"
 
@@ -108,7 +108,7 @@ def compute_household_measure(
             h_bn, h_en = "১ কাপ", "1 cup"
 
     elif any(k in nb or k in ne for k in ["খই", "khoi", "popped rice"]):
-        h_bn, h_en = "১ মুষ্টি", "1 handful"
+        h_bn, h_en = "১ মুঠো", "1 handful"
 
     elif any(k in nb or k in ne for k in ["oats", "ওটস", "suji", "সুজি", "semai", "সেমাই", "semolina"]):
         if amt <= 40:
@@ -134,17 +134,17 @@ def compute_household_measure(
         is_white_only = any(k in nb or k in ne for k in ["সাদা", "white"])
         if is_white_only:
             if amt <= 45:
-                h_bn, h_en = "১টি ডিমের সাদা অংশ", "1 egg white"
+                h_bn, h_en = "১টি (সাদা অংশ)", "1 pc (white)"
             else:
-                h_bn, h_en = "২টি ডিমের সাদা অংশ", "2 egg whites"
+                h_bn, h_en = "২টি (সাদা অংশ)", "2 pcs (white)"
         else:
             if amt <= 65:
-                h_bn, h_en = "১টি সিদ্ধ ডিম", "1 boiled egg"
+                h_bn, h_en = "১টি", "1 pc"
             elif amt <= 120:
-                h_bn, h_en = "২টি ডিম", "2 eggs"
+                h_bn, h_en = "২টি", "2 pcs"
             else:
                 cnt = max(1, round(amt / 55))
-                h_bn, h_en = f"{to_bn_digits(cnt)}টি ডিম", f"{cnt} eggs"
+                h_bn, h_en = f"{to_bn_digits(cnt)}টি", f"{cnt} pcs"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 5. Fish (মাছ)
@@ -153,17 +153,17 @@ def compute_household_measure(
         is_small_fish = any(k in nb or k in ne for k in ["ছোট মাছ", "মলা", "ঢেলা", "কাঁচকি", "কেচকি", "small fish", "choto mach"])
         if is_small_fish:
             if amt <= 60:
-                h_bn, h_en = "১/২ বাটি ছোট মাছ", "1/2 bowl small fish"
+                h_bn, h_en = "১/২ বাটি", "1/2 bowl"
             else:
-                h_bn, h_en = "১ ছোট বাটি ছোট মাছের চচ্চড়ি", "1 small bowl small fish"
+                h_bn, h_en = "ছোট ১ বাটি", "1 small bowl"
         else:
             if amt <= 75:
-                h_bn, h_en = "১ টুকরা মাঝারি মাছ", "1 medium piece fish"
+                h_bn, h_en = "মাঝারি ১ টুকরা", "1 medium piece"
             elif amt <= 140:
-                h_bn, h_en = "২ টুকরা মাছ", "2 pieces fish"
+                h_bn, h_en = "২ টুকরা", "2 pieces"
             else:
                 cnt = max(1, round(amt / 65))
-                h_bn, h_en = f"{to_bn_digits(cnt)} টুকরা মাছ", f"{cnt} pieces fish"
+                h_bn, h_en = f"{to_bn_digits(cnt)} টুকরা", f"{cnt} pieces"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 6. Meat & Poultry (মুরগি, গরু, খাসি)
@@ -174,19 +174,19 @@ def compute_household_measure(
         any(k in fg for k in ["meat", "poultry"])
     ) and not any(k in nb or k in ne for k in ["দুধ", "milk", "ঘোল", "মাঠা", "দই", "ছানা"]):
         if any(k in nb or k in ne for k in ["breast", "ব্রেস্ট"]):
-            h_bn, h_en = "১টি চিকেন ব্রেস্ট", "1 chicken breast piece"
+            h_bn, h_en = "১ টুকরা", "1 piece"
         elif amt <= 55:
-            h_bn, h_en = "১ টুকরা মাঝারি মাংস", "1 medium piece meat"
+            h_bn, h_en = "মাঝারি ১ টুকরা", "1 medium piece"
         elif amt <= 100:
-            h_bn, h_en = "১-২ টুকরা মাংস", "1-2 pieces meat"
+            h_bn, h_en = "১-২ টুকরা", "1-2 pieces"
         elif amt <= 160:
-            h_bn, h_en = "২-৩ টুকরা মাংস", "2-3 pieces meat"
+            h_bn, h_en = "২-৩ টুকরা", "2-3 pieces"
         else:
             cnt = max(1, round(amt / 55))
-            h_bn, h_en = f"{to_bn_digits(cnt)} টুকরা মাংস", f"{cnt} pieces meat"
+            h_bn, h_en = f"{to_bn_digits(cnt)} টুকরা", f"{cnt} pieces"
 
     # ──────────────────────────────────────────────────────────────────────────
-    # 7. Pulses & Legumes (ডাল, ছোলা, বুট, মটর)
+    # 7. Pulses & Legumes (ডাল, ছোলা, বুট, মটর, শিম)
     # ──────────────────────────────────────────────────────────────────────────
     elif any(k in nb or k in ne for k in ["ডাল", "dal", "lentil", "ছোলা", "chola", "chickpea", "বুট", "মটর", "peas", "শিম"]) or any(k in fg for k in ["pulse", "legume"]):
         is_chola = any(k in nb or k in ne for k in ["ছোলা", "chola", "chickpea", "বুট", "মটর"])
@@ -194,109 +194,108 @@ def compute_household_measure(
             if amt <= 45:
                 h_bn, h_en = "২ টেবিল চামচ", "2 tbsp"
             elif amt <= 85:
-                h_bn, h_en = "১/২ কাপ সিদ্ধ ছোলা", "1/2 cup boiled chickpeas"
+                h_bn, h_en = "১/২ কাপ", "1/2 cup"
             else:
-                h_bn, h_en = "১ কাপ সিদ্ধ ছোলা", "1 cup boiled chickpeas"
+                h_bn, h_en = "১ কাপ", "1 cup"
         else:
-            # Liquid dal soup
             if amt <= 90:
-                h_bn, h_en = "১/২ কাপ ডাল", "1/2 cup dal"
+                h_bn, h_en = "১/২ কাপ", "1/2 cup"
             elif amt <= 150:
-                h_bn, h_en = "১ ছোট বাটি ঘন ডাল", "1 small bowl thick dal"
+                h_bn, h_en = "ছোট ১ বাটি", "1 small bowl"
             else:
-                h_bn, h_en = "১ মাঝারি বাটি ডাল", "1 medium bowl dal"
+                h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 8. Leafy Greens & Vegetables (শাক, সবজি, সালাদ)
     # ──────────────────────────────────────────────────────────────────────────
     elif any(k in nb or k in ne for k in ["শাক", "shak", "spinach", "palong", "lal shak", "leafy"]) or "leafy" in fg:
         if amt <= 65:
-            h_bn, h_en = "১/২ বাটি শাক ভাজি", "1/2 bowl cooked greens"
+            h_bn, h_en = "১/২ বাটি", "1/2 bowl"
         else:
-            h_bn, h_en = "১ ছোট বাটি শাক ভাজি", "1 small bowl cooked greens"
+            h_bn, h_en = "ছোট ১ বাটি", "1 small bowl"
 
     elif any(k in nb or k in ne for k in ["সালাদ", "salad", "শসা", "cucumber", "টমেটো", "tomato"]) and not any(k in nb or k in ne for k in ["curry", "তরকারি", "ঝোল"]):
         if amt <= 85:
-            h_bn, h_en = "১ ছোট বাটি সালাদ", "1 small bowl salad"
+            h_bn, h_en = "ছোট ১ বাটি", "1 small bowl"
         else:
-            h_bn, h_en = "১ মাঝারি বাটি সালাদ", "1 medium bowl salad"
+            h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
 
     elif any(k in fg for k in ["vegetable", "tubers"]) or any(k in nb or k in ne for k in ["সবজি", "sobji", "vegetable", "লাউ", "lau", "পেঁপে", "papaya", "পটোল", "পটল", "করলা", "korola", "ঝিঙে", "বেগুন", "ফুলকপি", "বাঁধাকপি", "ঢেঁড়স", "ভেন্ডি", "কুমড়া", "মিষ্টি কুমড়া"]):
         if amt <= 70:
-            h_bn, h_en = "১/২ বাটি সবজি", "1/2 bowl vegetables"
+            h_bn, h_en = "১/২ বাটি", "1/2 bowl"
         elif amt <= 130:
-            h_bn, h_en = "১ ছোট বাটি সবজি", "1 small bowl vegetables"
+            h_bn, h_en = "ছোট ১ বাটি", "1 small bowl"
         elif amt <= 220:
-            h_bn, h_en = "১ মাঝারি বাটি সবজি", "1 medium bowl vegetables"
+            h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
         else:
-            h_bn, h_en = "১ বড় বাটি সবজি", "1 large bowl vegetables"
+            h_bn, h_en = "বড় ১ বাটি", "1 large bowl"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 9. Milk & Dairy (দুধ, টক দই, ছানা, ঘোল)
     # ──────────────────────────────────────────────────────────────────────────
     elif any(k in nb or k in ne for k in ["দই", "doi", "yogurt", "curd"]):
         if amt <= 85:
-            h_bn, h_en = "১/২ কাপ টক দই", "1/2 cup yogurt"
+            h_bn, h_en = "১/২ কাপ", "1/2 cup"
         elif amt <= 180:
-            h_bn, h_en = "১ কাপ টক দই", "1 cup yogurt"
+            h_bn, h_en = "১ কাপ", "1 cup"
         else:
-            h_bn, h_en = "১.৫ কাপ টক দই", "1.5 cups yogurt"
+            h_bn, h_en = "১.৫ কাপ", "1.5 cups"
 
     elif any(k in nb or k in ne for k in ["ছানা", "chhana", "paneer", "পনির", "cheese"]):
         if amt <= 40:
-            h_bn, h_en = "২ টেবিল চামচ ছানা", "2 tbsp cottage cheese"
+            h_bn, h_en = "২ টেবিল চামচ", "2 tbsp"
         else:
-            h_bn, h_en = "১/৪ কাপ ছানা", "1/4 cup cottage cheese"
+            h_bn, h_en = "১/৪ কাপ", "1/4 cup"
 
     elif any(k in nb or k in ne for k in ["দুধ", "milk", "ঘোল", "মাঠা", "buttermilk", "ghol"]) or "milk" in fg:
         if amt <= 140:
-            h_bn, h_en = "১/২ গ্লাস দুধ", "1/2 glass milk"
+            h_bn, h_en = "১/২ গ্লাস", "1/2 glass"
         elif amt <= 260:
-            h_bn, h_en = "১ গ্লাস দুধ", "1 glass milk"
+            h_bn, h_en = "১ গ্লাস", "1 glass"
         else:
-            h_bn, h_en = "১ বড় গ্লাস দুধ", "1 large glass milk"
+            h_bn, h_en = "বড় ১ গ্লাস", "1 large glass"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 10. Fruits (ফলমূল)
     # ──────────────────────────────────────────────────────────────────────────
     elif any(k in nb or k in ne for k in ["কলা", "banana", "kola"]):
         if amt <= 85:
-            h_bn, h_en = "১টি ছোট কলা", "1 small banana"
+            h_bn, h_en = "ছোট ১টি", "1 small"
         else:
-            h_bn, h_en = "১টি মাঝারি কলা", "1 medium banana"
+            h_bn, h_en = "মাঝারি ১টি", "1 medium"
 
     elif any(k in nb or k in ne for k in ["আপেল", "apple", "পেয়ারা", "guava", "কমলা", "orange", "মাল্টা", "malta", "নাশপাতি"]):
         if amt <= 90:
-            h_bn, h_en = "১টি ছোট", "1 small piece"
+            h_bn, h_en = "ছোট ১টি", "1 small"
         elif amt <= 160:
-            h_bn, h_en = "১টি মাঝারি", "1 medium piece"
+            h_bn, h_en = "মাঝারি ১টি", "1 medium"
         else:
-            h_bn, h_en = "১-২টি", "1-2 pieces"
+            h_bn, h_en = "১-২টি", "1-2 pcs"
 
     elif any(k in nb or k in ne for k in ["তরমুজ", "watermelon", "পেঁপে", "papaya", "আনারস", "pineapple", "বাঙ্গি"]):
         if amt <= 85:
             h_bn, h_en = "১-২ ফালি", "1-2 slices"
         elif amt <= 160:
-            h_bn, h_en = "১ কাপ কিউব", "1 cup cubed"
+            h_bn, h_en = "১ কাপ", "1 cup"
         else:
-            h_bn, h_en = "১ বাটি কিউব", "1 bowl cubed"
+            h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
 
     elif any(k in nb or k in ne for k in ["খেজুর", "date", "khejur"]):
         if amt <= 18:
-            h_bn, h_en = "১-২টি খেজুর", "1-2 dates"
+            h_bn, h_en = "১-২টি", "1-2 pcs"
         else:
-            h_bn, h_en = "৩-৪টি খেজুর", "3-4 dates"
+            h_bn, h_en = "৩-৪টি", "3-4 pcs"
 
     elif any(k in nb or k in ne for k in ["লেবু", "lemon", "lime"]):
-        h_bn, h_en = "১ ফালি লেবু", "1 lemon wedge"
+        h_bn, h_en = "১ ফালি", "1 wedge"
 
     elif "fruit" in fg:
         if amt <= 90:
-            h_bn, h_en = "১টি ছোট ফল", "1 small fruit"
+            h_bn, h_en = "ছোট ১টি", "1 small"
         elif amt <= 160:
-            h_bn, h_en = "১টি মাঝারি ফল / ১ কাপ", "1 medium fruit / 1 cup"
+            h_bn, h_en = "মাঝারি ১টি", "1 medium"
         else:
-            h_bn, h_en = "১ বাটি ফল", "1 bowl fruit"
+            h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 11. Oils, Ghee, Nuts & Seeds (তেল, ঘি, বাদাম, বীজ)
@@ -319,9 +318,9 @@ def compute_household_measure(
 
     elif any(k in nb or k in ne for k in ["বাদাম", "nut", "almond", "walnut", "কাঠবাদাম", "কাজুবাদাম", "চিনাবাদাম"]):
         if amt <= 15:
-            h_bn, h_en = "৪-৫টি বাদাম", "4-5 nuts"
+            h_bn, h_en = "৪-৫টি", "4-5 pcs"
         else:
-            h_bn, h_en = "১ মুঠো বাদাম", "1 small handful nuts"
+            h_bn, h_en = "১ মুঠো", "1 handful"
 
     # ──────────────────────────────────────────────────────────────────────────
     # 12. Generic Fallback
@@ -330,11 +329,11 @@ def compute_household_measure(
         if amt <= 50:
             h_bn, h_en = "২ টেবিল চামচ", "2 tbsp"
         elif amt <= 120:
-            h_bn, h_en = "১/২ কাপ বা ১ ছোট বাটি", "1/2 cup or 1 small bowl"
+            h_bn, h_en = "ছোট ১ বাটি", "1 small bowl"
         elif amt <= 220:
-            h_bn, h_en = "১ কাপ বা ১ মাঝারি বাটি", "1 cup or 1 medium bowl"
+            h_bn, h_en = "মাঝারি ১ বাটি", "1 medium bowl"
         else:
-            h_bn, h_en = "১ বড় বাটি", "1 large bowl"
+            h_bn, h_en = "বড় ১ বাটি", "1 large bowl"
 
     # Compose full description: e.g. "১ কাপ (১৩০ গ্রাম)"
     portion_bn = f"{h_bn} ({amt_bn} {unit_bn})"

@@ -1,6 +1,7 @@
 """
 test_portion_mapping.py
-Unit tests for Bangladeshi clinical nutritionist household portion calculations.
+Unit tests verifying pure quantifiable household measurements (ছোট ১ বাটি, ১ কাপ, ২টি, ইত্যাদি)
+without food name redundancy.
 """
 
 import pytest
@@ -10,32 +11,32 @@ from app.utils_portion import compute_household_measure, attach_household_measur
 def test_to_bn_digits():
     assert to_bn_digits(0) == "০"
     assert to_bn_digits(150) == "১৫০"
-    assert to_bn_digits(2.5) == "২.৫"
+    assert to_bn_digits(1.5) == "১.৫"
+    assert to_bn_digits("100") == "১০০"
 
 
 def test_rice_portions():
     # 1/2 cup
-    p1 = compute_household_measure("ভাত", "Rice", "Cereals and Millets", 80)
+    p1 = compute_household_measure("সাদা ভাত", "White Rice", "Cereals", 80)
     assert p1["household_measure_bn"] == "১/২ কাপ"
-    assert "১/২ কাপ" in p1["portion_bn"]
-    assert "৮০ গ্রাম" in p1["portion_bn"]
     assert p1["household_measure_en"] == "1/2 cup"
+    assert p1["portion_bn"] == "১/২ কাপ (৮০ গ্রাম)"
 
     # 1 cup
-    p2 = compute_household_measure("সিদ্ধ চালের ভাত", "Boiled Rice", "Cereals", 130)
+    p2 = compute_household_measure("ভাত", "Cooked Rice", "Cereals", 130)
     assert p2["household_measure_bn"] == "১ কাপ"
-    assert "১৩০ গ্রাম" in p2["portion_bn"]
     assert p2["household_measure_en"] == "1 cup"
+    assert p2["portion_bn"] == "১ কাপ (১৩০ গ্রাম)"
 
     # 1 medium bowl
     p3 = compute_household_measure("ভাত", "Rice", "Cereals", 170)
-    assert p3["household_measure_bn"] == "১ মাঝারি বাটি"
+    assert p3["household_measure_bn"] == "মাঝারি ১ বাটি"
     assert p3["household_measure_en"] == "1 medium bowl"
 
-    # 1 large bowl / 1.5 cups
+    # 1 large bowl
     p4 = compute_household_measure("ভাত", "Rice", "Cereals", 220)
-    assert "১ বড় বাটি" in p4["household_measure_bn"]
-    assert "1.5 cups" in p4["household_measure_en"]
+    assert p4["household_measure_bn"] == "বড় ১ বাটি"
+    assert p4["household_measure_en"] == "1 large bowl"
 
 
 def test_roti_portions():
@@ -58,62 +59,63 @@ def test_roti_portions():
 def test_egg_portions():
     # 1 boiled egg
     p1 = compute_household_measure("সিদ্ধ ডিম", "Boiled Egg", "Eggs", 50)
-    assert p1["household_measure_bn"] == "১টি সিদ্ধ ডিম"
-    assert p1["household_measure_en"] == "1 boiled egg"
+    assert p1["household_measure_bn"] == "১টি"
+    assert p1["household_measure_en"] == "1 pc"
 
     # 2 eggs
     p2 = compute_household_measure("মুরগির ডিম", "Hen Egg", "Eggs", 100)
-    assert p2["household_measure_bn"] == "২টি ডিম"
-    assert p2["household_measure_en"] == "2 eggs"
+    assert p2["household_measure_bn"] == "২টি"
+    assert p2["household_measure_en"] == "2 pcs"
 
     # egg whites
     p3 = compute_household_measure("ডিমের সাদা অংশ", "Egg white", "Eggs", 65)
-    assert p3["household_measure_bn"] == "২টি ডিমের সাদা অংশ"
+    assert p3["household_measure_bn"] == "২টি (সাদা অংশ)"
 
 
 def test_fish_portions():
     # 1 piece
     p1 = compute_household_measure("রুই মাছ", "Rohu Fish", "Fish & Seafood", 60)
-    assert p1["household_measure_bn"] == "১ টুকরা মাঝারি মাছ"
-    assert p1["household_measure_en"] == "1 medium piece fish"
+    assert p1["household_measure_bn"] == "মাঝারি ১ টুকরা"
+    assert p1["household_measure_en"] == "1 medium piece"
 
     # 2 pieces
     p2 = compute_household_measure("কাতলা মাছের পেটি", "Katla Fish", "Fish & Seafood", 120)
-    assert p2["household_measure_bn"] == "২ টুকরা মাছ"
-    assert p2["household_measure_en"] == "2 pieces fish"
+    assert p2["household_measure_bn"] == "২ টুকরা"
+    assert p2["household_measure_en"] == "2 pieces"
 
     # Small fish
     p3 = compute_household_measure("কাঁচকি ছোট মাছের চচ্চড়ি", "Kachki Small Fish", "Fish & Seafood", 70)
-    assert "ছোট মাছ" in p3["household_measure_bn"]
+    assert p3["household_measure_bn"] == "ছোট ১ বাটি"
 
 
 def test_meat_and_dairy_distinction():
     # Chicken
     p1 = compute_household_measure("চামড়াহীন মুরগির মাংস", "Chicken Meat", "Poultry", 80)
-    assert "১-২ টুকরা মাংস" in p1["household_measure_bn"]
+    assert p1["household_measure_bn"] == "১-২ টুকরা"
 
     # Cow Milk must NOT be classified as meat
     p2 = compute_household_measure("গরুর খাঁটি দুধ", "Pure Cow Milk", "Milk & Dairy", 200)
-    assert "১ গ্লাস দুধ" in p2["household_measure_bn"]
+    assert p2["household_measure_bn"] == "১ গ্লাস"
     assert "মিলি" in p2["portion_bn"]
 
     # Curd / Yogurt
     p3 = compute_household_measure("টক দই", "Sour Curd / Plain Yogurt", "Milk & Dairy", 150)
-    assert "১ কাপ টক দই" in p3["household_measure_bn"]
+    assert p3["household_measure_bn"] == "১ কাপ"
 
 
 def test_dal_and_vegetable_portions():
-    # Dal
+    # Dal -> "ছোট ১ বাটি"
     p1 = compute_household_measure("ঘন মসুর ডাল", "Thick Red Lentil Dal", "Pulses & Legumes", 120)
-    assert "১ ছোট বাটি ঘন ডাল" in p1["household_measure_bn"]
+    assert p1["household_measure_bn"] == "ছোট ১ বাটি"
+    assert p1["portion_bn"] == "ছোট ১ বাটি (১২০ গ্রাম)"
 
-    # Leafy greens
+    # Leafy greens -> "ছোট ১ বাটি"
     p2 = compute_household_measure("পালং শাক ভাজি", "Spinach Bhaji", "Leafy Vegetables", 80)
-    assert "১ ছোট বাটি শাক ভাজি" in p2["household_measure_bn"]
+    assert p2["household_measure_bn"] == "ছোট ১ বাটি"
 
-    # Mixed veg
+    # Mixed veg -> "মাঝারি ১ বাটি"
     p3 = compute_household_measure("মিক্সড সবজি", "Mixed Vegetables", "Vegetables", 160)
-    assert "১ মাঝারি বাটি সবজি" in p3["household_measure_bn"]
+    assert p3["household_measure_bn"] == "মাঝারি ১ বাটি"
 
 
 def test_attach_household_measurements_full_plan():
@@ -145,17 +147,19 @@ def test_attach_household_measurements_full_plan():
     assert bfast_items[0]["household_measure_bn"] == "২টি"
     assert "২টি (৭০ গ্রাম)" in bfast_items[0]["portion_bn"]
 
-    assert bfast_items[1]["household_measure_bn"] == "১টি সিদ্ধ ডিম"
-    assert "১টি সিদ্ধ ডিম (৫০ গ্রাম)" in bfast_items[1]["portion_bn"]
+    assert bfast_items[1]["household_measure_bn"] == "১টি"
+    assert "১টি (৫০ গ্রাম)" in bfast_items[1]["portion_bn"]
 
-    assert "সবজি" in bfast_items[2]["household_measure_bn"]
+    assert bfast_items[2]["household_measure_bn"] == "ছোট ১ বাটি"
+    assert "ছোট ১ বাটি (১০০ গ্রাম)" in bfast_items[2]["portion_bn"]
 
     # Check Lunch items
     lunch_items = plan["meals"][1]["items"]
     assert lunch_items[0]["household_measure_bn"] == "১ কাপ"
     assert "১ কাপ (১৩০ গ্রাম)" in lunch_items[0]["portion_bn"]
 
-    assert lunch_items[1]["household_measure_bn"] == "১ টুকরা মাঝারি মাছ"
-    assert "১ টুকরা মাঝারি মাছ (৬০ গ্রাম)" in lunch_items[1]["portion_bn"]
+    assert lunch_items[1]["household_measure_bn"] == "মাঝারি ১ টুকরা"
+    assert "মাঝারি ১ টুকরা (৬০ গ্রাম)" in lunch_items[1]["portion_bn"]
 
-    assert "বাটি" in lunch_items[2]["household_measure_bn"]
+    assert lunch_items[2]["household_measure_bn"] == "ছোট ১ বাটি"
+    assert "ছোট ১ বাটি (১২০ গ্রাম)" in lunch_items[2]["portion_bn"]

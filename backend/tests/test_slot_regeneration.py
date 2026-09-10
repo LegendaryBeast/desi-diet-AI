@@ -37,7 +37,7 @@ def test_attach_household_measurements_on_swapped_item():
     assert "চামচ" in items[0]["portion_bn"] or "গ্রাম" in items[0]["portion_bn"]
     # Boiled egg should have egg piece measurement
     assert items[1]["portion_bn"] is not None
-    assert "ডিম" in items[1]["portion_bn"]
+    assert "টি" in items[1]["portion_bn"]
 
 
 @pytest.mark.asyncio

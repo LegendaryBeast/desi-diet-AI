@@ -258,8 +258,9 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
 
 async def _plan_to_response(plan) -> MealPlanResponse:
     plan_data = safe_dict(plan.planData)
-    # Ensure emojis are clean and populated (handles legacy or modified items)
+    # Ensure emojis and authentic household measurements are clean and populated
     plan_data = _ensure_item_emojis(plan_data)
+    plan_data = attach_household_measurements(plan_data)
     completed_slots = safe_list(from_json_string(plan.completedSlots)) if plan.completedSlots else []
     try:
         plan_data["micronutrient_targets"] = await _get_micronutrient_details(plan_data, plan.userId, completed_slots, plan.planDate)
