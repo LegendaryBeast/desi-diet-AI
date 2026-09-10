@@ -6,10 +6,11 @@ from app.services.chat_tools import tool_unlog_meal, tool_mark_meal_complete
 @pytest.mark.asyncio
 async def test_tool_unlog_meal_interface():
     # Mock prisma calls inside tool_unlog_meal
-    mock_log = MagicMock()
+    mock_log = MagicMock(spec=["id", "inputText", "totalCals", "mealSlot"])
     mock_log.id = "log-1"
     mock_log.inputText = "ভাত এবং মুরগি"
-    mock_log.totalCalories = 400
+    mock_log.mealSlot = "dinner"
+    mock_log.totalCals = 400
 
     mock_plan = MagicMock()
     mock_plan.planId = "plan-1"

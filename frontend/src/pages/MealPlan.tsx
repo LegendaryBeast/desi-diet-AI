@@ -570,6 +570,16 @@ export const MealPlan = () => {
   }, [plan, trackingVersion, tab, syncLoggedFoods]);
 
   useEffect(() => {
+    const handleDataRefresh = () => {
+      if (tab === 'today') {
+        fetchDaily();
+      }
+    };
+    window.addEventListener('data:refresh', handleDataRefresh);
+    return () => window.removeEventListener('data:refresh', handleDataRefresh);
+  }, [tab, fetchDaily]);
+
+  useEffect(() => {
     if (!searchQuery) {
       setSearchResults([]);
       return;

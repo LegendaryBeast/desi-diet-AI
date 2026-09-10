@@ -140,38 +140,63 @@ async def tool_get_meal_plan(user_id: str, args: Dict[str, Any] = None) -> Dict[
         return _err(f"Failed to parse meal plan: {e}")
 
 
+def _normalize_slot(raw: str) -> str:
+    s = (raw or "").lower().strip()
+    if any(k in s for k in ["dinner", "rat", "রাত", "রাতের", "নৈশভোজ"]):
+        return "dinner"
+    if any(k in s for k in ["lunch", "dupur", "দুপুর", "দুপুরের"]):
+        return "lunch"
+    if any(k in s for k in ["breakfast", "shokal", "sokal", "সকাল", "সকালের", "নাস্তা"]):
+        return "breakfast"
+    if any(k in s for k in ["snack", "bikal", "বিকাল", "বিকেল"]):
+        return "snack"
+    return s or "dinner"
+
+
 async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[str, Any]:
-    slot = args.get("slot", "").lower()
+    raw_slot = args.get("slot", "")
+    slot = _normalize_slot(raw_slot)
     completed = args.get("completed", True)
     if slot not in ["breakfast", "lunch", "dinner", "snack"]:
         return _err("Invalid slot. Must be breakfast, lunch, dinner, or snack.")
 
     bd_tz = ZoneInfo("Asia/Dhaka")
-    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    today_start = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    today_end = today_start + timedelta(days=1)
+
     plan = await prisma.mealplan.find_first(
         where={
             "userId": user_id,
             "planType": "daily",
-            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+            "planDate": {"gte": today_start, "lt": today_end},
         },
         order={"createdAt": "desc"},
     )
+    if not plan:
+        # Fallback to latest daily plan
+        plan = await prisma.mealplan.find_first(
+            where={"userId": user_id, "planType": "daily"},
+            order={"createdAt": "desc"},
+        )
     if not plan:
         return _err("No meal plan found for today")
 
     completed_slots = safe_list(from_json_string(plan.completedSlots)) if plan.completedSlots else []
     if completed and slot not in completed_slots:
         completed_slots.append(slot)
-    elif not completed and slot in completed_slots:
-        completed_slots.remove(slot)
+    elif not completed:
+        completed_slots = [s for s in completed_slots if _normalize_slot(s) != slot]
         try:
-            await prisma.mealtracking.delete_many(
+            # Delete tracking logs for this slot today or within last 24h
+            logs = await prisma.mealtracking.find_many(
                 where={
                     "userId": user_id,
-                    "mealSlot": slot,
-                    "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
+                    "loggedAt": {"gte": today_start, "lt": today_end},
                 }
             )
+            for l in logs:
+                if _normalize_slot(l.mealSlot or "") == slot:
+                    await prisma.mealtracking.delete(where={"id": l.id})
         except Exception as e:
             logger.warning("Failed to remove tracking logs on unmark complete: %s", e)
 
@@ -180,44 +205,59 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
             where={"planId": plan.planId},
             data={"completedSlots": to_json_string(completed_slots)},
         )
-        return _ok({"slot": slot, "completed": completed, "plan_id": plan.planId})
+        return {
+            "success": True,
+            "action": {"type": "refresh_data", "payload": {"slot": slot, "completed": completed}},
+            "data": {"slot": slot, "completed": completed, "plan_id": plan.planId}
+        }
     except Exception as e:
         return _err(f"Failed to update meal completion: {e}")
 
 
 async def tool_unlog_meal(user_id: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """Unlog, delete, or cancel meal tracking logs for a slot and unmark the slot in the meal plan."""
-    slot = (args.get("meal_slot") or args.get("slot") or "").lower().strip()
+    raw_slot = args.get("meal_slot") or args.get("slot") or ""
+    canonical_slot = _normalize_slot(raw_slot)
     food_name = (args.get("food_name") or "").lower().strip()
 
-    slot_aliases = {
-        "breakfast": "breakfast", "সকালের নাস্তা": "breakfast", "সকাল": "breakfast",
-        "lunch": "lunch", "দুপুরের খাবার": "lunch", "দুপুর": "lunch",
-        "dinner": "dinner", "রাতের খাবার": "dinner", "রাত": "dinner",
-        "snack": "snack", "snack1": "snack", "snack2": "snack", "বিকেলের নাস্তা": "snack", "বিকাল": "snack"
-    }
-    canonical_slot = slot_aliases.get(slot, slot)
-    if not canonical_slot:
-        canonical_slot = "dinner"
-
     bd_tz = ZoneInfo("Asia/Dhaka")
-    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    today_start = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    today_end = today_start + timedelta(days=1)
 
-    # 1. Query today's logs for this user and slot
+    # 1. Query today's logs for this user (with 24h fallback if timezone offsets exist)
     logs = await prisma.mealtracking.find_many(
         where={
             "userId": user_id,
-            "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
-            "mealSlot": canonical_slot,
-        }
+            "loggedAt": {"gte": today_start, "lt": today_end},
+        },
+        order={"loggedAt": "desc"},
     )
+    if not logs:
+        # Fallback: check recent logs within the last 24 hours
+        logs = await prisma.mealtracking.find_many(
+            where={
+                "userId": user_id,
+                "loggedAt": {"gte": datetime.now(timezone.utc) - timedelta(hours=24)},
+            },
+            order={"loggedAt": "desc"},
+        )
 
     deleted_count = 0
     removed_cals = 0
     for l in logs:
+        l_slot = _normalize_slot(l.mealSlot or "")
         text = (l.inputText or "").lower()
-        if not food_name or food_name in text:
-            removed_cals += l.totalCalories or 0
+
+        is_slot_match = (l_slot == canonical_slot) or ((l.mealSlot or "").lower() == canonical_slot)
+        is_food_match = bool(food_name and food_name in text)
+
+        # Match logic: if specific food_name is provided, match that; else match entire slot
+        should_delete = is_food_match if food_name else is_slot_match
+
+        if should_delete:
+            # Prisma MealTracking field is totalCals (mapped to total_calories)
+            cal = getattr(l, "totalCals", getattr(l, "totalCalories", 0)) or 0
+            removed_cals += int(cal)
             await prisma.mealtracking.delete(where={"id": l.id})
             deleted_count += 1
 
@@ -226,27 +266,34 @@ async def tool_unlog_meal(user_id: str, args: Dict[str, Any]) -> Dict[str, Any]:
         where={
             "userId": user_id,
             "planType": "daily",
-            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+            "planDate": {"gte": today_start, "lt": today_end},
         },
         order={"createdAt": "desc"},
     )
+    if not plan:
+        # Fallback: latest daily plan for this user
+        plan = await prisma.mealplan.find_first(
+            where={"userId": user_id, "planType": "daily"},
+            order={"createdAt": "desc"},
+        )
+
     if plan:
         completed_slots = safe_list(from_json_string(plan.completedSlots)) if plan.completedSlots else []
-        if canonical_slot in completed_slots:
-            completed_slots.remove(canonical_slot)
+        new_slots = [s for s in completed_slots if _normalize_slot(s) != canonical_slot]
+        if len(new_slots) != len(completed_slots):
             await prisma.mealplan.update(
                 where={"planId": plan.planId},
-                data={"completedSlots": to_json_string(completed_slots)},
+                data={"completedSlots": to_json_string(new_slots)},
             )
 
     # 3. Calculate remaining total calories today
-    all_today_logs = await prisma.mealtracking.find_many(
+    remaining_logs = await prisma.mealtracking.find_many(
         where={
             "userId": user_id,
-            "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
+            "loggedAt": {"gte": today_start, "lt": today_end},
         }
     )
-    remaining_cals = sum(l.totalCalories or 0 for l in all_today_logs)
+    remaining_cals = sum(getattr(l, "totalCals", getattr(l, "totalCalories", 0)) or 0 for l in remaining_logs)
 
     slot_names_bn = {
         "breakfast": "সকালের নাস্তা",
@@ -256,14 +303,26 @@ async def tool_unlog_meal(user_id: str, args: Dict[str, Any]) -> Dict[str, Any]:
     }
     slot_bn = slot_names_bn.get(canonical_slot, canonical_slot)
 
-    return _ok({
-        "unlogged_slot": canonical_slot,
-        "slot_bn": slot_bn,
-        "deleted_logs_count": deleted_count,
-        "removed_calories": removed_cals,
-        "remaining_calories_today": remaining_cals,
-        "message": f"আপনার {slot_bn} সফলভাবে আনলগ করা হয়েছে। মোট {removed_cals} ক্যালোরি বাদ দেওয়া হয়েছে। আজকের মোট ক্যালোরি গ্রহণ এখন {remaining_cals} kcal।"
-    })
+    return {
+        "success": True,
+        "action": {
+            "type": "refresh_data",
+            "payload": {
+                "unlogged_slot": canonical_slot,
+                "deleted_count": deleted_count,
+                "removed_calories": removed_cals,
+            }
+        },
+        "data": {
+            "unlogged_slot": canonical_slot,
+            "slot_bn": slot_bn,
+            "deleted_logs_count": deleted_count,
+            "removed_calories": removed_cals,
+            "remaining_calories_today": remaining_cals,
+            "message": f"আপনার {slot_bn} সফলভাবে আনলগ করা হয়েছে। মোট {removed_cals} ক্যালোরি বাদ দেওয়া হয়েছে। আজকের মোট ক্যালোরি গ্রহণ এখন {remaining_cals} kcal。"
+        }
+    }
+
 
 
 # ── Health Log Tools ──────────────────────────────────────────────────────────

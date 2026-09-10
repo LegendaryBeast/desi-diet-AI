@@ -572,6 +572,7 @@ export const ChatWindow = () => {
             'update_profile',
             'log_health',
             'log_meal',
+            'unlog_meal',
             'mark_meal_complete',
             'add_medicine_reminder',
             'delete_medicine_reminder',
@@ -590,6 +591,8 @@ export const ChatWindow = () => {
                 navigateTo(String(payload.to));
               } else if (type === 'show_toast') {
                 showToast(String(payload.message || ''), (payload.level) || 'info');
+              } else if (type === 'refresh_data') {
+                window.dispatchEvent(new Event('data:refresh'));
               }
             }
           });
