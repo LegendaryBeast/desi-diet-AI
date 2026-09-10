@@ -10,7 +10,10 @@ class Settings(BaseSettings):
 
     # App
     app_name: str = Field(default="Pusti AI", alias="APP_NAME")
-    cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
+    cors_origins: str = Field(
+        default="https://desi-diet.vercel.app,http://localhost:5173,http://localhost:3000,http://localhost:8081,http://localhost:19006",
+        alias="CORS_ORIGINS",
+    )
 
     # Database
     database_url: str = Field(alias="DATABASE_URL")
@@ -61,7 +64,23 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> List[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        raw = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        if "*" in raw:
+            return ["*"]
+
+        defaults = [
+            "https://desi-diet.vercel.app",
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://localhost:8081",
+            "http://localhost:19006",
+        ]
+        if self.frontend_url and self.frontend_url not in raw:
+            raw.append(self.frontend_url)
+        for d in defaults:
+            if d not in raw:
+                raw.append(d)
+        return raw
 
     class Config:
         env_file = ".env"

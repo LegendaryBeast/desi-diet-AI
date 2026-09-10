@@ -28,9 +28,19 @@ app = FastAPI(
 )
 
 # CORS configuration
+_cors_origins = settings.cors_origin_list
+_allow_all = "*" in _cors_origins
+_origins_to_allow = [] if _allow_all else _cors_origins
+_cors_regex = (
+    r".*"
+    if _allow_all
+    else r"^https:\/\/([a-zA-Z0-9_-]+\.)?vercel\.app$|^https:\/\/([a-zA-Z0-9_-]+\.)?railway\.app$|^http:\/\/localhost(:\d+)?$|^http:\/\/127\.0\.0\.1(:\d+)?$"
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=_origins_to_allow,
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

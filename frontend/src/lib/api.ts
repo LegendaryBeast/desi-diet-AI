@@ -25,6 +25,26 @@ export const clearTokens = () => {
 
 export const isAuthenticated = (): boolean => !!getToken();
 
+export const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+  try {
+    const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (refreshRes.ok) {
+      const tokens = await refreshRes.json();
+      setTokens(tokens.access_token, tokens.refresh_token);
+      return tokens.access_token;
+    }
+  } catch {
+    // refresh failed
+  }
+  return null;
+};
+
 // ─── Base Fetch Helper ─────────────────────────────────────────────────────────
 
 async function apiFetch<T>(
@@ -43,22 +63,9 @@ async function apiFetch<T>(
 
   // Auto-refresh on 401
   if (res.status === 401 && !retried) {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      try {
-        const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-        if (refreshRes.ok) {
-          const tokens = await refreshRes.json();
-          setTokens(tokens.access_token, tokens.refresh_token);
-          return apiFetch<T>(path, options, true);
-        }
-      } catch {
-        // refresh failed
-      }
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return apiFetch<T>(path, options, true);
     }
     clearTokens();
     window.dispatchEvent(new Event('auth:logout'));
@@ -497,7 +504,7 @@ export const chatApi = {
 
   /** Transcribe a recorded audio Blob to text via OpenAI Whisper / GPT-4o-transcribe. */
   transcribe: async (audio: Blob, language?: string): Promise<{ text: string }> => {
-    const token = getToken();
+    let token = getToken();
     const ext = audio.type.includes('webm') ? 'webm'
       : audio.type.includes('mp4') ? 'mp4'
       : audio.type.includes('ogg') ? 'ogg'
@@ -507,11 +514,21 @@ export const chatApi = {
     form.append('file', audio, `recording.${ext}`);
     if (language) form.append('language', language);
 
-    const res = await fetch(`${BASE_URL}/chat/transcribe`, {
+    let res = await fetch(`${BASE_URL}/chat/transcribe`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     });
+    if (res.status === 401) {
+      token = await refreshAccessToken();
+      if (token) {
+        res = await fetch(`${BASE_URL}/chat/transcribe`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+      }
+    }
     if (!res.ok) {
       let detail = 'Transcription failed';
       try { detail = (await res.json()).detail || detail; } catch { /* ignore */ }
@@ -521,7 +538,7 @@ export const chatApi = {
   },
 
   /** Send a message to the unified LangGraph agent. */
-  unified: async (
+  unified: (
     message: string,
     language: string,
     history: ChatHistoryItem[],
@@ -529,7 +546,6 @@ export const chatApi = {
     sessionId: string = "unified",
     includeGroceries?: boolean
   ): Promise<{ reply: string; intent: string; tool_calls: any[] | null; error: string | null }> => {
-    const token = getToken();
     const body: Record<string, any> = {
       message,
       language,
@@ -540,18 +556,13 @@ export const chatApi = {
     if (includeGroceries !== undefined) {
       body.include_groceries = includeGroceries;
     }
-    const res = await fetch(`${BASE_URL}/chat/unified`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      throw new Error('Failed to connect to agent');
-    }
-    return res.json();
+    return apiFetch<{ reply: string; intent: string; tool_calls: any[] | null; error: string | null }>(
+      '/chat/unified',
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
   },
 };
 
@@ -769,7 +780,7 @@ export const mealTrackingApi = {
     file: Blob | File,
     opts: { meal_slot?: string; language?: string; food_name?: string; quantity_g?: number; preview?: boolean } = {},
   ): Promise<MealTrackingResponse> => {
-    const token = getToken();
+    let token = getToken();
     const form = new FormData();
     const filename = (file as File).name || 'meal-photo.jpg';
     form.append('file', file, filename);
@@ -779,11 +790,21 @@ export const mealTrackingApi = {
     if (opts.quantity_g != null) form.append('quantity_g', String(opts.quantity_g));
     if (opts.preview != null) form.append('preview', String(opts.preview));
 
-    const res = await fetch(`${BASE_URL}/meal-tracking/from-image`, {
+    let res = await fetch(`${BASE_URL}/meal-tracking/from-image`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     });
+    if (res.status === 401) {
+      token = await refreshAccessToken();
+      if (token) {
+        res = await fetch(`${BASE_URL}/meal-tracking/from-image`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+      }
+    }
     if (!res.ok) {
       let detail = 'Image meal log failed';
       try { detail = (await res.json()).detail || detail; } catch { /* ignore */ }

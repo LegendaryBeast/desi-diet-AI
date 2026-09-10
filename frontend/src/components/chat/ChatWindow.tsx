@@ -684,7 +684,7 @@ export const ChatWindow = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              const phone = '8801410249676';
+              const phone = import.meta.env.VITE_WHATSAPP_PHONE || '15552009612';
               const message = encodeURIComponent('হ্যালো PushtiAI! আমি পুষ্টি সম্পর্কে জানতে চাই।');
               window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
             }}
