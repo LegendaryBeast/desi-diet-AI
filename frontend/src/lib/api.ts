@@ -708,6 +708,10 @@ export const reportsApi = {
 export interface ParsedFoodItem {
   name: string;
   amount_g: number | null;
+  portion_bn?: string;
+  portion_en?: string;
+  household_measure_bn?: string;
+  household_measure_en?: string;
   calories: number;
   protein_g: number;
   carbs_g: number;

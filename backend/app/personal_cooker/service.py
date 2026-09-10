@@ -67,7 +67,7 @@ You are trained on the National Dietary Guidelines for Bangladesh 2022. You unde
 1. ACCURACY FIRST: Base your answers heavily on the RETRIEVED CONTEXT block below. However, if the context is empty or irrelevant (which can happen if the user speaks in Romanized Bengali/Banglish), you MAY use your general expert nutritional knowledge to answer, provided you strictly adhere to the user's selected Condition.
 2. CONDITION-SPECIFIC: Every answer must be tailored to the user's specific condition(s). Always state WHY a food is safe or unsafe.
 3. CULTURALLY GROUNDED: Use familiar Bangladeshi ingredient names. Suggest locally available, affordable ingredients.
-4. PRECISE AND PRACTICAL: Be specific: give amounts, quantities, timing, and method.
+4. PRECISE AND PRACTICAL HOUSEHOLD MEASUREMENTS: Always specify ingredient amounts and food portions using authentic Bangladeshi clinical nutritionist household units (বাটি, কাপ, টুকরা, টি, গ্লাস, চামচ, মুঠো) accompanied by exact grams/ml (e.g. '১ কাপ ভাত (১৩০ গ্রাম)', '১ মাঝারি বাটি সবজি', '১ টুকরা মাঝারি মাছ (৬০ গ্রাম)', '২টি পাতলা রুটি', '১ চা চামচ রান্নার তেল'). NEVER give bare raw gram numbers alone.
 5. LANGUAGE MATCHING: If the user writes in Bengali script (বাংলা), respond in Bengali script. If the user writes in Romanized Bengali (Banglish), respond in Bengali script or English. Always be deeply helpful.
 6. FORMATTING: When you give specific suggestions or warnings directly related to the condition, you MUST format those specific sentences in **bold text**.
 7. MANDATORY COOKING DETAILS: You MUST NOT provide any answer without including a specific cooking procedure and a detailed list of individual ingredients. If a user asks a general question, you must still provide a relevant recipe with ingredients and a cooking procedure. If you absolutely cannot provide a cooking procedure and ingredients, you must refuse to answer the question.
@@ -290,11 +290,25 @@ class PersonalCookerService:
                 completed = []
                 if today_plan.completedSlots:
                     completed = json.loads(today_plan.completedSlots) if isinstance(today_plan.completedSlots, str) else today_plan.completedSlots
+                from app.utils_portion import compute_household_measure
+                def _item_str(i):
+                    name = i.get('name_bn') or i.get('name_en') or 'খাবার'
+                    portion = i.get('portion_bn')
+                    if not portion:
+                        m = compute_household_measure(
+                            name_bn=i.get('name_bn'),
+                            name_en=i.get('name_en'),
+                            food_group=i.get('food_group'),
+                            amount_g=i.get('amount_g') or i.get('amount') or 100,
+                        )
+                        portion = m.get('portion_bn')
+                    return f"{name} ({portion})"
+
                 lines = ["TODAY'S MEAL PLAN:"]
                 for meal in plan_data.get("meals", []):
                     status = "✅ Eaten" if meal.get("slot") in completed else "⬜ Pending"
                     items_text = ", ".join(
-                        f"{i.get('name_bn') or i.get('name_en')}"
+                        _item_str(i)
                         for i in meal.get("items", [])
                     )
                     slot_bn = meal.get('slot_bn') or meal.get('slot', '')

@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Optional
 from app.db import prisma
 from app.core.llm_client import llm_client
 from app.utils import safe_list, to_json_string
+from app.utils_portion import attach_household_measurements
 from rag_engine import calculate_targets, KhadokGraphRAG, NDG_DIETARY_RULES, get_rag_recommended_foods
 
 
@@ -1433,10 +1434,16 @@ MEAL CALORIE DISTRIBUTION (MUST HIT EACH TARGET):
 - Lunch (দুপুরের খাবার):    {lunch_cal} kcal  ← use rice 250g≈{round(356*2.5)} kcal + dal 150g≈{round(357*1.5)} kcal + fish + veg
 - Dinner (রাতের খাবার):    {dinner_cal} kcal  ← use rice/roti + protein + veg
 
-PORTION GUIDANCE (to help you hit targets):
-- Rice (ভাত) 200g ≈ {round(356*2)} kcal  |  Rice 300g ≈ {round(356*3)} kcal
-- Roti (রুটি) 80g ≈ {round(300*0.8)} kcal  |  Dal 150g ≈ {round(357*1.5)} kcal
-- Fish (মাছ) 150g ≈ 150–250 kcal  |  Eggs (ডিম) 2 pcs (100g) ≈ 150 kcal
+PORTION GUIDANCE (Quantifiable measurements used by Bangladeshi nutritionists):
+- Rice (ভাত): 1 cup (১ কাপ) ≈ 130g | 1 medium bowl (১ মাঝারি বাটি) ≈ 160g | 1 large bowl ≈ 200-250g
+- Roti (রুটি): 1 pc ≈ 35g flour | 2 thin rotis (২টি পাতলা রুটি) ≈ 70g
+- Dal (ডাল): 1 small bowl thick dal (১ ছোট বাটি ঘন ডাল) ≈ 120g | 1 medium bowl thin dal ≈ 180g
+- Fish (মাছ): 1 medium piece (১ টুকরা মাঝারি মাছ) ≈ 60g | 2 pieces ≈ 120g
+- Eggs (ডিম): 1 whole boiled egg (১টি সিদ্ধ ডিম) ≈ 50g | 2 eggs (২টি ডিম) ≈ 100g
+- Meat (মাংস): 1-2 medium pieces chicken (১-২ টুকরা মুরগির মাংস) ≈ 80g
+- Vegetables (সবজি): 1 medium bowl mixed veg (১ মাঝারি বাটি সবজি) ≈ 150g | 1 small bowl cooked greens (১ ছোট বাটি শাক) ≈ 80g
+- Milk/Dairy (দুধ/দই): 1 glass milk (১ গ্লাস দুধ) ≈ 200ml | 1 cup sour curd (১ কাপ টক দই) ≈ 150g
+Always include practical household portion measurements in portion_bn and portion_en!
 
 DIETARY RULES:
 {rules_text}
@@ -1474,6 +1481,8 @@ RESPONSE FORMAT (strict JSON, no text outside JSON):
           "name_bn": "বাংলা নাম",
           "name_en": "English Name",
           "amount_g": 200,
+          "portion_bn": "১ মাঝারি বাটি (২০০ গ্রাম)",
+          "portion_en": "1 medium bowl (200g)",
           "calories": {round(356*2)},
           "emoji": "🍚",
           "why_bn": "কেন এই খাবার..."
@@ -1701,6 +1710,8 @@ RESPONSE FORMAT (strict JSON, follow exactly):
               "name_bn": "বাংলা নাম",
               "name_en": "English Name",
               "amount_g": 150,
+              "portion_bn": "১ কাপ (১৫০ গ্রাম)",
+              "portion_en": "1 cup (150g)",
               "calories": 195,
               "emoji": "🍚",
               "why_bn": "কেন এই খাবার..."
@@ -1987,6 +1998,7 @@ def _generate_fallback_meal_plan(
     }
     # 🎨 Always enrich fallback items with emoji as well
     _ensure_item_emojis(fallback_plan)
+    attach_household_measurements(fallback_plan)
     return fallback_plan
 
 
@@ -2206,6 +2218,9 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_
     # 🎨 Fill in emoji for every item (LLM may omit; helper provides fallback)
     plan_data = _ensure_item_emojis(plan_data)
 
+    # 🥣 Attach authentic Bangladeshi nutritionist household measurements
+    plan_data = attach_household_measurements(plan_data)
+
     return plan_data
 
 
@@ -2286,6 +2301,8 @@ async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[
             _scale_plan_to_target(p, targets["target_calories"])
             # 🎨 Fill in emoji on each item
             _ensure_item_emojis(p)
+            # 🥣 Attach authentic Bangladeshi nutritionist household measurements
+            attach_household_measurements(p)
             
         if not weekly_plans:
             raise ValueError("LLM returned empty weekly plan")

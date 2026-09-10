@@ -662,7 +662,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                     className="px-2.5 py-1 bg-white border border-ink/10 rounded-full text-xs font-bn font-bold text-ink"
                   >
                     {item.name}
-                    {item.amount_g ? ` · ${Math.round(item.amount_g)}g` : ''}
+                    {item.portion_bn || item.household_measure_bn ? ` · ${item.portion_bn || item.household_measure_bn}` : item.amount_g ? ` · ${Math.round(item.amount_g)}g` : ''}
                     <span className="text-ink-faint ml-1">{Math.round(item.calories)}kcal</span>
                   </span>
                 ))}

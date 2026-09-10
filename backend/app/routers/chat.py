@@ -85,18 +85,32 @@ async def perform_meal_logging(user_id: str, input_text: str, meal_slot: str, la
     from rag_engine import KhadokGraphRAG
 
     # 1. Use LLM only to extract item names and portion sizes — no nutrient generation
-    PARSER_PROMPT = """You are a professional clinical dietitian food parser.
-The user will describe what they ate in natural language (Bangla or English).
+    PARSER_PROMPT = """You are a professional clinical dietitian food parser for Bangladeshi cuisine.
+The user will describe what they ate in natural language (Bangla, Banglish, or English).
+Accurately map practical Bangladeshi household measurements to grams:
+- "ek cup bhat" / "1 cup rice" -> 130g
+- "ek bati bhat" / "1 bowl rice" -> 160g
+- "ek plate bhat" -> 250g
+- "1 ti ruti" -> 35g, "2 ti ruti" -> 70g, "3 ti ruti" -> 105g
+- "1 ti dim" / "dim siddho" -> 50g, "2 ti dim" -> 100g
+- "1 tukra mach" / "1 piece fish" -> 60g
+- "1 piece chicken" / "murgi" -> 70g
+- "1 bati dal" -> 150g, "1 cup dal" -> 120g
+- "1 bati sobji" -> 150g
+- "1 glass dudh" -> 200g
+- "1 cup muri" -> 30g
+- "1 ti kola" -> 100g
+
 Identify each distinct food item and return:
 1. "query": Best English keyword to search in a food database (e.g. "rice", "egg", "dal", "banana").
-2. "portion_g": Estimated portion in grams (standard Bangladeshi serving if unspecified).
+2. "portion_g": Estimated portion in grams.
 3. "fallback_name": Friendly name in the user's language.
 
 Return ONLY valid JSON:
 {
   "items": [
     {"query": "egg", "portion_g": 50.0, "fallback_name": "ডিম"},
-    {"query": "rice", "portion_g": 150.0, "fallback_name": "ভাত"}
+    {"query": "rice", "portion_g": 130.0, "fallback_name": "ভাত"}
   ]
 }"""
 
@@ -238,9 +252,20 @@ Return ONLY valid JSON:
             item_carbs    = db_carb * scale
             item_fat      = db_fat  * scale
 
+            from app.utils_portion import compute_household_measure
+            meas = compute_household_measure(
+                name_bn=food_name,
+                name_en=db_food.get("name_en", query_term),
+                food_group=db_food.get("food_group", ""),
+                amount_g=portion_g,
+            )
+
             parsed_items.append({
                 "name":      food_name,
                 "amount_g":  portion_g,
+                "portion_bn": meas.get("portion_bn"),
+                "portion_en": meas.get("portion_en"),
+                "household_measure_bn": meas.get("household_measure_bn"),
                 "calories":  round(item_calories, 1),
                 "protein_g": round(item_protein, 1),
                 "carbs_g":   round(item_carbs, 1),
@@ -448,11 +473,26 @@ async def _build_user_context(current_user_id: str) -> str:
             if today_plan.completedSlots:
                 completed_slots = json.loads(today_plan.completedSlots) if isinstance(today_plan.completedSlots, str) else today_plan.completedSlots
             
+            from app.utils_portion import compute_household_measure
+            def _format_item_with_portion(item: dict) -> str:
+                name = item.get('name_bn') or item.get('name_en') or 'খাবার'
+                portion = item.get('portion_bn')
+                if not portion:
+                    m = compute_household_measure(
+                        name_bn=item.get('name_bn'),
+                        name_en=item.get('name_en'),
+                        food_group=item.get('food_group'),
+                        amount_g=item.get('amount_g') or item.get('amount') or 100,
+                    )
+                    portion = m.get('portion_bn')
+                cal = item.get('calories', '?')
+                return f"{name} [{portion}] ({cal} kcal)"
+
             lines.append("\n=== TODAY'S MEAL PLAN ===")
             for meal in plan_data.get("meals", []):
                 status = "✅ Eaten" if meal.get("slot") in completed_slots else "⬜ Pending"
                 items_text = ", ".join(
-                    f"{i.get('name_bn') or i.get('name_en')} ({i.get('calories', '?')} kcal)"
+                    _format_item_with_portion(i)
                     for i in meal.get("items", [])
                 )
                 lines.append(f"[{meal.get('slot_bn') or meal.get('slot')}] {status}: {items_text or 'No items'} (~{meal.get('target_calories', '?')} kcal)")
@@ -479,7 +519,7 @@ async def _build_user_context(current_user_id: str) -> str:
             for meal in plan_data.get("meals", []):
                 status = "✅ Eaten" if meal.get("slot") in completed_slots else "⬜ Pending"
                 items_text = ", ".join(
-                    f"{i.get('name_bn') or i.get('name_en')} ({i.get('calories', '?')} kcal)"
+                    _format_item_with_portion(i)
                     for i in meal.get("items", [])
                 )
                 lines.append(f"[{meal.get('slot_bn') or meal.get('slot')}] {status}: {items_text or 'No items'} (~{meal.get('target_calories', '?')} kcal)")
@@ -578,8 +618,18 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "If a slot is marked as '✅ Eaten', acknowledge it and suggest the next pending meal.\n"
             "4. For calorie/macro data, ONLY use values from the Graph-RAG context below. "
             "NEVER invent or estimate nutrition values from your own training memory.\n"
-            "5. When discussing any food, always state: name + amount + calories from the database "
-            "(e.g. '১০০ গ্রাম ভাতে ১৩০ ক্যালোরি').\n"
+            "5. PRACTICAL HOUSEHOLD PORTIONS (বাস্তবসম্মত গৃহস্থালি পরিমাপ): Always communicate food portions like a professional Bangladeshi clinical nutritionist using standard household measuring units (বাটি, কাপ, টুকরা, টি, গ্লাস, চামচ, মুঠো) accompanied by exact grams/calories in parentheses. Examples:\n"
+            "   - ভাত: '১ কাপ ভাত (১৩০ গ্রাম) - ১৭০ ক্যালোরি' বা '১ মাঝারি বাটি ভাত (১৬০ গ্রাম)'\n"
+            "   - রুটি: '২টি পাতলা লাল আটার রুটি (৭০ গ্রাম) - ১৬০ ক্যালোরি'\n"
+            "   - ডিম: '১টি আস্ত সিদ্ধ ডিম (৫০ গ্রাম) - ৭৫ ক্যালোরি' বা '২টি ডিমের সাদা অংশ'\n"
+            "   - মাছ: '১ টুকরা মাঝারি মাছ (৬০ গ্রাম, যেমন রুই/কাতলার পেটি বা গাদা) - ১১০ ক্যালোরি'\n"
+            "   - মাংস: '১-২ টুকরা চামড়াহীন মুরগির মাংস (৮০ গ্রাম)' বা '১টি চিকেন ব্রেস্ট'\n"
+            "   - ডাল: '১ ছোট বাটি ঘন মসুর ডাল (১২০ মিলি) - ১২০ ক্যালোরি' বা '১ মাঝারি বাটি পাতলা ডাল'\n"
+            "   - সবজি: '১ মাঝারি বাটি মিক্সড সবজি (১৫০ গ্রাম)' বা '১ ছোট বাটি শাক ভাজি (৮০ গ্রাম)'\n"
+            "   - দুধ/পানীয়: '১ গ্লাস কুসুম গরম দুধ (২০০ মিলি)' বা '১ কাপ টক দই (১৫০ গ্রাম)'\n"
+            "   - ফল: '১টি মাঝারি পাকা কলা' বা '১টি দেশি পেয়ারা' বা '২ ফালি পাকা পেঁপে'\n"
+            "   - তেল/বাদাম: '১ চা চামচ রান্নার তেল' বা '১ মুঠো বাদাম (৪-৫টি বাদাম)'\n"
+            "   NEVER give abstract raw gram numbers alone (like '১৩৩ গ্রাম ভাত' or '৬৭ গ্রাম মাছ') or vague advice ('কিছু ভাত খাবেন'). Always state the practical household measure first.\n"
             "6. Keep responses concise and warm. Use bullet points for lists.\n"
             "7. MEAL LOGGING: If the user says they ate something or uploads a food photo, "
             "call the `log_meal` tool with a clear description of the food items.\n"

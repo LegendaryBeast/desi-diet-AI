@@ -94,11 +94,25 @@ async def nutrisaathi_node(state: AgentState) -> AgentState:
                         if isinstance(today_plan.completedSlots, str)
                         else today_plan.completedSlots
                     )
+                from app.utils_portion import compute_household_measure
+                def _item_str(i):
+                    name = i.get('name_bn') or i.get('name_en') or 'খাবার'
+                    portion = i.get('portion_bn')
+                    if not portion:
+                        m = compute_household_measure(
+                            name_bn=i.get('name_bn'),
+                            name_en=i.get('name_en'),
+                            food_group=i.get('food_group'),
+                            amount_g=i.get('amount_g') or i.get('amount') or 100,
+                        )
+                        portion = m.get('portion_bn')
+                    return f"{name} ({portion})"
+
                 lines = ["TODAY'S MEAL PLAN:"]
                 for meal in plan_data.get("meals", []):
                     status = "✅ Eaten" if meal.get("slot") in completed else "⬜ Pending"
                     items_text = ", ".join(
-                        f"{i.get('name_bn') or i.get('name_en')}"
+                        _item_str(i)
                         for i in meal.get("items", [])
                     )
                     slot_label = meal.get("slot_bn") or meal.get("slot", "")

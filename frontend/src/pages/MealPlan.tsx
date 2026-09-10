@@ -66,6 +66,10 @@ interface MealItem {
   name_en?: string;
   amount?: string;
   amount_g?: number;
+  portion_bn?: string;
+  portion_en?: string;
+  household_measure_bn?: string;
+  household_measure_en?: string;
   calories?: number;
   protein_g?: number;
   why_bn?: string;
@@ -182,7 +186,7 @@ export const MealPlan = () => {
 
     setLoggingFoods((prev) => ({ ...prev, [key]: true }));
     try {
-      const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+      const amountStr = food.portion_bn || (food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion');
       const foodName = food.name_en || food.name_bn || '';
       const inputStr = `${amountStr} of ${foodName}`;
 
@@ -552,7 +556,7 @@ export const MealPlan = () => {
         const logPromises = items.map(async (food, j) => {
           const key = `${slot}-${j}`;
           if (!newLoggedFoods[key]) {
-            const amountStr = food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion';
+            const amountStr = food.portion_bn || (food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion');
             const foodName = food.name_en || food.name_bn || '';
             const inputStr = `${amountStr} of ${foodName}`;
 
@@ -933,8 +937,12 @@ export const MealPlan = () => {
                               <h4 className="font-bn font-bold text-ink text-xs truncate leading-tight">
                                 {food.name_bn || food.name_en}
                               </h4>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {food.amount_g || food.amount ? (
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                {food.portion_bn || food.household_measure_bn ? (
+                                  <span className="text-[0.62rem] text-accent font-bold font-bn bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20">
+                                    {food.portion_bn || food.household_measure_bn}
+                                  </span>
+                                ) : (food.amount_g || food.amount) ? (
                                   <span className="text-[0.58rem] text-accent font-bold font-bn">
                                     {food.amount_g || food.amount}g
                                   </span>
@@ -1388,7 +1396,7 @@ export const MealPlan = () => {
                                               </div>
 
                                               <p className="font-bn text-[0.68rem] text-ink-muted mt-1 leading-relaxed">
-                                                {(slot.items || []).map((item) => `${item.emoji ? item.emoji + ' ' : ''}${item.name_bn || item.name_en || ''} (${item.amount || ''})`).join(', ') || 'কোনো খাবার নেই'}
+                                                  {(slot.items || []).map((item) => `${item.emoji ? item.emoji + ' ' : ''}${item.name_bn || item.name_en || ''} (${item.portion_bn || item.household_measure_bn || item.amount || (item.amount_g ? item.amount_g + 'g' : '')})`).join(', ') || 'কোনো খাবার নেই'}
                                               </p>
                                             </div>
                                           </div>

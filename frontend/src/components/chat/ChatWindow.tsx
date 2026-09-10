@@ -943,7 +943,7 @@ export const ChatWindow = () => {
                                 className="px-2 py-0.5 bg-white border border-emerald-100/60 rounded-full text-[0.65rem] font-bn font-bold text-ink-muted flex items-center gap-1 shadow-sm"
                               >
                                 {item.name}
-                                {item.amount_g ? ` · ${Math.round(item.amount_g)}g` : ''}
+                                {item.portion_bn || item.household_measure_bn ? ` · ${item.portion_bn || item.household_measure_bn}` : item.amount_g ? ` · ${Math.round(item.amount_g)}g` : ''}
                                 <span className="text-ink-faint ml-0.5">{Math.round(item.calories)}kcal</span>
                               </span>
                             ))}
