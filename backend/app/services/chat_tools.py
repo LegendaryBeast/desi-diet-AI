@@ -164,6 +164,16 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
         completed_slots.append(slot)
     elif not completed and slot in completed_slots:
         completed_slots.remove(slot)
+        try:
+            await prisma.mealtracking.delete_many(
+                where={
+                    "userId": user_id,
+                    "mealSlot": slot,
+                    "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
+                }
+            )
+        except Exception as e:
+            logger.warning("Failed to remove tracking logs on unmark complete: %s", e)
 
     try:
         await prisma.mealplan.update(
@@ -173,6 +183,87 @@ async def tool_mark_meal_complete(user_id: str, args: Dict[str, Any]) -> Dict[st
         return _ok({"slot": slot, "completed": completed, "plan_id": plan.planId})
     except Exception as e:
         return _err(f"Failed to update meal completion: {e}")
+
+
+async def tool_unlog_meal(user_id: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Unlog, delete, or cancel meal tracking logs for a slot and unmark the slot in the meal plan."""
+    slot = (args.get("meal_slot") or args.get("slot") or "").lower().strip()
+    food_name = (args.get("food_name") or "").lower().strip()
+
+    slot_aliases = {
+        "breakfast": "breakfast", "সকালের নাস্তা": "breakfast", "সকাল": "breakfast",
+        "lunch": "lunch", "দুপুরের খাবার": "lunch", "দুপুর": "lunch",
+        "dinner": "dinner", "রাতের খাবার": "dinner", "রাত": "dinner",
+        "snack": "snack", "snack1": "snack", "snack2": "snack", "বিকেলের নাস্তা": "snack", "বিকাল": "snack"
+    }
+    canonical_slot = slot_aliases.get(slot, slot)
+    if not canonical_slot:
+        canonical_slot = "dinner"
+
+    bd_tz = ZoneInfo("Asia/Dhaka")
+    today = datetime.now(bd_tz).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
+    # 1. Query today's logs for this user and slot
+    logs = await prisma.mealtracking.find_many(
+        where={
+            "userId": user_id,
+            "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
+            "mealSlot": canonical_slot,
+        }
+    )
+
+    deleted_count = 0
+    removed_cals = 0
+    for l in logs:
+        text = (l.inputText or "").lower()
+        if not food_name or food_name in text:
+            removed_cals += l.totalCalories or 0
+            await prisma.mealtracking.delete(where={"id": l.id})
+            deleted_count += 1
+
+    # 2. Unmark slot in today's MealPlan
+    plan = await prisma.mealplan.find_first(
+        where={
+            "userId": user_id,
+            "planType": "daily",
+            "planDate": {"gte": today, "lt": today + timedelta(days=1)},
+        },
+        order={"createdAt": "desc"},
+    )
+    if plan:
+        completed_slots = safe_list(from_json_string(plan.completedSlots)) if plan.completedSlots else []
+        if canonical_slot in completed_slots:
+            completed_slots.remove(canonical_slot)
+            await prisma.mealplan.update(
+                where={"planId": plan.planId},
+                data={"completedSlots": to_json_string(completed_slots)},
+            )
+
+    # 3. Calculate remaining total calories today
+    all_today_logs = await prisma.mealtracking.find_many(
+        where={
+            "userId": user_id,
+            "loggedAt": {"gte": today, "lt": today + timedelta(days=1)},
+        }
+    )
+    remaining_cals = sum(l.totalCalories or 0 for l in all_today_logs)
+
+    slot_names_bn = {
+        "breakfast": "সকালের নাস্তা",
+        "lunch": "দুপুরের খাবার",
+        "dinner": "রাতের খাবার",
+        "snack": "নাস্তা",
+    }
+    slot_bn = slot_names_bn.get(canonical_slot, canonical_slot)
+
+    return _ok({
+        "unlogged_slot": canonical_slot,
+        "slot_bn": slot_bn,
+        "deleted_logs_count": deleted_count,
+        "removed_calories": removed_cals,
+        "remaining_calories_today": remaining_cals,
+        "message": f"আপনার {slot_bn} সফলভাবে আনলগ করা হয়েছে। মোট {removed_cals} ক্যালোরি বাদ দেওয়া হয়েছে। আজকের মোট ক্যালোরি গ্রহণ এখন {remaining_cals} kcal।"
+    })
 
 
 # ── Health Log Tools ──────────────────────────────────────────────────────────

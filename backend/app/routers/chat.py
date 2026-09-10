@@ -55,13 +55,14 @@ logger = logging.getLogger(__name__)
 
 # ── Tool dispatch map ─────────────────────────────────────────────────────────
 _MUTATING_TOOLS = {
-    "update_profile", "log_health", "log_meal",
+    "update_profile", "log_health", "log_meal", "unlog_meal",
     "mark_meal_complete", "add_medicine_reminder", "delete_medicine_reminder",
 }
 
 # Maps function names to (handler_coroutine, needs_user_id)
 TOOL_DISPATCH = {
     "log_meal": (None, True),  # handled inline for historical reasons
+    "unlog_meal": (chat_tools.tool_unlog_meal, True),
     "get_profile": (chat_tools.tool_get_profile, True),
     "update_profile": (chat_tools.tool_update_profile, True),
     "get_meal_plan": (chat_tools.tool_get_meal_plan, True),
@@ -631,8 +632,9 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "   - তেল/বাদাম: '১ চা চামচ রান্নার তেল' বা '১ মুঠো বাদাম (৪-৫টি বাদাম)'\n"
             "   NEVER give abstract raw gram numbers alone (like '১৩৩ গ্রাম ভাত' or '৬৭ গ্রাম মাছ') or vague advice ('কিছু ভাত খাবেন'). Always state the practical household measure first.\n"
             "6. Keep responses concise and warm. Use bullet points for lists.\n"
-            "7. MEAL LOGGING: If the user says they ate something or uploads a food photo, "
-            "call the `log_meal` tool with a clear description of the food items.\n"
+            "7. MEAL LOGGING & UNLOGGING:\n"
+            "   - LOGGING: If the user says they ate something or uploads a food photo, call `log_meal` with a clear description of the food items.\n"
+            "   - UNLOGGING / CANCEL MEAL: If the user asks to UNLOG a meal, cancel a logged food, says 'unlog korte bolechilam', 'রাতের খাবার আনলগ করো', 'ডিনার বাদ দাও', 'আমি খাইনি', or wants to remove previously tracked food, you MUST call `unlog_meal` with the meal_slot (e.g. meal_slot='dinner'). NEVER call log_meal when the user wants to unlog or cancel a meal!\n"
             "8. HEALTH REPORT & MESSAGE-FORM DISPLAY: If the user asks for a health report, nutrition progress summary, "
             "weight logs, or a 3-day/7-day/30-day health report, you MUST first call the `get_health_report` tool to fetch their real stats (calories, macros, weights, and micronutrient deficiencies). "
             "Then, you MUST write a detailed, professional, structured report directly in your message body (both in chat and WhatsApp). "
@@ -647,6 +649,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "10. YOU HAVE ACCESS TO APP TOOLS — USE THEM: You are equipped with many tools to control the app. "
             "Whenever the user asks to DO something (not just ask a question), USE the appropriate tool. Examples:\n"
             "   - 'I ate rice and fish' → call log_meal\n"
+            "   - 'Unlog my dinner' or 'unlog korte bolechilam' → call unlog_meal with meal_slot='dinner'\n"
             "   - 'Show my meal plan' → call get_meal_plan\n"
             "   - 'I weigh 72kg now' → call update_profile + log_health\n"
             "   - 'Remind me to take Metformin at 8am' → call add_medicine_reminder\n"
@@ -689,7 +692,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                 "type": "function",
                 "function": {
                     "name": "log_meal",
-                    "description": "Log a meal eaten by the user to their daily diet log. Use this whenever the user explicitly asks to log/track a meal, says they ate something, or uploads a photo of food to track/log.",
+                    "description": "Log a meal eaten by the user to their daily diet log. Use this whenever the user explicitly asks to log/track a meal, says they ate something, or uploads a photo of food to track/log. NEVER call this when the user asks to UNLOG or cancel a meal!",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -697,6 +700,28 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                             "meal_slot": {"type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"], "description": "The meal slot. Default to 'snack' if not clear."}
                         },
                         "required": ["description"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "unlog_meal",
+                    "description": "Unlog, delete, or cancel meal tracking logs for a slot and unmark the slot as eaten. Use when the user asks to unlog a meal, cancel a meal log, delete tracked food, or says 'unlog dinner', 'unlog korte bolechilam', 'রাতের খাবার আনলগ করো', 'আমি রাতের খাবার খাইনি', 'খাবারটি বাদ দাও'.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "meal_slot": {
+                                "type": "string",
+                                "enum": ["breakfast", "lunch", "dinner", "snack"],
+                                "description": "The meal slot to unlog/delete (e.g. 'dinner', 'lunch', 'breakfast', 'snack')."
+                            },
+                            "food_name": {
+                                "type": "string",
+                                "description": "Optional specific food name if only one item is being unlogged."
+                            }
+                        },
+                        "required": ["meal_slot"]
                     }
                 }
             },
@@ -1091,8 +1116,9 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "5. When discussing any food, always state: name + amount + calories from the database "
                         "(e.g. '১০০ গ্রাম ভাতে ১৩০ ক্যালোরি').\n"
                         "6. Keep responses concise and warm. Use bullet points for lists.\n"
-                        "7. MEAL LOGGING: If the user says they ate something or uploads a food photo, "
-                        "call the `log_meal` tool with a clear description of the food items.\n"
+                        "7. MEAL LOGGING & UNLOGGING:\n"
+                        "   - LOGGING: If the user says they ate something or uploads a food photo, call `log_meal` with a clear description of the food items.\n"
+                        "   - UNLOGGING / CANCEL MEAL: If the user asks to UNLOG a meal, cancel a logged food, says 'unlog korte bolechilam', 'রাতের খাবার আনলগ করো', 'ডিনার বাদ দাও', 'আমি খাইনি', or wants to remove previously tracked food, you MUST call `unlog_meal` with the meal_slot (e.g. meal_slot='dinner'). NEVER call log_meal when the user wants to unlog or cancel a meal!\n"
                         "8. HEALTH REPORT & MESSAGE-FORM DISPLAY: If the user asks for a health report, nutrition progress summary, "
                         "weight logs, or a 3-day/7-day/30-day health report, you MUST first call the `get_health_report` tool to fetch their real stats (calories, macros, weights, and micronutrient deficiencies). "
                         "Then, you MUST write a detailed, professional, structured report directly in your message body (both in chat and WhatsApp). "
@@ -1107,6 +1133,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "10. YOU HAVE ACCESS TO APP TOOLS — USE THEM: You are equipped with many tools to control the app. "
                         "Whenever the user asks to DO something (not just ask a question), USE the appropriate tool. Examples:\n"
                         "   - 'I ate rice and fish' → call log_meal\n"
+                        "   - 'Unlog my dinner' or 'unlog korte bolechilam' → call unlog_meal with meal_slot='dinner'\n"
                         "   - 'Show my meal plan' → call get_meal_plan\n"
                         "   - 'I weigh 72kg now' → call update_profile + log_health\n"
                         "   - 'Remind me to take Metformin at 8am' → call add_medicine_reminder\n"
