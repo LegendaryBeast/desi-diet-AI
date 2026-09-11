@@ -138,6 +138,7 @@ export const MealPlan = () => {
   const location = useLocation();
   const { isPro } = useSubscription();
   const [showProModal, setShowProModal] = useState(false);
+  const [showTakenModal, setShowTakenModal] = useState(false);
   const [proTrigger, setProTrigger] = useState<'regenerate' | 'tomorrow' | 'general'>('general');
   const [tab, setTab] = useState<Tab>((location.state as any)?.tab || 'today');
   const [plan, setPlan] = useState<MealPlanResponse | null>(null);
@@ -284,6 +285,13 @@ export const MealPlan = () => {
   };
 
   const handleRegenerateSlot = async (targetPlan: MealPlanResponse, slotName: string) => {
+    // If the slot is already eaten/taken, prevent regeneration and show modal
+    const isSlotCompleted = (targetPlan.completed_slots || []).includes(slotName);
+    if (isSlotCompleted) {
+      setShowTakenModal(true);
+      return;
+    }
+
     const key = `${targetPlan.plan_id}-${slotName}`;
     setLoadingSlotKey(key);
     try {
@@ -306,6 +314,15 @@ export const MealPlan = () => {
 
   const handleAutoSwap = async (targetPlan: MealPlanResponse, mealSlot: string, item: any, itemIndex: number) => {
     const key = `${mealSlot}-${itemIndex}`;
+
+    // If the item or its slot is already eaten/taken, prevent regeneration and show modal
+    const isSlotCompleted = (targetPlan.completed_slots || []).includes(mealSlot);
+    const isItemTaken = !!loggedFoods[key] || isSlotCompleted;
+    if (isItemTaken) {
+      setShowTakenModal(true);
+      return;
+    }
+
     setLoadingSwapKey(key);
 
     try {
@@ -1050,11 +1067,18 @@ export const MealPlan = () => {
                                 <button
                                   onClick={() => handleAutoSwap(p, slot.slot, food, j)}
                                   disabled={loadingSwapKey === `${slot.slot}-${j}`}
-                                  className={`p-1 rounded border transition-all ${loadingSwapKey === `${slot.slot}-${j}`
+                                  className={`p-1 rounded border transition-all ${
+                                    loadingSwapKey === `${slot.slot}-${j}`
                                       ? 'bg-accent/5 border-transparent'
-                                      : 'bg-white hover:bg-accent/5 text-ink-muted hover:text-accent border-ink/5'
-                                    }`}
-                                  title="এই খাবারের বিকল্প খুঁজুন"
+                                      : (loggedFoods[`${slot.slot}-${j}`] || isDone)
+                                        ? 'bg-amber-50/40 hover:bg-amber-100/60 text-amber-600/70 hover:text-amber-700 border-amber-200/50'
+                                        : 'bg-white hover:bg-accent/5 text-ink-muted hover:text-accent border-ink/5'
+                                  }`}
+                                  title={
+                                    (loggedFoods[`${slot.slot}-${j}`] || isDone)
+                                      ? 'can not re-generate already taken Item'
+                                      : 'এই খাবারের বিকল্প খুঁজুন'
+                                  }
                                 >
                                   {loadingSwapKey === `${slot.slot}-${j}` ? (
                                     <Loader2 className="w-3 h-3 animate-spin text-accent" />
@@ -1245,6 +1269,57 @@ export const MealPlan = () => {
     >
       {/* Pro Upgrade Modal */}
       <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger={proTrigger} />
+
+      {/* Cannot Regenerate Taken Item Modal */}
+      <AnimatePresence>
+        {showTakenModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-ink/10 text-center overflow-hidden"
+            >
+              {/* Background gradient decorative element */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-200/30 rounded-full blur-2xl pointer-events-none" />
+
+              <button
+                onClick={() => setShowTakenModal(false)}
+                className="absolute top-4 right-4 p-2 text-ink-muted hover:text-ink hover:bg-cream rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-amber-500/10 to-orange-500/20 border border-amber-300/40 flex items-center justify-center text-amber-600 shadow-sm">
+                <AlertCircle className="w-7 h-7" />
+              </div>
+
+              <h3 className="font-bn text-xl font-black text-ink mb-1">
+                খাবারটি ইতোমধ্যে গ্রহণ করা হয়েছে
+              </h3>
+
+              <div className="inline-block my-2 px-3 py-1.5 bg-amber-50 border border-amber-200/70 rounded-xl">
+                <span className="font-body text-xs font-bold text-amber-800 tracking-wide">
+                  can not re-generate already taken Item
+                </span>
+              </div>
+
+              <p className="font-bn text-xs text-ink-muted leading-relaxed mt-2 mb-6">
+                আপনি এই খাবারটি খাওয়া হিসেবে চিহ্নিত করেছেন। কোনো খাবার পরিবর্তন বা বিকল্প তৈরি করতে চাইলে প্রথমে ডানপাশের সবুজ টিকচিহ্নে (✓) ক্লিক করে খাবারটি আনলগ করুন।
+              </p>
+
+              <button
+                onClick={() => setShowTakenModal(false)}
+                className="w-full py-3 px-4 bg-ink text-cream font-bn font-bold text-sm rounded-2xl hover:bg-ink/90 active:scale-[0.98] transition-all shadow-lg hover:shadow-xl"
+              >
+                ঠিক আছে (Got it)
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="max-w-4xl mx-auto space-y-4 pb-20">
         {/* Tab Selector */}
