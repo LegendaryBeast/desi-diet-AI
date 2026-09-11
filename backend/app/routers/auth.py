@@ -112,6 +112,30 @@ async def me(current_user=Depends(get_current_user)):
     }
 
 
+class ResetPasswordRequest(BaseModel):
+    phone: str
+    new_password: str
+
+
+@router.post("/reset-password")
+async def reset_password(req: ResetPasswordRequest):
+    """Reset user password by phone number."""
+    user = await prisma.user.find_unique(where={"phone": req.phone})
+    if not user and req.phone.startswith("0"):
+        user = await prisma.user.find_unique(where={"phone": "+88" + req.phone})
+    if not user and req.phone.startswith("+880"):
+        user = await prisma.user.find_unique(where={"phone": "0" + req.phone[4:]})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await prisma.user.update(
+        where={"id": user.id},
+        data={"passwordHash": get_password_hash(req.new_password)},
+    )
+    return {"status": "ok", "message": "Password updated successfully"}
+
+
 from pydantic import BaseModel
 
 class ServiceTokenRequest(BaseModel):
