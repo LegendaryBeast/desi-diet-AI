@@ -7,7 +7,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional
 from app.db import prisma
-from app.core.security import create_access_token
+from app.core.security import create_access_token, get_password_hash
 from app.config import settings
 from app.dependencies import get_current_user
 
