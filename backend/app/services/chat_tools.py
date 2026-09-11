@@ -792,6 +792,17 @@ async def tool_personal_cooker_chat(user_id: str, args: Dict[str, Any]) -> Dict[
     if not message:
         return _err("Message is required")
 
+    # If condition is not explicitly provided or is 'None'/'null', auto-fetch user's medicalConditions from Profile
+    if not condition or condition.lower() in ("none", "null", "general", ""):
+        try:
+            profile = await prisma.profile.find_unique(where={"userId": user_id})
+            if profile and profile.medicalConditions:
+                conditions = safe_list(profile.medicalConditions)
+                if conditions:
+                    condition = ", ".join(conditions)
+        except Exception as e:
+            logger.warning("Could not auto-fetch user medical conditions for personal cooker: %s", e)
+
     # Use a deterministic session ID per user+day so the chat has continuity
     session_id = args.get("session_id") or f"pc_{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
 

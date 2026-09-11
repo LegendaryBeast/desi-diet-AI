@@ -410,6 +410,8 @@ async def _build_user_context(current_user_id: str) -> str:
         lines.append(f"Goal: {profile.goal}")
         lines.append(f"Activity Level: {profile.activityLevel}")
         lines.append(f"Medical Conditions: {', '.join(conditions) if conditions else 'None'}")
+        if conditions:
+            lines.append(f"CRITICAL CLINICAL DIRECTIVE: The user is diagnosed with: {', '.join(conditions)}. All meal suggestions, recipes, food choices, portions, and safety notes MUST be specifically tailored for {', '.join(conditions)}. You are STRICTLY FORBIDDEN from stating that the meal/recipe is for healthy people without disease (e.g. 'সাধারণত সুস্থ মানুষের জন্য নিরাপদ', 'সবার জন্য উপযুক্ত'). Instead, explicitly affirm that the meal is prepared according to their specific condition (e.g. '⚕️ এই রেসিপিটি {', '.join(conditions)} রোগীদের জন্য বিশেষভাবে তৈরি করা হয়েছে...').")
         lines.append(f"Preferred Foods: {', '.join(safe_list(profile.preferredFoods)) if profile.preferredFoods else 'No preference'}")
         lines.append(f"Disliked Foods: {', '.join(safe_list(profile.dislikedFoods)) if profile.dislikedFoods else 'None'}")
 
@@ -611,7 +613,12 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "1. Always reply in Bengali if the user writes in Bengali, English otherwise.\n"
             "2. If the user has not set up their profile, gently guide them to complete it.\n"
             "3. For food/meal questions, cross-reference the user's medical conditions, recent meal logs, "
-            "and nutrition targets from the context below.\n"
+            "and nutrition targets from the context below. "
+            "CRITICAL MEDICAL RULE: If the user has any diagnosed medical conditions (such as Diabetes / ডায়াবেটিস, Hypertension, etc.), "
+            "ALL food, recipes, and dietary suggestions MUST strictly cater to those conditions. "
+            "NEVER output a disclaimer stating that the food/recipe is for healthy people with no disease "
+            "(e.g. 'সুস্থ মানুষের জন্য নিরাপদ', 'সবার জন্য উপযুক্ত', 'কোনো রোগ নেই'). "
+            "Instead, explicitly affirm that the meal/recipe is tailored for their specific condition (e.g. 'ডায়াবেটিস রোগীদের জন্য বিশেষভাবে উপযুক্ত').\n"
             "3b. TODAY'S MEAL PLAN: The user's current meal plan for today is listed in the context below under 'TODAY'S MEAL PLAN'. "
             "When the user asks what they should eat, what's for breakfast/lunch/dinner, or anything about their meal plan, "
             "you MUST reference the specific foods listed in their today's meal plan. Do NOT invent a different meal plan. "
@@ -926,15 +933,15 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                 "type": "function",
                 "function": {
                     "name": "personal_cooker_chat",
-                    "description": "Invoke the Personal Cooker (NutriSaathi) for condition-specific recipes, cooking methods, or food safety advice. Use when the user asks for recipes tailored to a medical condition, cooking instructions for restricted diets, or whether a specific food is safe for their disease.",
+                    "description": "Invoke the Personal Cooker (NutriSaathi) for condition-specific recipes, cooking methods, or food safety advice. Use when the user asks for recipes, cooking instructions, or food safety advice. CRITICAL: If the user has medical conditions in their profile (e.g. Diabetes / ডায়াবেটিস), you MUST pass condition='Diabetes' (or their specific conditions) so the recipe and advice are safely tailored!",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "message": {"type": "string", "description": "The user's recipe, cooking, or food-safety question"},
-                            "condition": {"type": "string", "description": "Medical condition to tailor the answer for, e.g. Diabetes, Hypertension, CKD, None"},
+                            "condition": {"type": "string", "description": "Medical condition to tailor the answer for, e.g. 'Diabetes', 'Hypertension', 'CKD'. MUST be populated from the user's profile medical conditions if present, or 'None' only if user has no conditions."},
                             "session_id": {"type": "string", "description": "Optional session ID for continuity. Omit to use auto-generated daily session."}
                         },
-                        "required": ["message", "condition"]
+                        "required": ["message"]
                     }
                 }
             },
@@ -1110,7 +1117,12 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "1. Always reply in Bengali if the user writes in Bengali, English otherwise.\n"
                         "2. If the user has not set up their profile, gently guide them to complete it.\n"
                         "3. For food/meal questions, cross-reference the user's medical conditions, recent meal logs, "
-                        "and nutrition targets from the context below.\n"
+                        "and nutrition targets from the context below. "
+                        "CRITICAL MEDICAL RULE: If the user has any diagnosed medical conditions (such as Diabetes / ডায়াবেটিস, Hypertension, etc.), "
+                        "ALL food, recipes, and dietary suggestions MUST strictly cater to those conditions. "
+                        "NEVER output a disclaimer stating that the food/recipe is for healthy people with no disease "
+                        "(e.g. 'সুস্থ মানুষের জন্য নিরাপদ', 'সবার জন্য উপযুক্ত', 'কোনো রোগ নেই'). "
+                        "Instead, explicitly affirm that the meal/recipe is tailored for their specific condition (e.g. 'ডায়াবেটিস রোগীদের জন্য বিশেষভাবে উপযুক্ত').\n"
                         "4. For calorie/macro data, ONLY use values from the Graph-RAG context below. "
                         "NEVER invent or estimate nutrition values from your own training memory.\n"
                         "5. When discussing any food, always state: name + amount + calories from the database "

@@ -9,8 +9,92 @@ from datetime import datetime, timezone, timedelta
 from app.config import settings
 from app.db import prisma
 from app.core.llm_client import llm_client
+from app.utils import safe_list
 
 logger = logging.getLogger(__name__)
+
+# Canonical mapping for condition matching
+DISEASE_CANONICAL_MAP = {
+    "diabetes": "Diabetes",
+    "diabetic": "Diabetes",
+    "type 1 diabetes": "Diabetes",
+    "type 2 diabetes": "Diabetes",
+    "ডায়াবেটিস": "Diabetes",
+    "ডায়াবেটিস": "Diabetes",
+    "hypertension": "Hypertension",
+    "high blood pressure": "Hypertension",
+    "bp": "Hypertension",
+    "উচ্চ রক্তচাপ": "Hypertension",
+    "obesity": "Obesity",
+    "overweight": "Obesity",
+    "স্থূলতা": "Obesity",
+    "chronic kidney disease": "Chronic Kidney Disease",
+    "ckd": "Chronic Kidney Disease",
+    "kidney disease": "Chronic Kidney Disease",
+    "কিডনি রোগ": "Chronic Kidney Disease",
+    "coronary heart disease": "Coronary Heart Disease",
+    "heart disease": "Coronary Heart Disease",
+    "হৃদরোগ": "Coronary Heart Disease",
+    "anemia": "Anemia",
+    "রক্তশূন্যতা": "Anemia",
+    "asthma": "Asthma",
+    "অ্যাজমা": "Asthma",
+    "bronchitis": "Bronchitis",
+    "cancer": "Cancer",
+    "ক্যান্সার": "Cancer",
+    "diarrhoea": "Diarrhoea",
+    "diarrhea": "Diarrhoea",
+    "ডায়রিয়া": "Diarrhoea",
+    "hypothyroidism": "Hypothyroidism",
+    "thyroid": "Hypothyroidism",
+    "thyroid disorders": "Hypothyroidism",
+    "থাইরয়েড": "Hypothyroidism",
+    "kidney stones": "Kidney Stones",
+    "কিডনি স্টোন": "Kidney Stones",
+    "liver disease": "Liver Disease",
+    "লিভার রোগ": "Liver Disease",
+    "tuberculosis": "Tuberculosis",
+    "tuberculosis (tb)": "Tuberculosis",
+    "tb": "Tuberculosis",
+    "যক্ষ্মা": "Tuberculosis",
+    "burns": "Burns",
+    "gastric": "Gastric",
+    "গ্যাস্ট্রিক": "Gastric",
+}
+
+DISEASE_BN_MAP = {
+    "Diabetes": "ডায়াবেটিস",
+    "Hypertension": "উচ্চ রক্তচাপ",
+    "Obesity": "স্থূলতা",
+    "Chronic Kidney Disease": "কিডনি রোগ",
+    "Coronary Heart Disease": "হৃদরোগ",
+    "Anemia": "রক্তশূন্যতা",
+    "Asthma": "অ্যাজমা",
+    "Bronchitis": "ব্রঙ্কাইটিস",
+    "Cancer": "ক্যান্সার",
+    "Diarrhoea": "ডায়রিয়া",
+    "Hypothyroidism": "থাইরয়েড",
+    "Kidney Stones": "কিডনি স্টোন",
+    "Liver Disease": "লিভার রোগ",
+    "Tuberculosis": "যক্ষ্মা",
+    "Burns": "পুড়ে যাওয়া",
+    "Gastric": "গ্যাস্ট্রিক",
+}
+
+def format_condition_for_prompt(condition: str) -> str:
+    """Format condition nicely with both Bengali and English names for the LLM prompt."""
+    if not condition or condition.strip().lower() in ("none", "null", ""):
+        return "None"
+    parts = [c.strip() for c in condition.split(",") if c.strip()]
+    formatted = []
+    for p in parts:
+        canon = DISEASE_CANONICAL_MAP.get(p.lower(), p)
+        bn = DISEASE_BN_MAP.get(canon)
+        if bn and canon:
+            formatted.append(f"{bn} ({canon})")
+        else:
+            formatted.append(canon)
+    return ", ".join(dict.fromkeys(formatted)) if formatted else "None"
 
 # ── Lazy-loaded embedding model ──────────────────────────────────────────────
 _embedding_model = None
@@ -71,6 +155,7 @@ You are trained on the National Dietary Guidelines for Bangladesh 2022. You unde
 5. LANGUAGE MATCHING: If the user writes in Bengali script (বাংলা), respond in Bengali script. If the user writes in Romanized Bengali (Banglish), respond in Bengali script or English. Always be deeply helpful.
 6. FORMATTING: When you give specific suggestions or warnings directly related to the condition, you MUST format those specific sentences in **bold text**.
 7. MANDATORY COOKING DETAILS: You MUST NOT provide any answer without including a specific cooking procedure and a detailed list of individual ingredients. If a user asks a general question, you must still provide a relevant recipe with ingredients and a cooking procedure. If you absolutely cannot provide a cooking procedure and ingredients, you must refuse to answer the question.
+8. STRICT CONDITION ADHERENCE: Check PATIENT PROFILE condition: {condition}. If the condition is NOT "None" (e.g. Diabetes / ডায়াবেটিস): You are STRICTLY FORBIDDEN from stating that the food or recipe is for healthy people ("সাধারণত সুস্থ মানুষের জন্য") or claiming the patient has no health conditions. Every ingredient, portion size, and cooking technique MUST be clinically tailored for patients managing {condition}.
 
 ━━━ RESPONSE FORMAT INSTRUCTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Determine the user's intent and follow the matching structure:
@@ -159,7 +244,14 @@ class PersonalCookerService:
             filter_dict = {}
             if condition and condition != "None":
                 conds = [c.strip() for c in condition.split(",")]
-                filter_dict = {"condition": {"$in": conds + [condition]}}
+                expanded = set()
+                for c in conds:
+                    expanded.add(c)
+                    expanded.add(c.lower())
+                    canon = DISEASE_CANONICAL_MAP.get(c.lower())
+                    if canon:
+                        expanded.add(canon)
+                filter_dict = {"condition": {"$in": list(expanded)}}
 
             response = index.query(
                 vector=query_embedding,
@@ -182,6 +274,7 @@ class PersonalCookerService:
         except Exception as e:
             logger.warning("Pinecone query failed: %s", e)
             return []
+
     @staticmethod
     async def generate_reply(
         user_message: str,
@@ -205,11 +298,20 @@ class PersonalCookerService:
         if early_history_summary:
             meal_plan_context = f"PREVIOUS CONVERSATION SUMMARY: {early_history_summary}\n\n{meal_plan_context}"
 
+        prompt_condition = format_condition_for_prompt(condition)
+
         system_prompt = _NUTRISAATHI_SYSTEM_PROMPT.format(
-            condition=condition or "None",
+            condition=prompt_condition,
             context=context_str,
             meal_plan_context=meal_plan_context,
         )
+        if prompt_condition != "None":
+            system_prompt += (
+                f"\n\nCRITICAL SAFETY DIRECTIVE: The user has diagnosed medical condition(s): {prompt_condition}. "
+                f"You MUST strictly follow Rule 8: Every recipe, ingredient, and cooking method MUST be clinically tailored for {prompt_condition}. "
+                f"NEVER state that the recipe is for 'healthy people without disease' (সুস্থ মানুষের জন্য / রোগ নেই). "
+                f"You MUST conclude with the condition-specific safety note mentioning {prompt_condition}."
+            )
 
         messages = [{"role": "system", "content": system_prompt}]
         # Add last 10 turns of history
@@ -235,7 +337,28 @@ class PersonalCookerService:
         session_id: str,
     ) -> Dict[str, Any]:
         """Full pipeline: save user msg → rewrite → embed → retrieve → generate → save assistant msg."""
-        condition = condition or "None"
+        # Auto-fetch condition from user profile if missing or 'None'
+        if not condition or condition.strip().lower() in ("none", "null", ""):
+            try:
+                profile = await prisma.profile.find_unique(where={"userId": user_id})
+                if profile and profile.medicalConditions:
+                    user_conds = safe_list(profile.medicalConditions)
+                    if user_conds:
+                        condition = ", ".join(user_conds)
+            except Exception as e:
+                logger.warning("Failed to fetch user profile conditions in PersonalCookerService: %s", e)
+
+        # Normalize condition to canonical names
+        if condition and condition.strip().lower() not in ("none", "null", ""):
+            parts = [c.strip() for c in condition.split(",") if c.strip()]
+            canonical_parts = []
+            for p in parts:
+                canon = DISEASE_CANONICAL_MAP.get(p.lower(), p)
+                if canon not in canonical_parts:
+                    canonical_parts.append(canon)
+            condition = ", ".join(canonical_parts) if canonical_parts else "None"
+        else:
+            condition = "None"
 
         # 1. Save user message
         try:

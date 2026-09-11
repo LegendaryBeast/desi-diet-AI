@@ -25,16 +25,21 @@ interface ChatMessage {
 }
 
 const DISEASE_MAPPING: Record<string, string> = {
-  'Diabetes': 'Diabetes', 'Hypertension': 'Hypertension', 'Obesity': 'Obesity',
-  'Anemia': 'Anemia', 'Asthma': 'Asthma', 'Bronchitis': 'Bronchitis',
-  'Burns': 'Burns', 'Cancer': 'Cancer',
-  'Chronic Kidney Disease': 'Chronic Kidney Disease', 'Kidney Disease': 'Chronic Kidney Disease',
-  'Coronary Heart Disease': 'Coronary Heart Disease', 'Heart Disease': 'Coronary Heart Disease',
-  'Diarrhea': 'Diarrhoea', 'Diarrhoea': 'Diarrhoea',
-  'Hypothyroidism': 'Hypothyroidism', 'Thyroid Disorders': 'Hypothyroidism',
-  'Kidney Stones': 'Kidney Stones', 'Liver Disease': 'Liver Disease',
-  'Tuberculosis': 'Tuberculosis', 'Tuberculosis (TB)': 'Tuberculosis',
-  'Gastric': 'Gastric',
+  'diabetes': 'Diabetes', 'diabetic': 'Diabetes', 'ডায়াবেটিস': 'Diabetes', 'ডায়াবেটিস': 'Diabetes',
+  'hypertension': 'Hypertension', 'high blood pressure': 'Hypertension', 'bp': 'Hypertension', 'উচ্চ রক্তচাপ': 'Hypertension',
+  'obesity': 'Obesity', 'overweight': 'Obesity', 'স্থূলতা': 'Obesity',
+  'anemia': 'Anemia', 'রক্তশূন্যতা': 'Anemia',
+  'asthma': 'Asthma', 'অ্যাজমা': 'Asthma',
+  'bronchitis': 'Bronchitis', 'ব্রঙ্কাইটিস': 'Bronchitis',
+  'burns': 'Burns', 'cancer': 'Cancer', 'ক্যান্সার': 'Cancer',
+  'chronic kidney disease': 'Chronic Kidney Disease', 'kidney disease': 'Chronic Kidney Disease', 'ckd': 'Chronic Kidney Disease', 'কিডনি রোগ': 'Chronic Kidney Disease',
+  'coronary heart disease': 'Coronary Heart Disease', 'heart disease': 'Coronary Heart Disease', 'হৃদরোগ': 'Coronary Heart Disease',
+  'diarrhea': 'Diarrhoea', 'diarrhoea': 'Diarrhoea', 'ডায়রিয়া': 'Diarrhoea',
+  'hypothyroidism': 'Hypothyroidism', 'thyroid disorders': 'Hypothyroidism', 'thyroid': 'Hypothyroidism', 'থাইরয়েড': 'Hypothyroidism',
+  'kidney stones': 'Kidney Stones', 'কিডনি স্টোন': 'Kidney Stones',
+  'liver disease': 'Liver Disease', 'লিভার রোগ': 'Liver Disease',
+  'tuberculosis': 'Tuberculosis', 'tuberculosis (tb)': 'Tuberculosis', 'tb': 'Tuberculosis', 'যক্ষ্মা': 'Tuberculosis',
+  'gastric': 'Gastric', 'গ্যাস্ট্রিক': 'Gastric',
 };
 
 export const PersonalCooker = () => {
@@ -56,10 +61,12 @@ export const PersonalCooker = () => {
 
   // Auto-fetch conditions from profile
   useEffect(() => {
-    const profileConditions = profileData?.profile?.medical_conditions || [];
+    const rawConditions = profileData?.profile?.medical_conditions || [];
     const matched = new Set<string>();
-    for (const c of profileConditions) {
-      const canonicalName = DISEASE_MAPPING[c] || c;
+    for (const c of rawConditions) {
+      if (!c) continue;
+      const key = String(c).trim().toLowerCase();
+      const canonicalName = DISEASE_MAPPING[key] || c;
       matched.add(canonicalName);
     }
     setProfileConditions(Array.from(matched));
