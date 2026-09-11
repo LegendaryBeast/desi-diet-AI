@@ -35,8 +35,12 @@ async def whatsapp_debug():
     """Diagnostic endpoint to verify Meta credentials directly on the deployed server."""
     token = _get_whatsapp_token()
     pid = _get_phone_number_id()
+    backend_url = _get_backend_url()
+    verify_token = _get_verify_token()
     meta_status = None
     meta_body = None
+    chat_status = None
+    chat_error = None
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             res = await client.post(
@@ -55,12 +59,25 @@ async def whatsapp_debug():
     except Exception as exc:
         meta_body = str(exc)
 
+    # Also test that the internal /chat endpoint is reachable
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(f"{backend_url}/health")
+            chat_status = r.status_code
+    except Exception as exc:
+        chat_error = str(exc)
+
     return {
         "token_prefix": token[:20] if token else "EMPTY",
         "token_len": len(token),
         "phone_number_id": pid,
+        "backend_url": backend_url,
+        "verify_token_prefix": verify_token[:8] if verify_token else "EMPTY",
+        "verify_token_len": len(verify_token),
         "meta_status": meta_status,
         "meta_response": meta_body,
+        "internal_health_status": chat_status,
+        "internal_health_error": chat_error,
     }
 
 
