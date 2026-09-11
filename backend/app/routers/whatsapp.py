@@ -30,6 +30,40 @@ def _get_backend_url() -> str:
     return f"http://127.0.0.1:{port}"
 
 
+@router.get("/whatsapp/debug")
+async def whatsapp_debug():
+    """Diagnostic endpoint to verify Meta credentials directly on the deployed server."""
+    token = _get_whatsapp_token()
+    pid = _get_phone_number_id()
+    meta_status = None
+    meta_body = None
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.post(
+                f"https://graph.facebook.com/v19.0/{pid}/messages",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": "8801762489345",
+                    "type": "text",
+                    "text": {"body": "Test from Railway WhatsApp Debug"},
+                },
+            )
+            meta_status = res.status_code
+            meta_body = res.text
+    except Exception as exc:
+        meta_body = str(exc)
+
+    return {
+        "token_prefix": token[:20] if token else "EMPTY",
+        "token_len": len(token),
+        "phone_number_id": pid,
+        "meta_status": meta_status,
+        "meta_response": meta_body,
+    }
+
+
 
 # ---------------------------------------------------------------------------
 # Pydantic models
