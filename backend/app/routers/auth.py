@@ -1,6 +1,7 @@
 """Authentication routes: register, login, refresh, me, service-token."""
 
 from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel
 from app.db import prisma
 from app.core.security import (
     get_password_hash,
@@ -135,8 +136,6 @@ async def reset_password(req: ResetPasswordRequest):
     )
     return {"status": "ok", "message": "Password updated successfully"}
 
-
-from pydantic import BaseModel
 
 class ServiceTokenRequest(BaseModel):
     user_id: str
