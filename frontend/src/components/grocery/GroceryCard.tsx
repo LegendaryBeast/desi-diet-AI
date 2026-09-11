@@ -195,62 +195,68 @@ export const GroceryCard = ({
       {/* Header — Collapsible toggle */}
       <div
         onClick={() => setIsMinimized((prev) => !prev)}
-        className="px-4 py-2.5 bg-gradient-to-r from-accent/5 via-cream/40 to-transparent border-b border-ink/5 flex items-center justify-between cursor-pointer hover:bg-accent/[0.07] transition-colors select-none"
+        className={`px-4 py-3 bg-gradient-to-r from-accent/5 via-cream/40 to-transparent flex items-center justify-between cursor-pointer hover:bg-accent/[0.08] transition-all select-none ${
+          !isMinimized ? 'border-b border-ink/5' : ''
+        }`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 bg-accent/10 rounded-lg flex items-center justify-center text-accent shrink-0">
-            <ShoppingBag size={14} />
+          <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
+            <ShoppingBag size={16} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[0.75rem] font-bold text-ink font-bn leading-tight truncate">
+              <span className="text-[0.78rem] font-bold text-ink font-bn leading-tight truncate">
                 {isBn ? 'কেনাকাটার সাজেশন' : 'Grocery Suggestions'}
               </span>
-              <span className="text-[0.6rem] font-bold px-1.5 py-0.2 bg-ink/5 text-ink-muted rounded-full whitespace-nowrap">
+              <span className="text-[0.62rem] font-bold px-2 py-0.5 bg-accent/10 text-accent rounded-full whitespace-nowrap">
                 {isBn ? `${total_items}টি পণ্য` : `${total_items} items`}
               </span>
             </div>
-            <div className="text-[0.6rem] text-ink-muted font-bn truncate">
-              {isBn
-                ? 'অনলাইন গ্রোসারি প্ল্যাটফর্ম থেকে সর্বনিম্ন মূল্যের অফার'
-                : 'Best price deals from online grocery stores'}
+            <div className="text-[0.62rem] text-ink-muted font-bn truncate mt-0.5">
+              {isMinimized
+                ? (isBn ? 'ক্লিক করে চালডাল, স্বপ্ন ও দারাজের সেরা দাম দেখুন' : 'Click to compare prices across online stores')
+                : (isBn ? 'অনলাইন গ্রোসারি প্ল্যাটফর্ম থেকে সর্বনিম্ন মূল্যের অফার' : 'Best price deals from online grocery stores')}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
           {potential_savings_bdt > 0 && (
-            <span className="text-[0.6rem] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <TrendingDown size={10} />
-              {isBn ? 'সেভ' : 'Save'} ৳{potential_savings_bdt}
+            <span className="text-[0.62rem] font-bold text-green-700 bg-green-100/80 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <TrendingDown size={11} />
+              {isBn ? 'সাশ্রয়' : 'Save'} ৳{potential_savings_bdt}
             </span>
           )}
 
           {/* Cart toggle */}
-          <button
-            onClick={() => {
-              if (isMinimized) setIsMinimized(false);
-              setShowCart((s) => !s);
-            }}
-            className="relative p-1.5 bg-cream rounded-lg hover:bg-accent hover:text-white transition-colors"
-            title={isBn ? 'শপিং লিস্ট' : 'Shopping List'}
-          >
-            <Store size={14} />
-            {cart.length > 0 && (
+          {cart.length > 0 && (
+            <button
+              onClick={() => {
+                if (isMinimized) setIsMinimized(false);
+                setShowCart((s) => !s);
+              }}
+              className="relative p-1.5 bg-cream rounded-lg hover:bg-accent hover:text-white transition-colors"
+              title={isBn ? 'শপিং লিস্ট' : 'Shopping List'}
+            >
+              <Store size={14} />
               <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[0.55rem] font-black rounded-full flex items-center justify-center px-1">
                 {cart.reduce((s, c) => s + c.quantity, 0)}
               </span>
-            )}
-          </button>
+            </button>
+          )}
 
-          {/* Minimized / Expand toggle pill */}
+          {/* Explicit Expand / Collapse Button */}
           <button
             onClick={() => setIsMinimized((prev) => !prev)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-accent/10 hover:bg-accent hover:text-white text-accent rounded-lg text-[0.62rem] font-bold transition-all"
-            title={isMinimized ? (isBn ? 'বিস্তারিত দেখুন' : 'Expand') : (isBn ? 'মিনিমাইজ করুন' : 'Minimize')}
+            className={`flex items-center gap-1.5 font-bold transition-all ${
+              isMinimized
+                ? 'px-3 py-1.5 bg-accent hover:bg-ink text-white rounded-xl text-[0.68rem] shadow-sm active:scale-95'
+                : 'px-2.5 py-1 bg-ink/5 hover:bg-ink/10 text-ink-muted rounded-xl text-[0.65rem]'
+            }`}
+            title={isMinimized ? (isBn ? 'পণ্যগুলো বিস্তারিত দেখতে ক্লিক করুন' : 'Click to expand') : (isBn ? 'মিনিমাইজ করুন' : 'Click to collapse')}
           >
-            <span>{isMinimized ? (isBn ? 'দেখুন' : 'View') : (isBn ? 'লুকান' : 'Hide')}</span>
-            {isMinimized ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+            <span>{isMinimized ? (isBn ? 'অফার দেখুন' : 'View Deals') : (isBn ? 'সংক্ষেপ' : 'Collapse')}</span>
+            {isMinimized ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </button>
 
           {onClose && (
