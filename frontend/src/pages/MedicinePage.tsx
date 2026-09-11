@@ -210,8 +210,9 @@ export const MedicinePage = () => {
                       <div key={i} className="bg-cream/40 p-2 rounded-lg border border-ink/5">
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-bold text-ink font-bn text-xs">{med.name} — {med.dose}</span>
-                          <span className={`text-[0.55rem] font-bold px-1 rounded ${med.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
-                            {med.with_food ? '🍽️ খাবারের সাথে' : '💊 খালি পেটে'}
+                          <span className={`inline-flex items-center gap-1 text-[0.55rem] font-bold px-1.5 py-0.5 rounded ${med.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {med.with_food ? <Utensils size={10} /> : <Pill size={10} />}
+                            <span>{med.with_food ? 'খাবারের সাথে' : 'খালি পেটে'}</span>
                           </span>
                         </div>
                         <div className="flex gap-1.5 flex-wrap">
@@ -270,8 +271,9 @@ export const MedicinePage = () => {
                             ))}
                           </div>
                           <div className="mt-1.5 flex items-center gap-1.5">
-                            <span className={`text-[0.55rem] font-bold px-1 rounded ${r.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
-                              {r.with_food ? '🍽️ খাবারের সাথে' : '💊 খালি পেটে'}
+                            <span className={`inline-flex items-center gap-1 text-[0.55rem] font-bold px-1.5 py-0.5 rounded ${r.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                              {r.with_food ? <Utensils size={10} /> : <Pill size={10} />}
+                              <span>{r.with_food ? 'খাবারের সাথে' : 'খালি পেটে'}</span>
                             </span>
                             {r.notes && <span className="text-[0.62rem] text-ink-faint font-bn truncate">{r.notes}</span>}
                           </div>

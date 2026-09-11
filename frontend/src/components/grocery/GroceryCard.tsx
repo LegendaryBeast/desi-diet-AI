@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart,
+  ShoppingBag,
   MapPin,
   ChevronDown,
   ChevronUp,
@@ -9,14 +10,14 @@ import {
   Plus,
   Minus,
   Filter,
-  ExternalLink,
   TrendingDown,
   Store,
   Check,
 } from 'lucide-react';
 import { PriceComparison } from './PriceComparison';
 import { MiniMap } from './MiniMap';
-import { PlatformBadge, getPlatformColor, getPlatformEmoji } from './PlatformBadge';
+import { PlatformBadge } from './PlatformBadge';
+import { FoodIcon } from '../common/FoodIcon';
 
 interface GroceryItem {
   item_id: string;
@@ -73,6 +74,7 @@ interface GroceryCardProps {
   onClose?: () => void;
   isBn?: boolean;
   onPlatformClick?: (itemName: string, platform: string, priceBdt: number) => void;
+  defaultMinimized?: boolean;
 }
 
 const LS_CART_KEY = 'desidiet_grocery_cart';
@@ -94,7 +96,16 @@ function saveCart(cart: CartItem[]) {
   }
 }
 
-export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true, onPlatformClick }: GroceryCardProps) => {
+export const GroceryCard = ({
+  data,
+  userLat,
+  userLng,
+  onClose,
+  isBn = true,
+  onPlatformClick,
+  defaultMinimized = true,
+}: GroceryCardProps) => {
+  const [isMinimized, setIsMinimized] = useState(defaultMinimized);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -179,35 +190,48 @@ export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true, onPl
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-      className="mt-3 bg-white border border-ink/5 rounded-2xl shadow-sm overflow-hidden"
+      className="mt-3 bg-white border border-ink/10 rounded-2xl shadow-sm overflow-hidden transition-all"
     >
-      {/* Header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-accent/5 to-transparent border-b border-ink/5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-accent/10 rounded-lg flex items-center justify-center text-accent">
-            <ShoppingCart size={14} />
+      {/* Header — Collapsible toggle */}
+      <div
+        onClick={() => setIsMinimized((prev) => !prev)}
+        className="px-4 py-2.5 bg-gradient-to-r from-accent/5 via-cream/40 to-transparent border-b border-ink/5 flex items-center justify-between cursor-pointer hover:bg-accent/[0.07] transition-colors select-none"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 bg-accent/10 rounded-lg flex items-center justify-center text-accent shrink-0">
+            <ShoppingBag size={14} />
           </div>
-          <div>
-            <div className="text-[0.75rem] font-bold text-ink font-bn leading-tight">
-              {isBn ? 'কেনাকাটার সাজেশন' : 'Grocery Suggestions'}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[0.75rem] font-bold text-ink font-bn leading-tight truncate">
+                {isBn ? 'কেনাকাটার সাজেশন' : 'Grocery Suggestions'}
+              </span>
+              <span className="text-[0.6rem] font-bold px-1.5 py-0.2 bg-ink/5 text-ink-muted rounded-full whitespace-nowrap">
+                {isBn ? `${total_items}টি পণ্য` : `${total_items} items`}
+              </span>
             </div>
-            <div className="text-[0.6rem] text-ink-muted font-bn">
+            <div className="text-[0.6rem] text-ink-muted font-bn truncate">
               {isBn
-                ? `${total_items}টি আইটেম পাওয়া গেছে • সর্বনিম্ন দামে কিনুন`
-                : `${total_items} items found • Buy at best price`}
+                ? 'অনলাইন গ্রোসারি প্ল্যাটফর্ম থেকে সর্বনিম্ন মূল্যের অফার'
+                : 'Best price deals from online grocery stores'}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+
+        <div className="flex items-center gap-1.5 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
           {potential_savings_bdt > 0 && (
             <span className="text-[0.6rem] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
               <TrendingDown size={10} />
-              {isBn ? 'সেভ করুন' : 'Save'} ৳{potential_savings_bdt}
+              {isBn ? 'সেভ' : 'Save'} ৳{potential_savings_bdt}
             </span>
           )}
+
           {/* Cart toggle */}
           <button
-            onClick={() => setShowCart((s) => !s)}
+            onClick={() => {
+              if (isMinimized) setIsMinimized(false);
+              setShowCart((s) => !s);
+            }}
             className="relative p-1.5 bg-cream rounded-lg hover:bg-accent hover:text-white transition-colors"
             title={isBn ? 'শপিং লিস্ট' : 'Shopping List'}
           >
@@ -218,10 +242,22 @@ export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true, onPl
               </span>
             )}
           </button>
+
+          {/* Minimized / Expand toggle pill */}
+          <button
+            onClick={() => setIsMinimized((prev) => !prev)}
+            className="flex items-center gap-1 px-2.5 py-1 bg-accent/10 hover:bg-accent hover:text-white text-accent rounded-lg text-[0.62rem] font-bold transition-all"
+            title={isMinimized ? (isBn ? 'বিস্তারিত দেখুন' : 'Expand') : (isBn ? 'মিনিমাইজ করুন' : 'Minimize')}
+          >
+            <span>{isMinimized ? (isBn ? 'দেখুন' : 'View') : (isBn ? 'লুকান' : 'Hide')}</span>
+            {isMinimized ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+          </button>
+
           {onClose && (
             <button
               onClick={onClose}
               className="p-1 text-ink-muted hover:text-red-500 transition-colors"
+              title={isBn ? 'বন্ধ করুন' : 'Close'}
             >
               <X size={14} />
             </button>
@@ -229,270 +265,294 @@ export const GroceryCard = ({ data, userLat, userLng, onClose, isBn = true, onPl
         </div>
       </div>
 
-      {/* Shopping List Drawer */}
+      {/* Expandable Body */}
       <AnimatePresence>
-        {showCart && (
+        {!isMinimized && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="overflow-hidden border-b border-ink/5 bg-amber-50/40"
+            className="overflow-hidden"
           >
-            <div className="px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[0.7rem] font-bold text-ink font-bn">
-                  {isBn ? 'আমার শপিং লিস্ট' : 'My Shopping List'}
-                </span>
-                <span className="text-[0.65rem] font-black text-accent">
-                  {isBn ? 'মোট:' : 'Total:'} ৳{cartTotal}
-                </span>
-              </div>
-              {cart.length === 0 ? (
-                <p className="text-[0.6rem] text-ink-muted font-bn">
-                  {isBn ? 'কোনো আইটেম যোগ করা হয়নি' : 'No items added yet'}
-                </p>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {cart.map((c) => (
-                    <div
-                      key={c.item_id}
-                      className="flex items-center gap-2 bg-white rounded-lg px-2 py-1.5 border border-ink/5"
-                    >
-                      <span className="text-base">{c.image}</span>
-                      <span className="flex-1 text-[0.65rem] font-bold text-ink font-bn truncate">
-                        {isBn ? c.name_bn : c.name_en}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => updateQty(c.item_id, -1)}
-                          className="w-5 h-5 rounded bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
-                        >
-                          <Minus size={10} />
-                        </button>
-                        <span className="text-[0.65rem] font-black w-4 text-center">
-                          {c.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQty(c.item_id, 1)}
-                          className="w-5 h-5 rounded bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
-                        >
-                          <Plus size={10} />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => removeFromCart(c.item_id)}
-                        className="text-ink-muted hover:text-red-500 transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Platform Filter Tabs */}
-      {allPlatforms.length > 1 && (
-        <div className="px-4 pt-2.5 pb-0 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-          <Filter size={12} className="text-ink-muted shrink-0" />
-          <button
-            onClick={() => setActiveFilter('all')}
-            className={`text-[0.6rem] font-bold px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
-              activeFilter === 'all'
-                ? 'bg-accent text-white shadow-sm'
-                : 'bg-cream text-ink-muted hover:bg-ink/5'
-            }`}
-          >
-            {isBn ? 'সব' : 'All'}
-          </button>
-          {allPlatforms.map((pid) => (
-            <button key={pid} onClick={() => setActiveFilter(pid)}>
-              <PlatformBadge
-                platformId={pid}
-                size="sm"
-                showName
-                isBn={isBn}
-                className={activeFilter === pid ? 'ring-2 ring-offset-1' : 'opacity-70 hover:opacity-100'}
-              />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Items list */}
-      <div className="divide-y divide-ink/5">
-        <AnimatePresence mode="popLayout">
-          {filteredItems.map((item, idx) => {
-            const isExpanded = expandedItem === item.item_id;
-            const inCart = cart.find((c) => c.item_id === item.item_id);
-            const wasJustAdded = justAdded === item.item_id;
-            return (
-              <motion.div
-                key={item.item_id}
-                layout
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ delay: idx * 0.04, duration: 0.2 }}
-                className="px-4 py-2.5"
-              >
-                <button
-                  onClick={() => setExpandedItem(isExpanded ? null : item.item_id)}
-                  className="w-full flex items-center justify-between text-left"
+            {/* Shopping List Drawer */}
+            <AnimatePresence>
+              {showCart && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden border-b border-ink/5 bg-amber-50/40"
                 >
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <span className="text-xl">{item.image}</span>
-                    <div className="min-w-0">
-                      <div className="text-[0.72rem] font-bold text-ink font-bn leading-tight">
-                        {isBn ? item.name_bn : item.name_en}
-                      </div>
-                      <div className="text-[0.6rem] text-ink-muted">{item.unit}</div>
+                  <div className="px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[0.7rem] font-bold text-ink font-bn">
+                        {isBn ? 'আমার শপিং লিস্ট' : 'My Shopping List'}
+                      </span>
+                      <span className="text-[0.65rem] font-black text-accent">
+                        {isBn ? 'মোট:' : 'Total:'} ৳{cartTotal}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <PriceComparison offers={item.offers} isCompact onPlatformClick={(platform, price) => onPlatformClick?.(isBn ? item.name_bn : item.name_en, platform, price)} />
-                    {/* Add-to-cart quick button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addToCart(item);
-                      }}
-                      className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                        wasJustAdded
-                          ? 'bg-green-500 text-white scale-110'
-                          : inCart
-                          ? 'bg-accent text-white'
-                          : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
-                      }`}
-                      title={isBn ? 'কার্টে যোগ করুন' : 'Add to cart'}
-                    >
-                      {wasJustAdded ? (
-                        <Check size={12} />
-                      ) : (
-                        <Plus size={12} />
-                      )}
-                    </button>
-                    {isExpanded ? (
-                      <ChevronUp size={14} className="text-ink-muted" />
+
+                    {cart.length === 0 ? (
+                      <p className="text-[0.6rem] text-ink-muted font-bn">
+                        {isBn ? 'কোনো আইটেম যোগ করা হয়নি' : 'No items added yet'}
+                      </p>
                     ) : (
-                      <ChevronDown size={14} className="text-ink-muted" />
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                        {cart.map((c) => (
+                          <div
+                            key={c.item_id}
+                            className="flex items-center gap-2 bg-white rounded-lg px-2 py-1.5 border border-ink/5"
+                          >
+                            <div className="w-6 h-6 rounded bg-cream/70 flex items-center justify-center shrink-0">
+                              <FoodIcon emoji={c.image} name={c.name_en || c.name_bn} size={14} />
+                            </div>
+                            <span className="flex-1 text-[0.65rem] font-bold text-ink font-bn truncate">
+                              {isBn ? c.name_bn : c.name_en}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => updateQty(c.item_id, -1)}
+                                className="w-5 h-5 rounded bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
+                              >
+                                <Minus size={10} />
+                              </button>
+                              <span className="text-[0.65rem] font-black w-4 text-center">
+                                {c.quantity}
+                              </span>
+                              <button
+                                onClick={() => updateQty(c.item_id, 1)}
+                                className="w-5 h-5 rounded bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
+                              >
+                                <Plus size={10} />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeFromCart(c.item_id)}
+                              className="text-ink-muted hover:text-red-500 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Platform Filter Tabs */}
+            {allPlatforms.length > 1 && (
+              <div className="px-4 pt-2.5 pb-0 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                <Filter size={12} className="text-ink-muted shrink-0" />
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className={`text-[0.6rem] font-bold px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
+                    activeFilter === 'all'
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'bg-cream text-ink-muted hover:bg-ink/5'
+                  }`}
+                >
+                  {isBn ? 'সব' : 'All'}
+                </button>
+                {allPlatforms.map((pid) => (
+                  <button key={pid} onClick={() => setActiveFilter(pid)}>
+                    <PlatformBadge
+                      platformId={pid}
+                      size="sm"
+                      showName
+                      isBn={isBn}
+                      className={activeFilter === pid ? 'ring-2 ring-offset-1' : 'opacity-70 hover:opacity-100'}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Items list */}
+            <div className="divide-y divide-ink/5 mt-1">
+              <AnimatePresence mode="popLayout">
+                {filteredItems.map((item, idx) => {
+                  const isExpanded = expandedItem === item.item_id;
+                  const inCart = cart.find((c) => c.item_id === item.item_id);
+                  const wasJustAdded = justAdded === item.item_id;
+                  return (
+                    <motion.div
+                      key={item.item_id}
+                      layout
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 8 }}
+                      transition={{ delay: idx * 0.04, duration: 0.2 }}
+                      className="px-4 py-2.5"
+                    >
+                      <button
+                        onClick={() => setExpandedItem(isExpanded ? null : item.item_id)}
+                        className="w-full flex items-center justify-between text-left"
+                      >
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-cream/70 flex items-center justify-center shrink-0">
+                            <FoodIcon emoji={item.image} name={item.name_en || item.name_bn} size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[0.72rem] font-bold text-ink font-bn leading-tight">
+                              {isBn ? item.name_bn : item.name_en}
+                            </div>
+                            <div className="text-[0.6rem] text-ink-muted">{item.unit}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <PriceComparison
+                            offers={item.offers}
+                            isCompact
+                            onPlatformClick={(platform, price) =>
+                              onPlatformClick?.(isBn ? item.name_bn : item.name_en, platform, price)
+                            }
+                          />
+                          {/* Add-to-cart quick button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(item);
+                            }}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                              wasJustAdded
+                                ? 'bg-green-500 text-white scale-110'
+                                : inCart
+                                ? 'bg-accent text-white'
+                                : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
+                            }`}
+                            title={isBn ? 'কার্টে যোগ করুন' : 'Add to cart'}
+                          >
+                            {wasJustAdded ? <Check size={12} /> : <Plus size={12} />}
+                          </button>
+                          {isExpanded ? (
+                            <ChevronUp size={14} className="text-ink-muted" />
+                          ) : (
+                            <ChevronDown size={14} className="text-ink-muted" />
+                          )}
+                        </div>
+                      </button>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pt-3 pb-1">
+                              <PriceComparison
+                                offers={item.offers}
+                                onPlatformClick={(platform, price) =>
+                                  onPlatformClick?.(isBn ? item.name_bn : item.name_en, platform, price)
+                                }
+                              />
+                            </div>
+                            {/* Quick action row */}
+                            <div className="flex items-center gap-2 mt-2 pb-1">
+                              {inCart ? (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => updateQty(item.item_id, -1)}
+                                    className="w-6 h-6 rounded-lg bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
+                                  >
+                                    <Minus size={12} />
+                                  </button>
+                                  <span className="text-[0.7rem] font-black w-5 text-center">
+                                    {inCart.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() => updateQty(item.item_id, 1)}
+                                    className="w-6 h-6 rounded-lg bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
+                                  >
+                                    <Plus size={12} />
+                                  </button>
+                                  <span className="text-[0.6rem] text-ink-muted ml-1">
+                                    ৳{inCart.quantity * inCart.best_price_bdt}
+                                  </span>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => addToCart(item)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white text-[0.65rem] font-bold rounded-lg hover:bg-ink transition-colors"
+                                >
+                                  <ShoppingCart size={12} />
+                                  {isBn ? 'কার্টে যোগ করুন' : 'Add to Cart'}
+                                </button>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+
+            {/* Map toggle */}
+            {nearby_shops.length > 0 && (
+              <div className="px-4 py-2.5 border-t border-ink/5">
+                <button
+                  onClick={() => setShowMap(!showMap)}
+                  className="flex items-center gap-1.5 text-[0.7rem] font-bold text-accent font-bn hover:underline"
+                >
+                  <MapPin size={13} />
+                  {showMap
+                    ? isBn
+                      ? 'ম্যাপ লুকান'
+                      : 'Hide Map'
+                    : isBn
+                    ? 'কাছাকাছি দোকান দেখুন (' + nearby_shops.length + 'টি)'
+                    : 'See Nearby Shops (' + nearby_shops.length + ')'}
+                  {showMap ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </button>
 
                 <AnimatePresence>
-                  {isExpanded && (
+                  {showMap && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
+                      transition={{ duration: 0.3 }}
                       className="overflow-hidden"
                     >
-                      <div className="pt-3 pb-1">
-                        <PriceComparison offers={item.offers} onPlatformClick={(platform, price) => onPlatformClick?.(isBn ? item.name_bn : item.name_en, platform, price)} />
-                      </div>
-                      {/* Quick action row */}
-                      <div className="flex items-center gap-2 mt-2 pb-1">
-                        {inCart ? (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => updateQty(item.item_id, -1)}
-                              className="w-6 h-6 rounded-lg bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
-                            >
-                              <Minus size={12} />
-                            </button>
-                            <span className="text-[0.7rem] font-black w-5 text-center">
-                              {inCart.quantity}
-                            </span>
-                            <button
-                              onClick={() => updateQty(item.item_id, 1)}
-                              className="w-6 h-6 rounded-lg bg-cream flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
-                            >
-                              <Plus size={12} />
-                            </button>
-                            <span className="text-[0.6rem] text-ink-muted ml-1">
-                              ৳{inCart.quantity * inCart.best_price_bdt}
-                            </span>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => addToCart(item)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white text-[0.65rem] font-bold rounded-lg hover:bg-ink transition-colors"
-                          >
-                            <ShoppingCart size={12} />
-                            {isBn ? 'কার্টে যোগ করুন' : 'Add to Cart'}
-                          </button>
-                        )}
+                      <div className="pt-2.5 pb-1">
+                        <MiniMap
+                          userLat={lat}
+                          userLng={lng}
+                          shops={nearby_shops}
+                          height="180px"
+                        />
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {Array.from(new Set(nearby_shops.map((s) => s.platform))).map((platform) => {
+                            return (
+                              <PlatformBadge
+                                key={platform}
+                                platformId={platform}
+                                size="sm"
+                                showName
+                                isBn={isBn}
+                                className="cursor-default"
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
-      {/* Map toggle */}
-      {nearby_shops.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-ink/5">
-          <button
-            onClick={() => setShowMap(!showMap)}
-            className="flex items-center gap-1.5 text-[0.7rem] font-bold text-accent font-bn hover:underline"
-          >
-            <MapPin size={13} />
-            {showMap
-              ? isBn
-                ? 'ম্যাপ লুকান'
-                : 'Hide Map'
-              : isBn
-              ? 'কাছাকাছি দোকান দেখুন (' + nearby_shops.length + 'টি)'
-              : 'See Nearby Shops (' + nearby_shops.length + ')'}
-            {showMap ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-
-          <AnimatePresence>
-            {showMap && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden"
-              >
-                <div className="pt-2.5 pb-1">
-                  <MiniMap
-                    userLat={lat}
-                    userLng={lng}
-                    shops={nearby_shops}
-                    height="180px"
-                  />
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {Array.from(new Set(nearby_shops.map((s) => s.platform))).map((platform) => {
-                      const count = nearby_shops.filter((s) => s.platform === platform).length;
-                      return (
-                        <PlatformBadge
-                          key={platform}
-                          platformId={platform}
-                          size="sm"
-                          showName
-                          isBn={isBn}
-                          className="cursor-default"
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

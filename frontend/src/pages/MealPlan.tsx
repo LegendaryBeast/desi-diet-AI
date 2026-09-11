@@ -38,6 +38,7 @@ import { MealLogSection, type TrackingTotals } from '../components/meal/MealLogS
 import { ProModal } from '../components/ui/ProModal';
 import { ShoppingSources } from '../components/ui/ShoppingSources';
 import { CookingLoader } from '../components/ui/CookingLoader';
+import { FoodIcon } from '../components/common/FoodIcon';
 
 const SLOT_ICONS: Record<string, React.ElementType> = {
   breakfast: Coffee,
@@ -1015,8 +1016,8 @@ export const MealPlan = () => {
                         <div className="flex items-center justify-between p-2 bg-cream/20 hover:bg-cream/30 rounded-lg border border-ink/5 transition-all group/item">
                           {/* Left: Food Info */}
                           <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
-                            <span className="text-base w-7 h-7 flex items-center justify-center bg-white rounded-xl shrink-0 border border-ink/5" aria-hidden>
-                              {food.emoji || '🍽️'}
+                            <span className="w-7 h-7 flex items-center justify-center bg-white rounded-xl shrink-0 border border-ink/5" aria-hidden>
+                              <FoodIcon emoji={food.emoji} name={food.name_en || food.name_bn} size={15} />
                             </span>
                             <div className="min-w-0">
                               <h4 className="font-bn font-bold text-ink text-xs truncate leading-tight">
@@ -1547,7 +1548,7 @@ export const MealPlan = () => {
                                               </div>
 
                                               <p className="font-bn text-[0.68rem] text-ink-muted mt-1 leading-relaxed">
-                                                  {(slot.items || []).map((item) => `${item.emoji ? item.emoji + ' ' : ''}${item.name_bn || item.name_en || ''} (${cleanPortionText(item.portion_bn || item.household_measure_bn || item.amount || (item.amount_g ? item.amount_g + 'g' : ''))})`).join(', ') || 'কোনো খাবার নেই'}
+                                                  {(slot.items || []).map((item) => `${item.name_bn || item.name_en || ''} (${cleanPortionText(item.portion_bn || item.household_measure_bn || item.amount || (item.amount_g ? item.amount_g + 'g' : ''))})`).join(', ') || 'কোনো খাবার নেই'}
                                               </p>
                                             </div>
                                           </div>

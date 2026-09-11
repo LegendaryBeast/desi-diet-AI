@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Utensils, Camera, Type, Trash2, Loader2, AlertCircle, CheckCircle2,
   X, Clock, Flame, Beef, Wheat, Droplets, ImagePlus, List, Eye,
+  Mic, Coffee, Apple, Moon, Plus,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { mealTrackingApi, type MealTrackingListItem, type MealTrackingResponse } from '../lib/api';
@@ -177,16 +178,16 @@ export const MealTracking = () => {
           {/* Mode Switcher */}
           <div className="flex bg-[#fcf9f5] p-1.5 rounded-2xl mb-6">
             {[
-              { id: 'text' as const, icon: '+', label: 'Text', active: true },
-              { id: 'voice' as const, icon: '🎤', label: 'Voice 🚧', active: false },
-              { id: 'image' as const, icon: '📷', label: 'Photo 🚧', active: false },
-            ].map(({ id, icon, label, active }) => (
+              { id: 'text' as const, icon: Plus, label: 'Text', active: true },
+              { id: 'voice' as const, icon: Mic, label: 'Voice (Coming Soon)', active: false },
+              { id: 'image' as const, icon: Camera, label: 'Photo (Coming Soon)', active: false },
+            ].map(({ id, icon: Icon, label, active }) => (
               <button key={id} onClick={() => { if(id === 'text') setLogMode('text'); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
                   active ? 'bg-white text-ink shadow-sm' : 'text-ink-muted hover:bg-white/50'
                 }`}
               >
-                {id === 'text' ? <span className="text-[#d94a38] font-black text-lg leading-none">{icon}</span> : <span>{icon}</span>}
+                <Icon size={16} className={id === 'text' ? 'text-[#d94a38]' : ''} />
                 {label}
               </button>
             ))}
@@ -195,17 +196,17 @@ export const MealTracking = () => {
           {/* Meal Slot Selector */}
           <div className="flex gap-2 flex-wrap mb-6">
             {[
-              { id: 'breakfast', icon: '☕', label: 'Breakfast' },
-              { id: 'lunch', icon: '🍴', label: 'Lunch' },
-              { id: 'snack', icon: '🍎', label: 'Snack' },
-              { id: 'dinner', icon: '🌙', label: 'Dinner' },
-            ].map(s => (
-              <button key={s.id} onClick={() => setMealSlot(s.id)}
+              { id: 'breakfast', icon: Coffee, label: 'Breakfast' },
+              { id: 'lunch', icon: Utensils, label: 'Lunch' },
+              { id: 'snack', icon: Apple, label: 'Snack' },
+              { id: 'dinner', icon: Moon, label: 'Dinner' },
+            ].map(({ id, icon: Icon, label }) => (
+              <button key={id} onClick={() => setMealSlot(id)}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all ${
-                  mealSlot === s.id ? 'bg-ink text-white border-ink' : 'bg-white border-ink/10 text-ink-muted hover:border-ink/30'
+                  mealSlot === id ? 'bg-ink text-white border-ink' : 'bg-white border-ink/10 text-ink-muted hover:border-ink/30'
                 }`}
               >
-                <span>{s.icon}</span> {s.label}
+                <Icon size={13} /> {label}
               </button>
             ))}
           </div>

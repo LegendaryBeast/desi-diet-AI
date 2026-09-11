@@ -1,12 +1,15 @@
+import React from 'react';
 import { motion } from 'framer-motion';
+import { Leaf, Store, MousePointerClick, Sprout, Package, ShoppingCart, type LucideIcon } from 'lucide-react';
 
 export interface PlatformInfo {
   id: string;
   name: string;
   name_bn: string;
-  emoji: string;
   color: string;
   bg: string;
+  icon: LucideIcon;
+  emoji: string;
 }
 
 export const PLATFORMS: Record<string, PlatformInfo> = {
@@ -14,42 +17,57 @@ export const PLATFORMS: Record<string, PlatformInfo> = {
     id: 'chaldal',
     name: 'Chaldal',
     name_bn: 'চালডাল',
-    emoji: '🥬',
     color: '#16a34a',
     bg: '#dcfce7',
+    icon: Leaf,
+    emoji: '',
   },
   shwapno: {
     id: 'shwapno',
     name: 'Shwapno',
     name_bn: 'স্বপ্ন',
-    emoji: '🏪',
     color: '#ea580c',
     bg: '#ffedd5',
+    icon: Store,
+    emoji: '',
   },
   meenaclick: {
     id: 'meenaclick',
     name: 'Meena Click',
     name_bn: 'মীনা ক্লিক',
-    emoji: '🖱️',
     color: '#db2777',
     bg: '#fce7f3',
+    icon: MousePointerClick,
+    emoji: '',
   },
   khaasfood: {
     id: 'khaasfood',
     name: 'Khaas Food',
     name_bn: 'খাস ফুড',
-    emoji: '🌿',
     color: '#65a30d',
     bg: '#ecfccb',
+    icon: Sprout,
+    emoji: '',
   },
   daraz: {
     id: 'daraz',
     name: 'Daraz',
     name_bn: 'দারাজ',
-    emoji: '📦',
     color: '#f97316',
     bg: '#ffedd5',
+    icon: Package,
+    emoji: '',
   },
+};
+
+export const PlatformIcon: React.FC<{ platformId: string; size?: number; className?: string }> = ({
+  platformId,
+  size = 14,
+  className = '',
+}) => {
+  const p = PLATFORMS[platformId.toLowerCase()];
+  const IconComp = p?.icon || ShoppingCart;
+  return <IconComp size={size} className={className} />;
 };
 
 interface PlatformBadgeProps {
@@ -71,6 +89,7 @@ export const PlatformBadge = ({
   if (!p) {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 font-bold ${size === 'sm' ? 'text-[0.55rem] px-1.5 py-0.5' : size === 'lg' ? 'text-sm px-3 py-1.5' : 'text-[0.65rem] px-2 py-1'} ${className}`}>
+        <ShoppingCart size={size === 'sm' ? 10 : size === 'lg' ? 16 : 12} />
         {platformId}
       </span>
     );
@@ -82,10 +101,10 @@ export const PlatformBadge = ({
     lg: 'text-sm px-3 py-1.5 gap-2',
   };
 
-  const emojiSizes = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-lg',
+  const iconSizes = {
+    sm: 10,
+    md: 12,
+    lg: 16,
   };
 
   return (
@@ -98,7 +117,7 @@ export const PlatformBadge = ({
         borderColor: p.color + '30',
       }}
     >
-      <span className={emojiSizes[size]}>{p.emoji}</span>
+      <PlatformIcon platformId={platformId} size={iconSizes[size]} />
       {showName && <span>{isBn ? p.name_bn : p.name}</span>}
     </motion.span>
   );
@@ -118,23 +137,22 @@ export const PlatformDot = ({ platformId, size = 20, className = '' }: PlatformD
         className={`rounded-full bg-gray-400 flex items-center justify-center text-white font-black text-[10px] ${className}`}
         style={{ width: size, height: size }}
       >
-        ?
+        <ShoppingCart size={Math.round(size * 0.55)} />
       </div>
     );
   }
 
   return (
     <div
-      className={`rounded-full flex items-center justify-center shadow-sm border-2 border-white ${className}`}
+      className={`rounded-full flex items-center justify-center shadow-sm border-2 border-white text-white ${className}`}
       style={{
         width: size,
         height: size,
         backgroundColor: p.color,
-        fontSize: size * 0.55,
       }}
       title={p.name}
     >
-      <span style={{ filter: 'grayscale(0.3)' }}>{p.emoji}</span>
+      <PlatformIcon platformId={platformId} size={Math.max(10, Math.round(size * 0.55))} />
     </div>
   );
 };
@@ -144,7 +162,7 @@ export const getPlatformColor = (platformId: string): string => {
 };
 
 export const getPlatformEmoji = (platformId: string): string => {
-  return PLATFORMS[platformId.toLowerCase()]?.emoji || '🛒';
+  return PLATFORMS[platformId.toLowerCase()]?.name || 'Store';
 };
 
 export const getPlatformName = (platformId: string, isBn = false): string => {

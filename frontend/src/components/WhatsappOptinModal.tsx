@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FaWhatsapp } from 'react-icons/fa'
+import { Smartphone } from 'lucide-react'
 import { BASE_URL, getToken } from '../lib/api'
 
 interface Props {
@@ -82,7 +83,7 @@ export default function WhatsappOptinModal({ isOpen, onClose, userPhone, accessT
 
             <p className="text-gray-500 text-sm mb-2">We'll send your first message to:</p>
             <div className="bg-gray-50 rounded-lg px-4 py-3 mb-2 flex items-center gap-2">
-              <span className="text-2xl">📱</span>
+              <Smartphone className="text-gray-600" size={20} />
               <span className="font-mono font-medium text-gray-800">{userPhone}</span>
             </div>
             <p className="text-xs text-gray-400 mb-6">

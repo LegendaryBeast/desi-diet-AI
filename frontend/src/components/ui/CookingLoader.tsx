@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Carrot, Salad, Egg } from 'lucide-react';
 
 interface CookingLoaderProps {
   text?: string;
@@ -64,28 +65,28 @@ export const CookingLoader: React.FC<CookingLoaderProps> = ({
         <motion.div
           variants={food1}
           animate="animate"
-          className="absolute text-2xl z-10 filter drop-shadow-md"
+          className="absolute z-10 filter drop-shadow-md text-orange-500"
           style={{ bottom: "75px", left: "60px" }}
         >
-          🥕
+          <Carrot size={28} />
         </motion.div>
 
         <motion.div
           variants={food2}
           animate="animate"
-          className="absolute text-2xl z-10 filter drop-shadow-md"
+          className="absolute z-10 filter drop-shadow-md text-emerald-500"
           style={{ bottom: "75px", left: "80px" }}
         >
-          🥦
+          <Salad size={28} />
         </motion.div>
 
         <motion.div
           variants={food3}
           animate="animate"
-          className="absolute text-2xl z-10 filter drop-shadow-md"
+          className="absolute z-10 filter drop-shadow-md text-amber-500"
           style={{ bottom: "75px", left: "100px" }}
         >
-          🍳
+          <Egg size={28} />
         </motion.div>
 
         {/* Frying Pan (Single Unified SVG - 100% alignment safety) */}

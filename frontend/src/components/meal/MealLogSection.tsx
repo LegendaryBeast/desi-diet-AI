@@ -17,6 +17,11 @@ import {
   Trash2,
   Shield,
   CheckCircle2,
+  Flame,
+  Dumbbell,
+  Wheat,
+  HeartPulse,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -568,8 +573,9 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
 
                 {/* Food Name hint */}
                 <div className="space-y-1">
-                  <label className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold">
-                    🍛 Food Name <span className="text-ink-faint/60">(optional — helps GraphRAG find exact match)</span>
+                  <label className="font-body text-[0.65rem] uppercase tracking-widest text-ink-faint font-bold inline-flex items-center gap-1">
+                    <UtensilsCrossed size={12} className="text-accent" />
+                    Food Name <span className="text-ink-faint/60">(optional — helps GraphRAG find exact match)</span>
                   </label>
                   <input
                     type="text"
@@ -756,7 +762,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                 {isBn ? 'আজকের লগ করা খাবার' : "Today's Logged Foods"}
               </h3>
               <div className="flex items-center gap-1.5 px-3 py-1 bg-[#A7C924]/10 text-[#7C971B] rounded-full text-xs font-bold font-body">
-                <span className="text-sm">🔥</span>
+                <Flame size={14} className="text-[#7C971B]" />
                 <span>{todayTotal} kcal</span>
               </div>
             </div>
@@ -842,20 +848,20 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
                     {group.macros && (group.macros.protein_g > 0 || group.macros.carbs_g > 0 || group.macros.fat_g > 0) && (
                       <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-ink/5">
                         {group.macros.protein_g > 0 && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
-                            <span>💪</span>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
+                            <Dumbbell size={11} className="text-indigo-500" />
                             <span>{isBn ? 'প্রোটিন' : 'Protein'}: {Math.round(group.macros.protein_g)}g</span>
                           </div>
                         )}
                         {group.macros.carbs_g > 0 && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
-                            <span>🍞</span>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
+                            <Wheat size={11} className="text-amber-600" />
                             <span>{isBn ? 'কার্বস' : 'Carbs'}: {Math.round(group.macros.carbs_g)}g</span>
                           </div>
                         )}
                         {group.macros.fat_g > 0 && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
-                            <span>🥑</span>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#F5F0E8] border border-ink/5 rounded-md text-[0.65rem] font-bn font-bold text-ink-muted">
+                            <HeartPulse size={11} className="text-rose-500" />
                             <span>{isBn ? 'ফ্যাট' : 'Fat'}: {Math.round(group.macros.fat_g)}g</span>
                           </div>
                         )}

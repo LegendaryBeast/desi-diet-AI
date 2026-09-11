@@ -74,18 +74,20 @@ export const MiniMap = ({ userLat, userLng, shops, height = '200px' }: MiniMapPr
     });
     L.marker([userLat, userLng], { icon: userIcon })
       .addTo(map)
-      .bindPopup('<div style="font-family:sans-serif;font-size:11px;font-weight:bold">📍 You are here</div>');
+      .bindPopup('<div style="font-family:sans-serif;font-size:11px;font-weight:bold;display:flex;align-items:center;gap:4px;"><span style="color:#ef4444;font-size:14px;">●</span> You are here</div>');
 
-    // Shop markers with platform emoji badges
+    // Shop markers with platform badges
     shops.forEach((shop) => {
       const color = getPlatformColor(shop.platform);
-      const emoji = getPlatformEmoji(shop.platform);
       const platformName = getPlatformName(shop.platform);
 
       const shopIconHtml = `
         <div style="position:relative;cursor:pointer;">
-          <div style="width:28px;height:28px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px ${color}60;display:flex;align-items:center;justify-content:center;font-size:13px;">
-            ${emoji}
+          <div style="width:28px;height:28px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px ${color}60;display:flex;align-items:center;justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
           </div>
           <div style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.15);">
             <div style="width:6px;height:6px;border-radius:50%;background:${color};"></div>
@@ -105,11 +107,10 @@ export const MiniMap = ({ userLat, userLng, shops, height = '200px' }: MiniMapPr
       marker.bindPopup(
         `<div style="font-family:sans-serif;font-size:12px;min-width:140px">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-            <span style="font-size:14px">${emoji}</span>
             <strong style="color:${color};font-size:13px">${shop.name}</strong>
           </div>
           <div style="color:#666;font-size:11px;margin-bottom:2px">${shop.area}, ${shop.city}</div>
-          ${shop.distance_km ? `<div style="color:#3B82F6;font-weight:bold;font-size:11px">📍 ${shop.distance_km.toFixed(1)} km away</div>` : ''}
+          ${shop.distance_km ? `<div style="color:#3B82F6;font-weight:bold;font-size:11px">${shop.distance_km.toFixed(1)} km away</div>` : ''}
           <div style="margin-top:4px;padding-top:4px;border-top:1px solid #eee;font-size:10px;color:#888">${platformName} Dark Store</div>
         </div>`,
         { offset: [0, -8] }

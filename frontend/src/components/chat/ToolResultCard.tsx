@@ -11,6 +11,7 @@ import {
   AlertCircle,
   ChefHat,
 } from 'lucide-react';
+import { FoodIcon } from '../common/FoodIcon';
 
 interface ToolResultCardProps {
   result: Record<string, unknown>;
@@ -172,11 +173,16 @@ const MealPlanCard = ({ data, isBn }: { data: Record<string, unknown>; isBn: boo
             <div key={idx} className="bg-cream rounded-lg px-2.5 py-1.5">
               <div className="text-[0.6rem] font-bold text-ink font-bn mb-0.5">{slotLabel}</div>
               <div className="flex flex-wrap gap-1">
-                {items.map((item, i) => (
-                  <span key={i} className="text-[0.55rem] text-ink-muted font-bn bg-white px-1.5 py-0.5 rounded border border-ink/5">
-                    {String((item as Record<string, unknown>).emoji || '🍽️')} {String((item as Record<string, unknown>).name_bn || (item as Record<string, unknown>).name_en || '')}
-                  </span>
-                ))}
+                {items.map((item, i) => {
+                  const it = item as Record<string, unknown>;
+                  const nameStr = String(it.name_bn || it.name_en || '');
+                  return (
+                    <span key={i} className="text-[0.55rem] text-ink-muted font-bn bg-white px-1.5 py-0.5 rounded border border-ink/5 inline-flex items-center gap-1">
+                      <FoodIcon emoji={String(it.emoji || '')} name={nameStr} size={11} />
+                      <span>{nameStr}</span>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           );
@@ -248,8 +254,8 @@ const MedicineCard = ({ data, isBn, tool }: { data: Record<string, unknown>; isB
         <Pill size={14} />
         <span>
           {tool === 'add_medicine_reminder'
-            ? (isBn ? `⏰ ${data.name} যোগ করা হয়েছে` : `⏰ ${data.name} added`)
-            : (isBn ? '💊 রিমাইন্ডার মুছে ফেলা হয়েছে' : '💊 Reminder deleted')}
+            ? (isBn ? `${data.name} যোগ করা হয়েছে` : `${data.name} added`)
+            : (isBn ? 'রিমাইন্ডার মুছে ফেলা হয়েছে' : 'Reminder deleted')}
         </span>
       </motion.div>
     );
@@ -342,8 +348,8 @@ const FoodSearchCard = ({ data, isBn, tool }: { data: Record<string, unknown>; i
           const f = food as Record<string, unknown>;
           return (
             <div key={idx} className="flex items-center justify-between bg-cream rounded-lg px-2.5 py-1.5">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">{String(f.emoji || '🍽️')}</span>
+              <div className="flex items-center gap-2">
+                <FoodIcon emoji={String(f.emoji || '')} name={String(f.name_en || f.name_bn || '')} category={String(f.food_group || '')} size={16} />
                 <div>
                   <div className="text-[0.65rem] font-bold text-ink font-bn">{String(f.name_bn || f.name_en || '')}</div>
                   <div className="text-[0.55rem] text-ink-muted">{String(f.food_group || '')}</div>
