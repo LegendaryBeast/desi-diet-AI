@@ -29,7 +29,7 @@ import {
   Lock,
   ChefHat,
 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -1287,12 +1287,20 @@ export const MealPlan = () => {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-500 font-bn text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div>
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-500 font-bn text-sm">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="flex-1">
               <p className="font-bold">সমস্যা হয়েছে</p>
               <p className="opacity-80">{error}</p>
               <p className="text-xs mt-1 opacity-60">দয়া করে প্রথমে আপনার প্রোফাইল সেট আপ করুন</p>
+              {error.toLowerCase().includes('profile') && (
+                <Link
+                  to="/profile"
+                  className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm"
+                >
+                  প্রোফাইল সেট আপ করুন ➔
+                </Link>
+              )}
             </div>
           </div>
         )}
