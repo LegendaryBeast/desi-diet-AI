@@ -1531,6 +1531,20 @@ async def get_chat_history(current_user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to fetch chat history")
 
 
+@router.delete("/history")
+async def clear_chat_history(current_user=Depends(get_current_user)):
+    """Delete all stored chat history for the current user."""
+    try:
+        deleted = await prisma.chatmessage.delete_many(
+            where={"userId": current_user.id}
+        )
+        logger.info("Cleared %s chat messages for user %s", deleted, current_user.id)
+        return {"status": "ok", "deleted_count": deleted}
+    except Exception as e:
+        logger.exception("Failed to clear chat history: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to clear chat history")
+
+
 # ─── Unified LangGraph Agent Endpoint ──────────────────────────────────────────
 class UnifiedChatRequest(ChatRequest):
     """Extended request schema for the unified agent endpoint."""

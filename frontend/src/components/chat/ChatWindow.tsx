@@ -131,6 +131,11 @@ export const ChatWindow = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loadingGroceryPrompts, setLoadingGroceryPrompts] = useState<Set<number>>(new Set());
 
+  // Clear chat state & guards
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const isClearedRef = useRef(false);
+
   // Language helper used across handlers and render
   const isBn = i18n.language === 'bn';
 
@@ -163,7 +168,7 @@ export const ChatWindow = () => {
 
     chatApi.history()
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled || isClearedRef.current) return;
         if (data && data.length > 0) {
           const formatted: Message[] = data.map((msg, index) => ({
             id: index + 1,
@@ -434,6 +439,7 @@ export const ChatWindow = () => {
     }));
 
   const send = useCallback((overrideText?: string) => {
+    isClearedRef.current = false;
     const textToSend = overrideText || input;
     // Allow sending if there's text OR an attached image
     if ((!textToSend.trim() && !pendingImage) || isStreaming) return;
@@ -517,6 +523,7 @@ export const ChatWindow = () => {
     )
       .then((res) => {
         setIsStreaming(false);
+        if (isClearedRef.current) return;
 
         // Decide whether to offer the grocery prompt for this response.
         const shouldOfferGroceryPrompt =
@@ -667,6 +674,31 @@ export const ChatWindow = () => {
     ? (profile?.name_bn || profile?.name_en || user?.email?.split('@')[0] || user?.phone || 'ব্যবহারকারী')
     : (profile?.name_en || profile?.name_bn || user?.email?.split('@')[0] || user?.phone || 'User');
 
+  const handleClearChat = async () => {
+    setIsClearing(true);
+    isClearedRef.current = true;
+    try {
+      abortRef.current?.();
+      setMessages([]);
+      setApiError(null);
+      try {
+        localStorage.removeItem('desidiet_chat_messages');
+        localStorage.removeItem(GROCERY_LS_KEY);
+      } catch { /* ignore */ }
+
+      if (isLoggedIn && isAuthenticated()) {
+        await chatApi.clearHistory();
+      }
+      showToast(isBn ? 'কথোপকথন সফলভাবে মুছে ফেলা হয়েছে' : 'Chat history cleared successfully', 'success');
+    } catch (err) {
+      console.error('Failed to clear chat history:', err);
+      showToast(isBn ? 'চ্যাট মুছতে সমস্যা হয়েছে' : 'Failed to clear chat history', 'error');
+    } finally {
+      setIsClearing(false);
+      setShowClearModal(false);
+    }
+  };
+
   return (
     <DashboardLayout
       title={t('chat.title')}
@@ -688,25 +720,30 @@ export const ChatWindow = () => {
               const message = encodeURIComponent('হ্যালো PushtiAI! আমি পুষ্টি সম্পর্কে জানতে চাই।');
               window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
             }}
-            className="p-2 md:p-3 bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm"
+            className="p-2 md:p-3 bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm cursor-pointer"
             title="Chat on WhatsApp"
           >
             <FaWhatsapp size={16} />
             <span className="hidden sm:inline">WhatsApp</span>
           </button>
           <button
+            type="button"
             onClick={() => {
-              abortRef.current?.();
-              setMessages([]);
-              setApiError(null);
-              try {
-                localStorage.removeItem('desidiet_chat_messages');
-                localStorage.removeItem(GROCERY_LS_KEY);
-              } catch { /* ignore */ }
+              if (messages.length === 0) {
+                showToast(isBn ? 'চ্যাট ইতোমধ্যে খালি রয়েছে' : 'Chat is already empty', 'info');
+                return;
+              }
+              setShowClearModal(true);
             }}
-            className="p-2 md:p-3 bg-cream text-ink-muted hover:bg-red-50 hover:text-red-500 rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm"
+            disabled={isClearing}
+            className="p-2 md:p-3 bg-cream text-ink-muted hover:bg-red-50 hover:text-red-500 rounded-xl transition-all flex items-center gap-2 text-[0.65rem] md:text-xs font-bold font-bn shadow-sm cursor-pointer disabled:opacity-50"
+            title={t('chat.clear_chat')}
           >
-            <Trash2 size={16} />
+            {isClearing ? (
+              <Loader2 size={16} className="animate-spin text-red-500" />
+            ) : (
+              <Trash2 size={16} />
+            )}
             <span className="hidden sm:inline">{t('chat.clear_chat')}</span>
           </button>
         </div>
@@ -714,6 +751,76 @@ export const ChatWindow = () => {
     >
       {/* Pro Upgrade Modal */}
       <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} trigger="chat_limit" />
+
+      {/* Clear Chat Confirmation Modal */}
+      <AnimatePresence>
+        {showClearModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-ink/10 text-center overflow-hidden"
+            >
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-red-200/30 rounded-full blur-2xl pointer-events-none" />
+
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                disabled={isClearing}
+                className="absolute top-4 right-4 p-2 text-ink-muted hover:text-ink hover:bg-cream rounded-full transition-colors disabled:opacity-50 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-red-500/10 to-rose-500/20 border border-red-300/40 flex items-center justify-center text-red-600 shadow-sm">
+                <Trash2 className="w-7 h-7" />
+              </div>
+
+              <h3 className="font-bn text-xl font-black text-ink mb-2">
+                {isBn ? 'কথোপকথন মুছে ফেলতে চান?' : 'Clear Chat History?'}
+              </h3>
+
+              <p className="font-bn text-xs text-ink-muted leading-relaxed mb-6">
+                {isBn
+                  ? 'আপনার সমস্ত কথোপকথন ও বার্তা স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?'
+                  : 'All your chat messages and conversation history will be permanently deleted. Are you sure?'}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowClearModal(false)}
+                  disabled={isClearing}
+                  className="flex-1 py-3 px-4 bg-cream text-ink font-bn font-bold text-sm rounded-2xl hover:bg-ink/5 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isBn ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearChat}
+                  disabled={isClearing}
+                  className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-bn font-bold text-sm rounded-2xl active:scale-[0.98] transition-all shadow-lg hover:shadow-xl shadow-red-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {isClearing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{isBn ? 'মুছছে...' : 'Clearing...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>{isBn ? 'মুছে ফেলুন' : 'Clear Chat'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex flex-col relative max-w-4xl mx-auto w-full min-h-0">
         {/* Soft Background Glows */}

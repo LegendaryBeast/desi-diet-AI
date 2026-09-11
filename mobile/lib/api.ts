@@ -115,6 +115,7 @@ export const reportsApi = {
 export const chatApi = {
   streamUrl: `${API_BASE_URL}/chat`,
   history: () => api.get('/chat/history'),
+  clearHistory: () => api.delete('/chat/history'),
 };
 
 // Diet Plan Chat API

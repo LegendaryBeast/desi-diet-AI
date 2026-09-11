@@ -701,6 +701,7 @@ export default function ChatScreen() {
                   text: language === 'bn' ? 'মুছুন' : 'Clear',
                   style: 'destructive',
                   onPress: () => {
+                    chatApi.clearHistory().catch(() => {});
                     setMessages([{ role: 'assistant', content: welcomeText, id: 'welcome' }]);
                     setShowQuickPrompts(true);
                   },

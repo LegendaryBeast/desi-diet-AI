@@ -281,6 +281,7 @@ export interface ChatHistoryItem {
 
 export const chatApi = {
   history: () => apiFetch<ChatHistoryItem[]>('/chat/history'),
+  clearHistory: () => apiFetch<{ status: string; deleted_count?: number }>('/chat/history', { method: 'DELETE' }),
   /**
    * Stream chat response via SSE.
    * onToken: called for each streaming token
