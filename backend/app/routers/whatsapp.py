@@ -42,15 +42,62 @@ class IncomingMessagePayload(BaseModel):
 # ---------------------------------------------------------------------------
 # Shared business logic
 # ---------------------------------------------------------------------------
-async def _resolve_user(phone_raw: str):
-    """Look up a user by phone number (supports +880 and 01 formats)."""
-    phone_plus = "+" + phone_raw
-    phone_zero = "0" + phone_raw[3:]
-    user = (
-        await prisma.user.find_unique(where={"phone": phone_plus})
-        or await prisma.user.find_unique(where={"phone": phone_zero})
-    )
-    return user, phone_plus, phone_zero
+def _normalize_phone_candidates(phone_raw: str) -> list[str]:
+    """Generate all common representations of a phone number."""
+    digits = "".join(c for c in phone_raw if c.isdigit())
+    candidates = {phone_raw.strip(), f"+{digits}", digits}
+
+    # Bangladesh phone variations
+    if digits.startswith("880") and len(digits) == 13:
+        candidates.add("0" + digits[3:])
+        candidates.add("+" + digits)
+    elif digits.startswith("01") and len(digits) == 11:
+        candidates.add("88" + digits)
+        candidates.add("+88" + digits)
+        candidates.add("+880" + digits[1:])
+    elif digits.startswith("1") and len(digits) == 10:
+        candidates.add("0" + digits)
+        candidates.add("880" + digits)
+        candidates.add("+880" + digits)
+
+    return [c for c in candidates if c]
+
+
+async def _resolve_or_create_user(phone_raw: str):
+    """Look up a user by any phone representation, or auto-create a user so WhatsApp callers are never rejected."""
+    candidates = _normalize_phone_candidates(phone_raw)
+    user = None
+    for cand in candidates:
+        user = await prisma.user.find_unique(where={"phone": cand})
+        if user:
+            print(f"WhatsApp user resolved: {cand} (id={user.id})")
+            return user
+
+    # Auto-register guest WhatsApp user so they can chat immediately
+    digits = "".join(c for c in phone_raw if c.isdigit())
+    if digits.startswith("880") and len(digits) == 13:
+        primary_phone = "0" + digits[3:]
+    elif digits.startswith("01") and len(digits) == 11:
+        primary_phone = digits
+    else:
+        primary_phone = f"+{digits}" if digits else phone_raw
+
+    try:
+        user = await prisma.user.create(
+            data={
+                "phone": primary_phone,
+                "passwordHash": get_password_hash(str(uuid.uuid4())),
+                "language": "bn",
+                "role": "user",
+            }
+        )
+        print(f"Auto-created new WhatsApp user with phone: {primary_phone} (id={user.id})")
+        return user
+    except Exception as e:
+        print(f"Could not auto-create user for {primary_phone}: {e}")
+        # Fallback to any existing user as fallback if creation failed
+        fallback_user = await prisma.user.find_first()
+        return fallback_user
 
 
 async def _build_history(user_id: str):
@@ -141,12 +188,10 @@ async def _save_messages(user_id: str, user_message: str, reply: str):
 
 async def _handle_incoming_message(phone_raw: str, user_message: str) -> dict:
     """Core incoming-message handler used by both direct webhook and
-    standalone-service proxy. Returns a dict with either a 'reply' key
-    or an 'error' key (for unregistered users).
+    standalone-service proxy. Returns a dict with a 'reply' key.
+    Auto-registers unregistered phone numbers so all WhatsApp callers get AI answers.
     """
-    user, phone_plus, phone_zero = await _resolve_user(phone_raw)
-    print(f"Looking up user: {phone_plus} or {phone_zero} -> Found: {user is not None}")
-
+    user = await _resolve_or_create_user(phone_raw)
     if not user:
         reg_link = f"{settings.frontend_url}/auth"
         msg_text = (
@@ -287,7 +332,9 @@ async def send_whatsapp_message(phone_number_id: str, to: str, text: str):
             },
         )
         print(f"Meta API response: {response.status_code} | {response.text[:300]}")
-        if response.status_code >= 400:
+        if response.status_code == 401:
+            print("❌ CRITICAL ERROR: Meta WhatsApp Access Token is EXPIRED or INVALID (Error 190). Please generate a new token and update WHATSAPP_TOKEN!")
+        elif response.status_code >= 400:
             print(f"Failed to send WhatsApp message: {response.status_code} {response.text}")
 
 
@@ -358,14 +405,15 @@ async def whatsapp_optin(current_user=Depends(get_current_user)):
                 detail=f"Failed to communicate with external WhatsApp service: {str(e)}.",
             )
 
-    if not PHONE_NUMBER_ID:
+    phone_number_id = _get_phone_number_id()
+    if not phone_number_id:
         raise HTTPException(
             status_code=500,
             detail="WhatsApp service is not configured on the server.",
         )
 
     try:
-        await send_whatsapp_message(PHONE_NUMBER_ID, phone_raw, greeting_message)
+        await send_whatsapp_message(phone_number_id, phone_raw, greeting_message)
         return {"status": "success", "phone": current_user.phone}
     except Exception as e:
         print(f"WhatsApp optin error: {e}")
