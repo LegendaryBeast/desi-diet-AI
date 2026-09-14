@@ -49,6 +49,18 @@ IMPORTANT — These topics ARE in scope and MUST NOT be rejected:
 Check the user's message language and record it under "language" ("bn" for Bengali, "en" for English).
 """
 
+# Safe degraded response when the classifier is unavailable.
+# Used instead of fail-open so a classifier outage cannot be exploited to bypass moderation.
+_DEGRADED_SAFETY_REPLY_BN = (
+    "আমি দুঃখিত, আমার নিরাপত্তা পরীক্ষক এই মুহূর্তে উপলব্ধ নেই। "
+    "অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।"
+)
+_DEGRADED_SAFETY_REPLY_EN = (
+    "I'm sorry, the content safety classifier is temporarily unavailable. "
+    "Please try again in a moment."
+)
+
+
 async def safety_guard_node(state: AgentState) -> AgentState:
     """Assess user query safety and scope before routing."""
     message = state.get("message", "").strip()
@@ -78,10 +90,22 @@ async def safety_guard_node(state: AgentState) -> AgentState:
         is_in_scope = parsed.get("is_in_scope", True)
         language = parsed.get("language", "bn")
     except Exception as e:
-        logger.warning("SafetyGuardNode failed to classify query, defaulting to safe: %s", e)
-        is_safe = True
-        is_in_scope = True
-        language = "bn"
+        # PHASE F FIX: Fail SAFE, not open.
+        # Any classifier failure (timeout, network, malformed JSON, service outage)
+        # must NOT silently approve the request. Return a degraded refusal instead.
+        logger.error(
+            "SafetyGuardNode classifier unavailable — failing safe. "
+            "Request refused until classifier recovers. Error: %s", e
+        )
+        has_bengali = any(ord(c) >= 0x0980 and ord(c) <= 0x09FF for c in message)
+        language = "bn" if has_bengali else "en"
+        return {
+            **state,
+            "intent": "refused",
+            "reply": _DEGRADED_SAFETY_REPLY_BN if language == "bn" else _DEGRADED_SAFETY_REPLY_EN,
+            "language": language,
+            "safety_status": "classifier_unavailable",
+        }
 
     if not is_safe or not is_in_scope:
         # Generate appropriate refusal message based on language

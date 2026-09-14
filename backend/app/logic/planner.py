@@ -70,35 +70,91 @@ def startup_load_models():
 
 # --- Bridge Functions (Text to Graph) ---
 
+# Patterns that indicate negation of a condition (not a diagnosis)
+_NEGATION_PREFIXES = (
+    "no ", "don't have ", "do not have ", "doesn't have ", "does not have ",
+    "without ", "not ", "never had ", "না ", "নেই ", "নাই ",
+)
+# Patterns that indicate family history (not a personal diagnosis)
+_FAMILY_HISTORY_PATTERNS = (
+    "my father", "my mother", "my sister", "my brother", "my grandfather",
+    "my grandmother", "family history", "বাবার", "মায়ের", "ভাইয়ের", "বোনের",
+    "পারিবারিক ইতিহাস",
+)
+# Goal/lifestyle terms that should never resolve to a disease
+_GOAL_TERMS = {
+    "maintain", "maintenance", "lose weight", "gain weight", "muscle gain",
+    "fit", "healthy", "wellness", "ওজন কমানো", "ওজন বাড়ানো", "সুস্থ",
+}
+
+
+def _has_negation(text_lower: str) -> bool:
+    """Return True if the text starts with or contains a negation prefix."""
+    for pat in _NEGATION_PREFIXES:
+        if text_lower.startswith(pat) or f" {pat}" in text_lower:
+            return True
+    return False
+
+
+def _has_family_history(text_lower: str) -> bool:
+    """Return True if the text is about a family member's condition, not the user's."""
+    return any(pat in text_lower for pat in _FAMILY_HISTORY_PATTERNS)
+
+
 def find_best_disease_match(user_input: str, ai_models: dict) -> str | None:
-    """Finds the closest disease node name from user's text using lightweight text matching."""
+    """
+    Finds the closest disease node name from user's text using lightweight text matching.
+
+    Returns None (not the first disease) when:
+    - Input is negated ("no diabetes", "don't have X")
+    - Input describes family history ("my father has diabetes")
+    - Input is a lifestyle goal ("Maintain", "lose weight")
+    - No meaningful match is found above the confidence threshold
+
+    Callers MUST handle None explicitly and return a needs_clarification or
+    no_match response rather than defaulting to any disease.
+    """
     if not user_input or not ai_models["predefined_diseases"]:
         return None
-        
+
     predefined_diseases = ai_models["predefined_diseases"]
     user_input_lower = user_input.lower().strip()
-    
-    # 1. Exact or substring match (case insensitive)
+
+    # Gate 1: Reject negations — "no diabetes" must NOT match Diabetes
+    if _has_negation(user_input_lower):
+        return None
+
+    # Gate 2: Reject family history — "my father has diabetes" is not the user's diagnosis
+    if _has_family_history(user_input_lower):
+        return None
+
+    # Gate 3: Reject pure goal/lifestyle terms
+    if user_input_lower in _GOAL_TERMS:
+        return None
+
+    # 1. Exact match (case insensitive)
     for disease in predefined_diseases:
         disease_clean = disease.lower().strip()
         if user_input_lower == disease_clean:
             return disease
-            
-    # 2. Check if user input contains the disease name or vice versa
+
+    # 2. Substring match — only if no negation prefix present in the full token
     for disease in predefined_diseases:
         disease_clean = disease.lower().strip()
-        if disease_clean in user_input_lower or user_input_lower in disease_clean:
+        if disease_clean in user_input_lower:
             return disease
-            
-    # 3. Fallback to difflib close matches for typo tolerance
-    matches = difflib.get_close_matches(user_input_lower, [d.lower() for d in predefined_diseases], n=1, cutoff=0.3)
+        if user_input_lower in disease_clean:
+            return disease
+
+    # 3. Difflib close match for typo tolerance (raised cutoff from 0.3 to 0.6 to reduce false positives)
+    matches = difflib.get_close_matches(user_input_lower, [d.lower() for d in predefined_diseases], n=1, cutoff=0.6)
     if matches:
         for d in predefined_diseases:
             if d.lower() == matches[0]:
                 return d
-                
-    # 4. Final fallback
-    return predefined_diseases[0] if predefined_diseases else None
+
+    # 4. No match found — return None. Do NOT fall back to predefined_diseases[0].
+    return None
 
 def get_clinical_nutrients_from_graph(disease_name: str, driver: Driver) -> set:
     """Gets the required clinical nutrient names for a disease from the graph."""
@@ -112,90 +168,151 @@ def get_clinical_nutrients_from_graph(disease_name: str, driver: Driver) -> set:
         return nutrients, len(nutrients)
 
 
+import logging as _logging
+
+# Nutrient labels that are too ambiguous to map without expert clarification.
+_AMBIGUOUS_NUTRIENT_LABELS: set = {
+    "vitamin b", "b vitamin", "b vitamins", "vitamins b", "b-vitamin", "ভিটামিন বি",
+}
+
+# Junk entries that should never be treated as nutrients
+_JUNK_NUTRIENT_LABELS: set = {
+    "food code", "code", "food name", "name", "source", "unit",
+}
+
+
 def map_clinical_to_scientific_nutrients(clinical_nutrients: set, ai_models: dict) -> set:
     """
-    Maps clinical/informal nutrient names ("Vitamin B") 
-    to correct, scientific names ("Vitamin B12 (Cobalamin)") using lightweight token matching.
+    Maps clinical/informal nutrient names to correct scientific names using
+    lightweight token-overlap Jaccard similarity.
+
+    Ambiguous labels (e.g. "Vitamin B") are skipped — they return nothing
+    rather than silently mapping to an arbitrary B-vitamin.
+    Junk entries (e.g. "Food Code") are filtered out.
     """
     if not clinical_nutrients or not ai_models["target_nutrient_corpus"]:
         return set()
 
     target_nutrient_corpus = ai_models["target_nutrient_corpus"]
     mapped_nutrients = set()
-    
+
     for clinical in clinical_nutrients:
         clinical_lower = clinical.lower().strip()
-        
+
+        # Skip junk
+        if clinical_lower in _JUNK_NUTRIENT_LABELS:
+            continue
+
+        # Skip ambiguous labels rather than guessing
+        if clinical_lower in _AMBIGUOUS_NUTRIENT_LABELS:
+            _logging.getLogger(__name__).warning(
+                "Ambiguous nutrient label '%s' skipped — cannot safely map to a single nutrient.", clinical
+            )
+            continue
+
         best_match = None
         best_score = 0.0
-        
-        # Tokenize the clinical term
+
         clinical_tokens = set(re.findall(r'\w+', clinical_lower))
-        
+
         for target in target_nutrient_corpus:
             target_lower = target.lower().strip()
             target_tokens = set(re.findall(r'\w+', target_lower))
-            
-            # Exact match
+
             if clinical_lower == target_lower:
                 score = 1.0
-            # Substring match
             elif clinical_lower in target_lower or target_lower in clinical_lower:
                 score = 0.85
-            # Token overlap Jaccard similarity
             elif clinical_tokens and target_tokens:
                 intersection = clinical_tokens.intersection(target_tokens)
                 union = clinical_tokens.union(target_tokens)
                 score = len(intersection) / len(union)
             else:
                 score = 0.0
-                
+
             if score > best_score:
                 best_score = score
                 best_match = target
-                
+
         if best_score > 0.4 and best_match:
             mapped_nutrients.add(best_match)
-                
+
     return mapped_nutrients
 
 # --- NEW: Graph-Native Logic ---
 
-def get_rda_key(age: int, gender: str) -> str:
+def get_rda_key(age: int, gender: str) -> dict:
     """
-    Converts user age/gender into the specific property key
-    from our Neo4j graph.
+    Converts user age/gender into the specific RDA property key from Neo4j.
+
+    Returns a dict with:
+      - "status": "ok" | "needs_clarification" | "unsupported"
+      - "key": property string (only when status == "ok")
+      - "reason": explanation (only when status != "ok")
+
+    Callers must check status before using key.
+    Do NOT silently coerce missing gender to 'male' or age <14 to 14_18.
     """
-    gender_key = gender.lower()
-    age_key = ""
-    
-    if age <= 13: age_key = "9_13"
-    elif 14 <= age <= 18: age_key = "14_18"
-    elif 19 <= age <= 30: age_key = "19_30"
-    elif 31 <= age <= 50: age_key = "31_50"
-    elif 51 <= age <= 70: age_key = "51_70"
-    elif age > 70: age_key = "gt_70"
-    else: age_key = "19_30" # Default fallback
-    
-    # Fallback: Neo4j only has male/female RDA properties (no "both").
-    # Also 9_13 age bracket is absent in the dataset, fall back to 14_18.
+    gender_key = gender.lower().strip() if gender else ""
+
     if gender_key not in ["male", "female"]:
-        gender_key = "male"
-    if age_key == "9_13":
+        return {
+            "status": "needs_clarification",
+            "reason": (
+                f"Gender '{gender}' is not supported. "
+                "Please specify 'male' or 'female' to select the correct reference intake."
+            ),
+        }
+
+    if age is None:
+        return {"status": "needs_clarification", "reason": "Age is required for RDA lookup."}
+
+    if age < 9:
+        return {
+            "status": "unsupported",
+            "reason": (
+                f"Age {age} is below the youngest supported bracket (9–13). "
+                "Reference intakes for children under 9 are not in this dataset."
+            ),
+        }
+    elif age <= 13:
+        # The 9–13 bracket is absent from the current Neo4j dataset.
+        return {
+            "status": "unsupported",
+            "reason": (
+                f"Age {age} falls in the 9–13 bracket which is not present in the current "
+                "Neo4j RDA dataset. A clinically reviewed expansion is required."
+            ),
+        }
+    elif 14 <= age <= 18:
         age_key = "14_18"
+    elif 19 <= age <= 30:
+        age_key = "19_30"
+    elif 31 <= age <= 50:
+        age_key = "31_50"
+    elif 51 <= age <= 70:
+        age_key = "51_70"
+    elif age > 70:
+        age_key = "gt_70"
+    else:
+        return {"status": "unsupported", "reason": f"Age {age} is out of supported range."}
 
     # Property keys were created like: rda_female_19_30_mg
-    return f"rda_{gender_key}_{age_key}_mg"
+    return {"status": "ok", "key": f"rda_{gender_key}_{age_key}_mg"}
 
-def rank_foods_by_rda_contribution(
-    driver: Driver, 
-    scientific_nutrients: set, 
+def rank_foods_by_rda_contribution_cosine_baseline(
+    driver: Driver,
+    scientific_nutrients: set,
     nutrient_count: int,
     user_rda_key: str
 ) -> list:
     """
-    THE NEW CORE: Ranks foods using a Cosine Similarity-based algorithm.
-    This rewards "balance" and is highly sensitive to the user's RDA.
+    EXPERIMENTAL BASELINE — Ranks foods using Cosine Similarity.
+
+    IMPORTANT LIMITATION: This score is angle-based, not an adequacy measure.
+    (0.01, 0.01) and (0.90, 0.90) BOTH score 1.0 regardless of absolute density.
+    Do NOT present this score as nutritional adequacy in production API responses.
+    See portion_planner.py for the adequacy-based implementation.
     """
     with driver.session() as session:
         
@@ -391,6 +508,20 @@ async def generate_plan_logic(
             # 2. Get clinical nutrients (Graph Query)
             cond_nutrients, _ = get_clinical_nutrients_from_graph(matched_d, neo4j_driver)
             clinical_nutrients.update(cond_nutrients)
+        else:
+            import logging
+            logging.getLogger(__name__).info(
+                "generate_plan_logic: No disease match for '%s' (negation, goal, or no close match). "
+                "Will not fall back to a random disease.",
+                d_text,
+            )
+
+    if not matched_diseases_list:
+        return (
+            f"Could not identify a clinical health condition in: '{user_profile.disease}'. "
+            "If this is a negation (e.g. 'no diabetes'), a lifestyle goal (e.g. 'Maintain'), "
+            "or a family-history statement, please describe your own current condition instead."
+        )
 
     if not clinical_nutrients:
         return f"Could not identify a matching health condition for: '{user_profile.disease}'."
@@ -400,38 +531,44 @@ async def generate_plan_logic(
     print(f"🔍 Best Disease Match: '{matched_disease}'")
     print(f"🌿 Combined Clinical Nutrients Required ({nutrient_count}): {', '.join(clinical_nutrients)}")
 
-    # 3. **FIXED: Re-enabled the AI "Sanitizer" Step**
-    # This cleans the list from the graph, mapping "Vitamin B" -> "Vitamin B12"
-    # and filtering out junk like "Food Code".
+    # 3. Map clinical -> scientific nutrients (ambiguous labels skipped with warning)
     scientific_nutrients = map_clinical_to_scientific_nutrients(clinical_nutrients, ai_models)
     if not scientific_nutrients:
-        print("❌ Error: AI mapping failed to find any valid scientific nutrients.")
+        print("⚠️ Nutrient mapping produced no results (all may have been ambiguous). Using clinical names as fallback.")
         scientific_nutrients = clinical_nutrients
     print(f"💡 Scientifically Mapped Nutrients: {', '.join(scientific_nutrients)}")
-    
-    # We must use the *new count* of *clean* nutrients for the query
+
     scientific_nutrient_count = len(scientific_nutrients)
     if scientific_nutrient_count == 0:
         return f"Found nutrient requirements for '{matched_disease}', but could not find potent food sources in the database."
 
-    # 4. Get the user's personal RDA property key (Python Logic)
-    user_rda_key = get_rda_key(user_profile.age, user_profile.gender)
-    print(f"🔬 User RDA Key: '{user_rda_key}'")
+    # 4. Get the user's personal RDA property key — check status before using
+    rda_result = get_rda_key(user_profile.age, user_profile.gender)
+    print(f"🔬 User RDA Result: {rda_result}")
 
-    # 5. **NEW CORE:** Rank foods based on Cosine Similarity (Graph Query)
-    # **UPDATED:** Passes the *new, clean* nutrient count
-    recommended_foods = rank_foods_by_rda_contribution(
-        neo4j_driver, 
-        scientific_nutrients, 
-        scientific_nutrient_count, 
+    if rda_result["status"] != "ok":
+        return (
+            f"Cannot generate a plan for age {user_profile.age} / gender '{user_profile.gender}': "
+            f"{rda_result.get('reason', 'Unsupported demographic.')} "
+            "Please update your profile with a supported age and gender."
+        )
+
+    user_rda_key = rda_result["key"]
+
+    # 5. Rank foods using cosine baseline (EXPERIMENTAL — angle-based, not adequacy)
+    recommended_foods = rank_foods_by_rda_contribution_cosine_baseline(
+        neo4j_driver,
+        scientific_nutrients,
+        scientific_nutrient_count,
         user_rda_key
     )
-    if not recommended_foods: return f"Found nutrient requirements for '{matched_disease}', but could not find potent food sources in the database."
-    print(f"🍲 Top Recommended Foods ({len(recommended_foods)}): {', '.join(sorted(recommended_foods)[:])}...")
+    if not recommended_foods:
+        return f"Found nutrient requirements for '{matched_disease}', but could not find potent food sources in the database."
+    print(f"🍲 Top Recommended Foods ({len(recommended_foods)}): {', '.join(sorted(recommended_foods)[:10])}...")
 
-    # 6. Generate final plan (LLM Call)
+    # 6. Generate final plan (LLM Call) — NOTE: output is unverified prose
+    # TODO Phase E: wire plan_verifier here before returning to user
     final_plan = await generate_final_plan_with_gemini(user_profile, matched_disease, clinical_nutrients, recommended_foods)
-    print("✅ Final plan generated by Gemini.")
-    
-    return final_plan
+    print("✅ Final plan generated by Gemini. [WARNING: unverified prose — Phase E verifier pending]")
 
+    return final_plan
