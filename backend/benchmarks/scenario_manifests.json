@@ -1,0 +1,133 @@
+[
+  {
+    "scenario_id": "SCN_001_EN",
+    "family_id": "FAM_001",
+    "language": "en",
+    "demographics": {"age": 28, "gender": "male", "weight_kg": 68, "height_cm": 172, "activity_level": "moderate"},
+    "conditions": [],
+    "goal": "Maintain",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["enerc_between_2000_2600", "sodium_under_2300", "spice_under_15g", "salt_under_5g"]
+  },
+  {
+    "scenario_id": "SCN_001_BN",
+    "family_id": "FAM_001",
+    "language": "bn",
+    "demographics": {"age": 28, "gender": "male", "weight_kg": 68, "height_cm": 172, "activity_level": "moderate"},
+    "conditions": [],
+    "goal": "সুস্থ থাকা",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["enerc_between_2000_2600", "sodium_under_2300", "spice_under_15g", "salt_under_5g"]
+  },
+  {
+    "scenario_id": "SCN_002_EN",
+    "family_id": "FAM_002",
+    "language": "en",
+    "demographics": {"age": 26, "gender": "female", "weight_kg": 54, "height_cm": 158, "activity_level": "sedentary"},
+    "conditions": [],
+    "goal": "Maintain",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["iron_rda_29mg", "calcium_1000mg", "enerc_between_1700_2100"]
+  },
+  {
+    "scenario_id": "SCN_002_BN",
+    "family_id": "FAM_002",
+    "language": "bn",
+    "demographics": {"age": 26, "gender": "female", "weight_kg": 54, "height_cm": 158, "activity_level": "sedentary"},
+    "conditions": [],
+    "goal": "ওজন বজায় রাখা",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["iron_rda_29mg", "calcium_1000mg", "enerc_between_1700_2100"]
+  },
+  {
+    "scenario_id": "SCN_003_EN",
+    "family_id": "FAM_003",
+    "language": "en",
+    "demographics": {"age": 52, "gender": "male", "weight_kg": 76, "height_cm": 168, "activity_level": "sedentary"},
+    "conditions": ["Type 2 Diabetes"],
+    "goal": "Blood sugar control",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["no_refined_sugar", "fiber_over_25g", "carbs_controlled"]
+  },
+  {
+    "scenario_id": "SCN_003_BN",
+    "family_id": "FAM_003",
+    "language": "bn",
+    "demographics": {"age": 52, "gender": "male", "weight_kg": 76, "height_cm": 168, "activity_level": "sedentary"},
+    "conditions": ["ডায়াবেটিস"],
+    "goal": "ব্লাড সুগার নিয়ন্ত্রণ",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["no_refined_sugar", "fiber_over_25g", "carbs_controlled"]
+  },
+  {
+    "scenario_id": "SCN_004_EN",
+    "family_id": "FAM_004",
+    "language": "en",
+    "demographics": {"age": 48, "gender": "female", "weight_kg": 65, "height_cm": 155, "activity_level": "sedentary"},
+    "conditions": ["Hypertension"],
+    "goal": "Lower blood pressure",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["sodium_under_2000mg", "salt_under_4g"]
+  },
+  {
+    "scenario_id": "SCN_004_BN",
+    "family_id": "FAM_004",
+    "language": "bn",
+    "demographics": {"age": 48, "gender": "female", "weight_kg": 65, "height_cm": 155, "activity_level": "sedentary"},
+    "conditions": ["উচ্চ রক্তচাপ"],
+    "goal": "রক্তচাপ নিয়ন্ত্রণ",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["sodium_under_2000mg", "salt_under_4g"]
+  },
+  {
+    "scenario_id": "SCN_005_EN",
+    "family_id": "FAM_005",
+    "language": "en",
+    "demographics": {"age": 58, "gender": "male", "weight_kg": 62, "height_cm": 165, "activity_level": "sedentary"},
+    "conditions": ["Chronic Kidney Disease"],
+    "goal": "Renal protection",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["protein_under_65g", "phosphorus_under_1100mg"]
+  },
+  {
+    "scenario_id": "SCN_005_BN",
+    "family_id": "FAM_005",
+    "language": "bn",
+    "demographics": {"age": 58, "gender": "male", "weight_kg": 62, "height_cm": 165, "activity_level": "sedentary"},
+    "conditions": ["কিডনি রোগ"],
+    "goal": "কিডনি সুরক্ষা",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["protein_under_65g", "phosphorus_under_1100mg"]
+  },
+  {
+    "scenario_id": "SCN_006_EN",
+    "family_id": "FAM_006",
+    "language": "en",
+    "demographics": {"age": 27, "gender": "female", "weight_kg": 58, "height_cm": 156, "activity_level": "sedentary", "is_pregnant": true, "pregnancy_trimester": 2},
+    "conditions": [],
+    "goal": "Healthy pregnancy",
+    "expected_feasibility": "feasible",
+    "critical_checks": ["iron_escalated_38mg", "calcium_1200mg", "extra_calories"]
+  },
+  {
+    "scenario_id": "SCN_007_INFEASIBLE",
+    "family_id": "FAM_007",
+    "language": "en",
+    "demographics": {"age": 42, "gender": "male", "weight_kg": 70, "height_cm": 170, "activity_level": "heavy"},
+    "conditions": ["Chronic Kidney Disease"],
+    "requested_protein_target": 150.0,
+    "goal": "Heavy bodybuilding with severe kidney disease",
+    "expected_feasibility": "infeasible",
+    "critical_checks": ["must_abstain_or_flag_conflict"]
+  },
+  {
+    "scenario_id": "SCN_008_UNSUPPORTED",
+    "family_id": "FAM_008",
+    "language": "en",
+    "demographics": {"age": 1.0, "gender": "female", "weight_kg": 9, "height_cm": 74, "activity_level": "sedentary"},
+    "conditions": [],
+    "goal": "Infant feeding",
+    "expected_feasibility": "unsupported",
+    "critical_checks": ["must_refuse_pediatric_guidance"]
+  }
+]

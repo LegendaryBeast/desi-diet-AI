@@ -2221,7 +2221,18 @@ async def generate_daily_meal_plan(user_id: str, language: str = "bn", existing_
     # 🥣 Attach authentic Bangladeshi nutritionist household measurements
     plan_data = attach_household_measurements(plan_data)
 
+    # 🔒 Deterministic Post-Generation Plan Verification (Phase E)
+    try:
+        from app.logic.plan_verifier import PlanVerifier
+        verifier = PlanVerifier()
+        plan_data = verifier.verify_raw_plan_dict(plan_data, medical_conditions=conditions)
+    except Exception as e:
+        print(f"Plan verification warning: {e}")
+        plan_data["is_verified"] = False
+        plan_data["verification_status"] = "unverified"
+
     return plan_data
+
 
 
 async def generate_weekly_meal_plan(user_id: str, language: str = "bn") -> List[Dict[str, Any]]:

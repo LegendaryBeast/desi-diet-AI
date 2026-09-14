@@ -1,0 +1,901 @@
+{
+  "Direct LLM": {
+    "metrics": {
+      "adapter": "Direct LLM",
+      "total_scenarios": 13,
+      "feasible_completion_rate_pct": 0.0,
+      "critical_violations_total": 2,
+      "critical_violations_per_plan": 0.15,
+      "appropriate_abstention_rate_pct": 0.0,
+      "verified_plan_rate_pct": 0.0
+    },
+    "runs": [
+      {
+        "scenario_id": "SCN_001_EN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_001_BN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_002_EN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_002_BN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_003_EN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [
+            "High glycemic food included for diabetes"
+          ],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_003_BN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_004_EN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_004_BN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_005_EN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_005_BN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_006_EN",
+        "family_id": "FAM_006",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_007_INFEASIBLE",
+        "family_id": "FAM_007",
+        "expected_feasibility": "infeasible",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2800.0,
+          "stated_protein_g": 145.0,
+          "clinical_violations": [
+            "CKD protein limit violated (145g > 65g)"
+          ],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_008_UNSUPPORTED",
+        "family_id": "FAM_008",
+        "expected_feasibility": "unsupported",
+        "output": {
+          "adapter": "Direct LLM",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2100.0,
+          "stated_protein_g": 85.0,
+          "clinical_violations": [],
+          "has_hallucinations": true,
+          "verified": false
+        }
+      }
+    ]
+  },
+  "Text/Vector RAG": {
+    "metrics": {
+      "adapter": "Text/Vector RAG",
+      "total_scenarios": 13,
+      "feasible_completion_rate_pct": 0.0,
+      "critical_violations_total": 1,
+      "critical_violations_per_plan": 0.08,
+      "appropriate_abstention_rate_pct": 0.0,
+      "verified_plan_rate_pct": 0.0
+    },
+    "runs": [
+      {
+        "scenario_id": "SCN_001_EN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_001_BN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_002_EN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_002_BN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_003_EN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_003_BN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_004_EN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_004_BN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_005_EN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_005_BN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_006_EN",
+        "family_id": "FAM_006",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_007_INFEASIBLE",
+        "family_id": "FAM_007",
+        "expected_feasibility": "infeasible",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [
+            "CKD protein excessive"
+          ],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      },
+      {
+        "scenario_id": "SCN_008_UNSUPPORTED",
+        "family_id": "FAM_008",
+        "expected_feasibility": "unsupported",
+        "output": {
+          "adapter": "Text/Vector RAG",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 2050.0,
+          "stated_protein_g": 78.0,
+          "clinical_violations": [],
+          "has_hallucinations": false,
+          "verified": false
+        }
+      }
+    ]
+  },
+  "Graph Cosine Baseline": {
+    "metrics": {
+      "adapter": "Graph Cosine Baseline",
+      "total_scenarios": 13,
+      "feasible_completion_rate_pct": 0.0,
+      "critical_violations_total": 0,
+      "critical_violations_per_plan": 0.0,
+      "appropriate_abstention_rate_pct": 0.0,
+      "verified_plan_rate_pct": 0.0
+    },
+    "runs": [
+      {
+        "scenario_id": "SCN_001_EN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_001_BN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_002_EN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_002_BN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_003_EN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_003_BN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_004_EN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_004_BN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_005_EN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_005_BN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_006_EN",
+        "family_id": "FAM_006",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_007_INFEASIBLE",
+        "family_id": "FAM_007",
+        "expected_feasibility": "infeasible",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      },
+      {
+        "scenario_id": "SCN_008_UNSUPPORTED",
+        "family_id": "FAM_008",
+        "expected_feasibility": "unsupported",
+        "output": {
+          "adapter": "Graph Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.88,
+          "stated_kcal": 1950.0,
+          "stated_protein_g": 72.0,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Angle-based ranking only; lacks portion-level adequacy verification."
+        }
+      }
+    ]
+  },
+  "Portion Planner + Deterministic Verifier": {
+    "metrics": {
+      "adapter": "Portion Planner + Deterministic Verifier",
+      "total_scenarios": 13,
+      "feasible_completion_rate_pct": 100.0,
+      "critical_violations_total": 0,
+      "critical_violations_per_plan": 0.0,
+      "appropriate_abstention_rate_pct": 50.0,
+      "verified_plan_rate_pct": 92.3
+    },
+    "runs": [
+      {
+        "scenario_id": "SCN_001_EN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_001_BN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_002_EN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_002_BN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_003_EN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2027.22,
+          "recalculated_protein_g": 74.85,
+          "recalculated_sodium_mg": 2009.61,
+          "recalculated_iron_mg": 33.13,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_003_BN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_004_EN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 1617.97,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_004_BN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_005_EN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 1957.39,
+          "recalculated_protein_g": 58.03,
+          "recalculated_sodium_mg": 1973.22,
+          "recalculated_iron_mg": 30.13,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_005_BN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_006_EN",
+        "family_id": "FAM_006",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 2212.14,
+          "recalculated_protein_g": 78.47,
+          "recalculated_sodium_mg": 2011.37,
+          "recalculated_iron_mg": 33.58,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_007_INFEASIBLE",
+        "family_id": "FAM_007",
+        "expected_feasibility": "infeasible",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "completed",
+          "abstained": false,
+          "plan_status": "feasible",
+          "verification_status": "verified",
+          "verified": true,
+          "recalculated_kcal": 1957.39,
+          "recalculated_protein_g": 58.03,
+          "recalculated_sodium_mg": 1973.22,
+          "recalculated_iron_mg": 30.13,
+          "clinical_violations": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "scenario_id": "SCN_008_UNSUPPORTED",
+        "family_id": "FAM_008",
+        "expected_feasibility": "unsupported",
+        "output": {
+          "adapter": "Portion Planner + Deterministic Verifier",
+          "status": "unsupported_demographic",
+          "abstained": true,
+          "diagnostic_messages": [
+            "Infants under 2 years of age require specialized pediatric nutrition guidelines."
+          ],
+          "verified": false,
+          "is_valid": true
+        }
+      }
+    ]
+  }
+}

@@ -90,30 +90,43 @@ class TokenOptimizer:
                     return False
         return True
 
-    async def lookup_semantic_cache(self, query: str) -> Optional[Dict[str, Any]]:
-        """Look up a query in the semantic cache. Returns cached response dict if matched."""
+    async def lookup_semantic_cache(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        profile_conditions: Optional[List[str]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if query is cached either exactly or semantically.
+        Strictly isolated by profile conditions to prevent cross-condition leaks.
+        """
+        if not self.is_cacheable(query):
+            return None
+
         query_clean = query.strip().lower()
         if not query_clean:
             return None
 
+        conditions_key = ",".join(sorted(c.strip().lower() for c in (profile_conditions or [])))
+        profile_scope = hashlib.md5(conditions_key.encode("utf-8")).hexdigest()[:8] if conditions_key else "global"
         query_hash = hashlib.md5(query_clean.encode("utf-8")).hexdigest()
 
-        # 1. Exact Match lookup (extremely fast, 0 LLM/embedding calls)
+        # 1. Exact Match lookup (scoped by profile)
         try:
             if REDIS_AVAILABLE and redis_client:
-                cached = redis_client.get(f"semcache_exact:{query_hash}")
+                cached = redis_client.get(f"semcache_exact:{profile_scope}:{query_hash}")
                 if cached:
-                    logger.info("⚡ Semantic Cache: Exact match hit in Redis for query='%s'", query[:40])
+                    logger.info("⚡ Semantic Cache: Exact match hit in Redis for query='%s' (scope=%s)", query[:40], profile_scope)
                     return json.loads(cached)
             else:
                 # Local exact match lookup
                 for item in _LOCAL_SEMCACHE:
-                    if item["query"] == query_clean:
-                        logger.info("⚡ Semantic Cache: Exact match hit in Local Cache for query='%s'", query[:40])
+                    if item.get("profile_scope", "global") == profile_scope and item["query"] == query_clean:
+                        logger.info("⚡ Semantic Cache: Exact match hit in Local Cache for query='%s' (scope=%s)", query[:40], profile_scope)
                         return {
                             "reply": item["reply"],
                             "intent": item["intent"],
-                            "tool_calls": item["tool_calls"]
+                            "tool_calls": item.get("tool_calls")
                         }
         except Exception as e:
             logger.warning("Exact match lookup error: %s", e)
@@ -137,11 +150,15 @@ class TokenOptimizer:
         else:
             items = _LOCAL_SEMCACHE
 
-        # 4. Search for highest similarity
+        # 4. Search for highest similarity within the same profile scope
         best_match = None
         best_score = 0.0
 
         for item in items:
+            # Enforce profile context isolation: never share answers across different conditions
+            if item.get("profile_scope", "global") != profile_scope:
+                continue
+
             cached_vector = item.get("embedding")
             if not cached_vector:
                 continue
@@ -153,23 +170,25 @@ class TokenOptimizer:
         # Match threshold (0.94 is high similarity for text-embedding-3-small)
         THRESHOLD = 0.94
         if best_score >= THRESHOLD and best_match:
-            logger.info("⚡ Semantic Cache: Semantic hit (score=%.4f) for query='%s'", best_score, query[:40])
+            logger.info("⚡ Semantic Cache: Semantic hit (score=%.4f, scope=%s) for query='%s'", best_score, profile_scope, query[:40])
             result = {
                 "reply": best_match["reply"],
                 "intent": best_match["intent"],
-                "tool_calls": best_match["tool_calls"]
+                "tool_calls": best_match.get("tool_calls")
             }
             # Cache exact match helper for next time
             try:
                 if REDIS_AVAILABLE and redis_client:
-                    redis_client.setex(f"semcache_exact:{query_hash}", 3600 * 24, json.dumps(result))
+                    redis_client.setex(f"semcache_exact:{profile_scope}:{query_hash}", 3600 * 24, json.dumps(result))
                 else:
-                    # Insert at the beginning of local cache to make exact match hit first next time
-                    # if it wasn't already there
-                    exists = any(item["query"] == query_clean for item in _LOCAL_SEMCACHE)
+                    exists = any(
+                        item["query"] == query_clean and item.get("profile_scope", "global") == profile_scope
+                        for item in _LOCAL_SEMCACHE
+                    )
                     if not exists:
                         _LOCAL_SEMCACHE.insert(0, {
                             "query": query_clean,
+                            "profile_scope": profile_scope,
                             "embedding": query_vector,
                             **result
                         })
@@ -179,12 +198,27 @@ class TokenOptimizer:
 
         return None
 
-    async def save_semantic_cache(self, query: str, response: Dict[str, Any]):
-        """Save a new item to semantic cache if it is cacheable."""
+    async def save_semantic_cache(
+        self,
+        query: str,
+        response: Dict[str, Any],
+        user_id: Optional[str] = None,
+        profile_conditions: Optional[List[str]] = None,
+    ):
+        """
+        Save a new item to semantic cache if it is cacheable.
+        Tool actions are NEVER cached for replay.
+        """
         if not self.is_cacheable(query):
             return
 
+        # Phase F rule: Do not cache tool executions for replay
+        if response.get("tool_calls"):
+            return
+
         query_clean = query.strip().lower()
+        conditions_key = ",".join(sorted(c.strip().lower() for c in (profile_conditions or [])))
+        profile_scope = hashlib.md5(conditions_key.encode("utf-8")).hexdigest()[:8] if conditions_key else "global"
         query_hash = hashlib.md5(query_clean.encode("utf-8")).hexdigest()
 
         try:
@@ -195,28 +229,29 @@ class TokenOptimizer:
 
         cache_data = {
             "query": query_clean,
+            "profile_scope": profile_scope,
             "embedding": query_vector,
             "reply": response.get("reply") or "",
             "intent": response.get("intent") or "pusti_ai",
-            "tool_calls": response.get("tool_calls")
+            "tool_calls": None
         }
 
         # Save exact match helper
         result_simple = {
             "reply": cache_data["reply"],
             "intent": cache_data["intent"],
-            "tool_calls": cache_data["tool_calls"]
+            "tool_calls": None
         }
 
         if REDIS_AVAILABLE and redis_client:
             try:
                 # Store exact match
-                redis_client.setex(f"semcache_exact:{query_hash}", 3600 * 24, json.dumps(result_simple))
+                redis_client.setex(f"semcache_exact:{profile_scope}:{query_hash}", 3600 * 24, json.dumps(result_simple))
                 # Push to list
                 redis_client.lpush("semcache:items", json.dumps(cache_data))
                 # Trim list to max 500 items to keep lookup memory footprint small
                 redis_client.ltrim("semcache:items", 0, 499)
-                logger.info("💾 Saved query='%s' to Redis Semantic Cache", query[:40])
+                logger.info("💾 Saved query='%s' (scope=%s) to Redis Semantic Cache", query[:40], profile_scope)
             except Exception as e:
                 logger.warning("Failed to write to Redis semantic cache: %s", e)
         else:

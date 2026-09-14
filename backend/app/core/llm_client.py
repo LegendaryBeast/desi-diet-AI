@@ -1,10 +1,15 @@
 """Async LLM client for OpenAI (or any OpenAI-compatible endpoint: Groq, OpenRouter, etc.)."""
 
+import io
+import time
+import uuid
+import logging
 from typing import AsyncIterator, List, Dict, Any, Optional
+import httpx
 from openai import AsyncOpenAI
 from app.config import settings
-import io
-import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -36,8 +41,10 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         response_format: Optional[Dict[str, str]] = None,
+        request_id: Optional[str] = None,
     ) -> str:
-        """Non-streaming chat completion. Returns full text."""
+        """Non-streaming chat completion with structured telemetry and bounded retry."""
+        req_id = request_id or str(uuid.uuid4())[:8]
         kwargs = {
             "model": self.model,
             "messages": messages,
@@ -47,17 +54,45 @@ class LLMClient:
         if response_format:
             kwargs["response_format"] = response_format
 
-        response = await self.client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content or ""
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            t0 = time.perf_counter()
+            try:
+                response = await self.client.chat.completions.create(**kwargs)
+                latency_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+                tokens = getattr(response, "usage", None)
+                total_tokens = tokens.total_tokens if tokens else "est"
+                logger.info(
+                    "[LLM req_id=%s] model=%s latency_ms=%s tokens=%s attempt=%s",
+                    req_id, self.model, latency_ms, total_tokens, attempt + 1
+                )
+                return response.choices[0].message.content or ""
+            except Exception as e:
+                latency_ms = round((time.perf_counter() - t0) * 1000.0, 1)
+                logger.warning(
+                    "[LLM req_id=%s ERROR] model=%s latency_ms=%s attempt=%s error=%s",
+                    req_id, self.model, latency_ms, attempt + 1, str(e)[:120]
+                )
+                if attempt == max_retries:
+                    raise e
+                import asyncio
+                await asyncio.sleep(0.5 * (attempt + 1))
+
+        return ""
 
     async def chat_completion_stream(
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        request_id: Optional[str] = None,
     ) -> AsyncIterator[str]:
-        """Streaming chat completion. Yields token chunks."""
+        """Streaming chat completion with request tracking."""
+        req_id = request_id or str(uuid.uuid4())[:8]
+        t0 = time.perf_counter()
+        logger.info("[LLM STREAM req_id=%s] starting stream model=%s", req_id, self.model)
         stream = await self.client.chat.completions.create(
+
             model=self.model,
             messages=messages,
             temperature=temperature,

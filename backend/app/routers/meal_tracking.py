@@ -46,17 +46,27 @@ Return ONLY valid JSON:
 }"""
 
 
+_MEAL_IDEMPOTENCY_CACHE: dict = {}
+
+
 @router.post("", response_model=MealTrackingResponse)
 async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_user)):
     """Log a meal. Nutrition data comes exclusively from the Neo4j Graph-RAG database."""
 
-    # ── Path A: Direct log from meal plan (already has verified Graph-RAG values) ──────────
+    # Phase F: Idempotency check to prevent duplicate writes on network retries
+    if req.idempotency_key:
+        cache_key = f"{current_user.id}:{req.idempotency_key}"
+        if cache_key in _MEAL_IDEMPOTENCY_CACHE:
+            logger.info("Idempotent replay for meal log (key=%s)", cache_key)
+            return _MEAL_IDEMPOTENCY_CACHE[cache_key]
+
     # ── Path A: Direct log from meal plan (already has verified Graph-RAG values) ──────────
     if req.direct_calories is not None:
         direct_carbs = req.direct_carbs
         direct_fat   = req.direct_fat
         direct_protein = req.direct_protein
         direct_calories = req.direct_calories
+
 
         # If macros are missing, scale them from the Graph-RAG database (by code first, then name)
         if (direct_protein is None or direct_carbs is None or direct_fat is None or direct_calories is None) and (req.direct_code or req.direct_name or req.input):
@@ -360,8 +370,7 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
             "language":    req.language,
         }
     )
-    # Auto-completion of slots removed to allow partial logs without force-completing the whole meal slot
-    return MealTrackingResponse(
+    res = MealTrackingResponse(
         id=record.id,
         parsed_items=[ParsedFoodItem(**item) for item in parsed_items],
         total_calories=int(total_calories),
@@ -370,6 +379,13 @@ async def log_meal(req: MealTrackingRequest, current_user=Depends(get_current_us
         meal_slot=req.meal_slot,
         logged_at=record.loggedAt,
     )
+
+    if req.idempotency_key:
+        cache_key = f"{current_user.id}:{req.idempotency_key}"
+        _MEAL_IDEMPOTENCY_CACHE[cache_key] = res
+
+    return res
+
 
 
 IMAGE_FOOD_PARSER_PROMPT = """You are a food identification assistant for a Bangladeshi nutrition app.

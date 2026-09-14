@@ -209,7 +209,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
         key_name = fi["name_en"].lower()
         amount_g = fi["amount_g"]
         
-        nut_profile = food_nutrients.get(key_code) or food_nutrients.get(key_name) or {}
+        nut_profile = food_nutrients.get(key_code) or food_nutrients.get(key_code.lower()) or food_nutrients.get(key_name) or {}
         for nut_name, val_per_100g in nut_profile.items():
             totals[nut_name] = totals.get(nut_name, 0.0) + (val_per_100g * amount_g / 100.0)
 

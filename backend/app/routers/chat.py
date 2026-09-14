@@ -557,8 +557,20 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
     """
 
     async def event_generator():
+        # 0. Safety Guard check (Phase F)
+        try:
+            from app.agents.safety_guard import safety_guard_node
+            guard_state = await safety_guard_node({"message": req.message or "", "user_id": current_user.id})
+            if guard_state.get("intent") == "refused":
+                refusal_reply = guard_state.get("reply", "This query cannot be processed.")
+                yield f"data: {json.dumps({'content': refusal_reply, 'done': True})}\n\n"
+                return
+        except Exception as guard_err:
+            logger.error("Safety guard check failed in streaming chat: %s", guard_err)
+
         # 1. Build rich user context
         user_context = await _build_user_context(current_user.id)
+
 
         # 2. Query GraphRAG for food knowledge relevant to the message
         rag_food_context = ""
@@ -1578,9 +1590,19 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
     from app.agents.graph import unified_graph
     from app.core.token_optimizer import token_optimizer
 
-    # 1. Semantic cache lookup
+    # 1. Semantic cache lookup (context-isolated by user profile)
+    user_conditions: List[str] = []
     try:
-        cached_res = await token_optimizer.lookup_semantic_cache(req.message)
+        profile = await prisma.profile.find_unique(where={"userId": current_user.id})
+        user_conditions = safe_list(profile.medicalConditions) if profile else []
+        if req.condition and req.condition not in user_conditions:
+            user_conditions.append(req.condition)
+
+        cached_res = await token_optimizer.lookup_semantic_cache(
+            req.message,
+            user_id=current_user.id,
+            profile_conditions=user_conditions,
+        )
         if cached_res:
             return {
                 "reply": cached_res.get("reply") or "",
@@ -1591,6 +1613,7 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
             }
     except Exception as cache_err:
         logger.warning("Failed lookup semantic cache: %s", cache_err)
+
 
     history = [
         {"role": t.role, "content": t.content}

@@ -268,6 +268,8 @@ class MealTrackingRequest(BaseModel):
     direct_amount_g: Optional[float] = Field(None, description="Direct amount in grams")
     preview: Optional[bool] = Field(default=False, description="If true, returns parsed calories/macros without saving to database")
     is_manual: Optional[bool] = Field(default=False, description="Whether this is manually added outside the plan")
+    idempotency_key: Optional[str] = Field(None, description="Idempotency key to prevent duplicate meal logs on retry")
+
 
 
 class ParsedFoodItem(BaseModel):

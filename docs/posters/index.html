@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DesiDiet AI — Business Poster Suite (Bangladesh Innovation Fair 2026)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #F5F0E8;
+      --cream-dark: #EDE6D6;
+      --forest: #2C5530;
+      --forest-dark: #1e3b21;
+      --accent: #C8472A;
+      --gold: #B8933E;
+      --ink: #1A1714;
+      --ink-muted: #5C574F;
+      --ink-faint: #9E9890;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      line-height: 1.5;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 18px;
+      background: var(--forest);
+      color: var(--cream);
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 9999px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 46px;
+      font-weight: 800;
+      color: var(--forest);
+      margin-bottom: 12px;
+    }
+
+    h1 span {
+      color: var(--accent);
+    }
+
+    p.subtitle {
+      font-size: 18px;
+      color: var(--ink-muted);
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .color-swatch-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-weight: 600;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .posters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 32px;
+    }
+
+    .poster-card {
+      background: #ffffff;
+      border: 2px solid var(--cream-dark);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(26, 23, 20, 0.08);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .poster-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 36px rgba(44, 85, 48, 0.14);
+      border-color: var(--forest);
+    }
+
+    .poster-preview {
+      position: relative;
+      background: var(--cream-dark);
+      overflow: hidden;
+      aspect-ratio: 3 / 4;
+      border-bottom: 2px solid var(--cream-dark);
+    }
+
+    .poster-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .poster-info {
+      padding: 24px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .poster-tag {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .poster-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--forest);
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+
+    .poster-desc {
+      font-size: 14px;
+      color: var(--ink-muted);
+      margin-bottom: 16px;
+      flex-grow: 1;
+    }
+
+    .key-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      background: var(--cream);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid var(--cream-dark);
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-val {
+      font-weight: 800;
+      font-size: 16px;
+      color: var(--forest);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      text-align: center;
+      padding: 12px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--forest);
+      color: var(--cream);
+      border: 1px solid var(--forest);
+    }
+
+    .btn-primary:hover {
+      background: var(--forest-dark);
+      box-shadow: 0 4px 12px rgba(44, 85, 48, 0.3);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--forest);
+      color: var(--forest);
+    }
+
+    .btn-outline:hover {
+      background: var(--forest);
+      color: var(--cream);
+    }
+
+    .fair-footer {
+      margin-top: 48px;
+      background: white;
+      border: 2px solid var(--cream-dark);
+      padding: 24px 32px;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .fair-footer h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      color: var(--forest);
+      margin-bottom: 4px;
+    }
+
+    .fair-footer p {
+      font-size: 13px;
+      color: var(--ink-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge">Featured Innovation • Bangladesh Innovation Fair 2026</div>
+      <h1>DesiDiet: <span>Business Poster Suite</span></h1>
+      <p class="subtitle">Official commercial, financial, and growth posters created with the DesiDiet brand theme: Warm Cream, Forest Green, Terracotta & Brass Gold.</p>
+      
+      <div class="color-swatch-bar">
+        <span>Brand Palette:</span>
+        <span class="swatch" style="background:#F5F0E8;" title="Cream #F5F0E8"></span> Cream
+        <span class="swatch" style="background:#2C5530;" title="Forest #2C5530"></span> Forest Green
+        <span class="swatch" style="background:#C8472A;" title="Accent #C8472A"></span> Terracotta
+        <span class="swatch" style="background:#B8933E;" title="Gold #B8933E"></span> Gold
+        <span class="swatch" style="background:#1A1714;" title="Ink #1A1714"></span> Ink
+      </div>
+    </header>
+
+    <div class="posters-grid">
+      
+      <!-- Poster 1 -->
+      <div class="poster-card">
+        <div class="poster-preview">
+          <img src="assets/poster_1_market_themed.jpg" alt="Poster 1: Market Opportunity & Lean Canvas">
+        </div>
+        <div class="poster-info">
+          <div class="poster-tag">Poster 1 • Market Opportunity</div>
+          <h2 class="poster-title">Market Opportunity & Lean Canvas</h2>
+          <p class="poster-desc">Unlocking Bangladesh's $1.4B chronic nutrition market. Highlights the 400-dietitian bottleneck, 3-tier TAM-SAM-SOM funnel, and the 700+ food Neo4j GraphRAG unfair advantage.</p>
+          
+          <div class="key-metrics">
+            <div class="metric-item">
+              <span class="metric-val">৳171.4B ($1.4B)</span>
+              <span class="metric-label">Total Market (TAM)</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">40.8 Million</span>
+              <span class="metric-label">Chronic Patients</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">৳1.52B ($12.5M)</span>
+              <span class="metric-label">Target Market (SOM)</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">1 : 440,000</span>
+              <span class="metric-label">Dietitian Ratio Moat</span>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <a href="assets/poster_1_market_themed.jpg" target="_blank" class="btn btn-primary">Open Full Size (8K)</a>
+            <a href="assets/poster_1_market_themed.jpg" download="DesiDiet_Poster1_Market_Themed.jpg" class="btn btn-outline">Download</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Poster 2 -->
+      <div class="poster-card">
+        <div class="poster-preview">
+          <img src="assets/poster_2_financials_themed.jpg" alt="Poster 2: Unit Economics & 36-Month Scale">
+        </div>
+        <div class="poster-info">
+          <div class="poster-tag">Poster 2 • Financial Engine & Breakeven</div>
+          <h2 class="poster-title">Unit Economics & 36-Month Scale</h2>
+          <p class="poster-desc">SaaS profitability applied to preventive healthcare. Features 94.0% gross margin, Month 4 breakeven at 110 subscribers, ৳19.43 variable cost/user, and ৳45.7M Year 3 ARR.</p>
+          
+          <div class="key-metrics">
+            <div class="metric-item">
+              <span class="metric-val">94.0%</span>
+              <span class="metric-label">Gross Margin</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">Month 4</span>
+              <span class="metric-label">Cash Breakeven</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">৳324 / mo</span>
+              <span class="metric-label">Blended ARPU</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">৳19.43 / mo</span>
+              <span class="metric-label">Variable Cost / User</span>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <a href="assets/poster_2_financials_themed.jpg" target="_blank" class="btn btn-primary">Open Full Size (8K)</a>
+            <a href="assets/poster_2_financials_themed.jpg" download="DesiDiet_Poster2_Financials_Themed.jpg" class="btn btn-outline">Download</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Poster 3 -->
+      <div class="poster-card">
+        <div class="poster-preview">
+          <img src="assets/poster_3_omnichannel_themed.jpg" alt="Poster 3: Omnichannel Growth & B2B Moat">
+        </div>
+        <div class="poster-info">
+          <div class="poster-tag">Poster 3 • Distribution & B2B Moat</div>
+          <h2 class="poster-title">Omnichannel Growth & B2B Moat</h2>
+          <p class="poster-desc">Mass adoption architecture: Zero-install WhatsApp bot with bKash subscriptions, ৳30 referral reward for diagnostic centers and clinics, and local grocery price comparison.</p>
+          
+          <div class="key-metrics">
+            <div class="metric-item">
+              <span class="metric-val">WhatsApp-First</span>
+              <span class="metric-label">Zero-Install Flywheel</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">৳30 Payout</span>
+              <span class="metric-label">B2B Clinic Referral</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">GPS Price Match</span>
+              <span class="metric-label">Chaldal & Shwapno</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">Doctor Portal</span>
+              <span class="metric-label">Real-time EHR Tracking</span>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <a href="assets/poster_3_omnichannel_themed.jpg" target="_blank" class="btn btn-primary">Open Full Size (8K)</a>
+            <a href="assets/poster_3_omnichannel_themed.jpg" download="DesiDiet_Poster3_Omnichannel_Themed.jpg" class="btn btn-outline">Download</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="fair-footer">
+      <div>
+        <h3>Print & Exhibition Specifications</h3>
+        <p>Recommended: <strong>A1 (594 × 841 mm)</strong> or <strong>A2 (420 × 594 mm)</strong> on 5mm Matte PVC Foam Board.</p>
+      </div>
+      <div style="font-size: 13px; color: var(--ink-muted); text-align: right;">
+        Live Web App: <strong>desi-diet.vercel.app</strong><br>
+        Developed by Tanzim Hasan Prappo & Abdullah Al Mahmud
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
