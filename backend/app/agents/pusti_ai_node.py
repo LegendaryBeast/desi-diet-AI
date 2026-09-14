@@ -64,7 +64,7 @@ ANY question that combines food/eating with a health condition IS in scope.
   3. NO topics unrelated to food, diet, nutrition, or health.
 
 === NUTRITION RESPONSE RULES ===
-1. Reply in Bengali if user writes in Bengali, English otherwise.
+1. MANDATORY LANGUAGE RULE: By default, ALWAYS reply in Bangla (বাংলা). If the user writes in Bengali script (বাংলা) OR Romanized Bengali / Banglish (e.g., "amar height...", "koto calorie lagbe", "ki khete pari") OR mixed Bengali/English, YOU MUST REPLY IN BANGLA (বাংলা ভাষা ও বাংলা লিপি). ONLY if the user asks FULLY and exclusively in pure English (e.g., "What is my calorie requirement?", "Can I eat bananas with diabetes?") with zero Bengali/Banglish words, should you reply in pure English. If in doubt, ALWAYS use Bangla (বাংলা).
 2. Always name specific Bangladeshi foods (e.g. ভাত, ডাল, মাছ, মুরগি, ডিম).
 3. PRACTICAL HOUSEHOLD PORTIONS (বাস্তবসম্মত গৃহস্থালি পরিমাপ): Communicate food portions like a professional Bangladeshi clinical nutritionist using standard household utensils (বাটি, কাপ, টুকরা, টি, গ্লাস, চামচ, মুঠো) accompanied by exact grams/calories in parentheses (e.g. '১ কাপ ভাত (১৩০ গ্রাম) - ১৭০ ক্যালোরি', '২টি পাতলা রুটি (৭০ গ্রাম)', '১টি সিদ্ধ ডিম (৫০ গ্রাম)', '১ টুকরা মাঝারি মাছ (৬০ গ্রাম)', '১ ছোট বাটি ঘন ডাল (১২০ মিলি)', '১ মাঝারি বাটি সবজি (১৫০ গ্রাম)', '১ গ্লাস দুধ (২০০ মিলি)'). NEVER give bare raw gram numbers alone.
 4. Cross-reference user's medical conditions, meal logs and targets from context.
@@ -129,6 +129,10 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
         rag_food_context=rag_food_context,
     )
 
+    from app.utils import resolve_chat_language, get_language_prompt_directive
+    effective_language = resolve_chat_language(message, state.get("language"))
+    system_msg += get_language_prompt_directive(effective_language)
+
     # If user explicitly opted out of grocery suggestions, tell the model not to mention them.
     if state.get("include_groceries") is False:
         system_msg += "\n\n=== GROCERY PREFERENCE ===\nThe user has chosen NOT to see grocery suggestions. DO NOT mention grocery shopping, prices, store locations, or where to buy ingredients in your response."
@@ -162,6 +166,7 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
                 reply_text = message_obj.content or ""
                 return {
                     **state,
+                    "language": effective_language,
                     "reply": reply_text,
                     "tool_calls": tool_results_list if tool_results_list else None,
                 }
@@ -209,7 +214,7 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
                         user_id=user_id,
                         input_text=description,
                         meal_slot=meal_slot,
-                        language=language,
+                        language=effective_language,
                     )
                     result = logged_meal
                     tool_results_list.append({"tool": func_name, "result": logged_meal})
@@ -268,10 +273,13 @@ async def pusti_ai_node(state: AgentState) -> AgentState:
                     user_context=user_context,
                     rag_food_context=rag_food_context,
                 )
+                system_msg += get_language_prompt_directive(effective_language)
+                if state.get("include_groceries") is False:
+                    system_msg += "\n\n=== GROCERY PREFERENCE ===\nThe user has chosen NOT to see grocery suggestions. DO NOT mention grocery shopping, prices, store locations, or where to buy ingredients in your response."
                 messages[0] = {"role": "system", "content": system_msg}
                 mutated = False
 
     except Exception as e:
         logger.exception("PustiAiNode error in execution loop: %s", e)
-        error_msg = "দুঃখিত, একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।" if language == "bn" else "Sorry, an error occurred. Please try again."
-        return {**state, "reply": error_msg, "error": str(e)}
+        error_msg = "দুঃখিত, একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।" if effective_language == "bn" else "Sorry, an error occurred. Please try again."
+        return {**state, "language": effective_language, "reply": error_msg, "error": str(e)}

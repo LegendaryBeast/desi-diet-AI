@@ -70,13 +70,16 @@ async def safety_guard_node(state: AgentState) -> AgentState:
     # Fast-path for simple greetings
     cleaned_lower = message.lower().strip("!?., ")
     if cleaned_lower in _GREETINGS:
-        has_bengali = any(ord(c) >= 0x0980 and ord(c) <= 0x09FF for c in message)
-        return {**state, "language": "bn" if has_bengali else "en"}
+        from app.utils import resolve_chat_language
+        return {**state, "language": resolve_chat_language(message, state.get("language"))}
 
     messages = [
         {"role": "system", "content": _SAFETY_GUARD_PROMPT},
         {"role": "user", "content": message}
     ]
+
+    from app.utils import resolve_chat_language
+    language = resolve_chat_language(message, state.get("language"))
 
     try:
         raw = await llm_client.chat_completion(
@@ -88,7 +91,6 @@ async def safety_guard_node(state: AgentState) -> AgentState:
         parsed = json.loads(raw)
         is_safe = parsed.get("is_safe", True)
         is_in_scope = parsed.get("is_in_scope", True)
-        language = parsed.get("language", "bn")
     except Exception as e:
         # PHASE F FIX: Fail SAFE, not open.
         # Any classifier failure (timeout, network, malformed JSON, service outage)
@@ -97,8 +99,6 @@ async def safety_guard_node(state: AgentState) -> AgentState:
             "SafetyGuardNode classifier unavailable — failing safe. "
             "Request refused until classifier recovers. Error: %s", e
         )
-        has_bengali = any(ord(c) >= 0x0980 and ord(c) <= 0x09FF for c in message)
-        language = "bn" if has_bengali else "en"
         return {
             **state,
             "intent": "refused",

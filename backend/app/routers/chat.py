@@ -622,7 +622,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "politely steer the conversation back: 'আমি খাদ্য, পুষ্টি এবং স্বাস্থ্য বিষয়ক প্রশ্নে সাহায্য করতে পারি। "
             "আপনার ডায়েট বা খাবার নিয়ে কী জানতে চান?'\n\n"
             "=== NUTRITION RESPONSE RULES ===\n"
-            "1. Always reply in Bengali if the user writes in Bengali, English otherwise.\n"
+            "1. MANDATORY LANGUAGE RULE: By default, ALWAYS reply in Bangla (বাংলা). If the user writes in Bengali script (বাংলা) OR Romanized Bengali / Banglish (e.g., 'amar height...', 'koto calorie lagbe', 'ki khete pari') OR mixed Bengali/English, YOU MUST REPLY IN BANGLA (বাংলা ভাষা ও বাংলা লিপি). ONLY if the user asks FULLY and exclusively in pure English with zero Bengali/Banglish words, should you reply in pure English. If in doubt, ALWAYS use Bangla (বাংলা).\n"
             "2. If the user has not set up their profile, gently guide them to complete it.\n"
             "3. For food/meal questions, cross-reference the user's medical conditions, recent meal logs, "
             "and nutrition targets from the context below. "
@@ -682,6 +682,10 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             f"=== USER'S COMPLETE CONTEXT ===\n{user_context}\n"
             f"{rag_food_context}"
         )
+
+        from app.utils import resolve_chat_language, get_language_prompt_directive
+        effective_language = resolve_chat_language(req.message, req.language)
+        system_msg += get_language_prompt_directive(effective_language)
 
         # 4. Build message list (supports multi-turn history from client)
         history = getattr(req, "history", []) or []
@@ -1126,7 +1130,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "politely steer the conversation back: 'আমি খাদ্য, পুষ্টি এবং স্বাস্থ্য বিষয়ক প্রশ্নে সাহায্য করতে পারি। "
                         "আপনার ডায়েট বা খাবার নিয়ে কী জানতে চান?'\n\n"
                         "=== NUTRITION RESPONSE RULES ===\n"
-                        "1. Always reply in Bengali if the user writes in Bengali, English otherwise.\n"
+                        "1. MANDATORY LANGUAGE RULE: By default, ALWAYS reply in Bangla (বাংলা). If the user writes in Bengali script (বাংলা) OR Romanized Bengali / Banglish (e.g., 'amar height...', 'koto calorie lagbe', 'ki khete pari') OR mixed Bengali/English, YOU MUST REPLY IN BANGLA (বাংলা ভাষা ও বাংলা লিপি). ONLY if the user asks FULLY and exclusively in pure English with zero Bengali/Banglish words, should you reply in pure English. If in doubt, ALWAYS use Bangla (বাংলা).\n"
                         "2. If the user has not set up their profile, gently guide them to complete it.\n"
                         "3. For food/meal questions, cross-reference the user's medical conditions, recent meal logs, "
                         "and nutrition targets from the context below. "
@@ -1170,6 +1174,7 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "Do NOT describe what you would do — actually call the tool.\n\n"
                         f"=== USER'S COMPLETE CONTEXT ===\n{fresh_context}\n"
                     )
+                    fresh_system += get_language_prompt_directive(effective_language)
                     messages[0] = {"role": "system", "content": fresh_system}
 
                 # Stream the final response after tool execution!
@@ -1322,6 +1327,10 @@ async def diet_plan_session(req: DietPlanChatRequest, current_user=Depends(get_c
             )
 
         # 1. Start with the dynamic system prompt
+        from app.utils import resolve_chat_language, get_language_prompt_directive
+        effective_lang = resolve_chat_language(req.message, req.language)
+        dynamic_prompt += get_language_prompt_directive(effective_lang)
+
         messages = [{"role": "system", "content": dynamic_prompt}]
 
         # 2. Add conversation history
@@ -1497,9 +1506,7 @@ async def create_realtime_session(
         rag_context = ""
 
     lang_directive = (
-        "Reply in Bangla (Bengali) by default. Switch to English only if the user speaks English."
-        if language.startswith("bn")
-        else "Reply in the same language the user speaks (Bangla or English)."
+        "MANDATORY LANGUAGE RULE: Reply in Bangla (Bengali) by default. If the user speaks Bengali or Banglish (Romanized Bengali), reply in Bangla. ONLY if the user speaks fully and exclusively in English, reply in pure English."
     )
 
     instructions = (
@@ -1624,10 +1631,13 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
     # 2. Sliding History Windows & Condensation
     active_history, early_summary = await token_optimizer.condense_history(history)
 
+    from app.utils import resolve_chat_language
+    effective_lang = resolve_chat_language(req.message or "", getattr(req, "language", "bn"))
+
     initial_state = {
         "user_id":    current_user.id,
         "message":    req.message or "",
-        "language":   getattr(req, "language", "bn") or "bn",
+        "language":   effective_lang,
         "history":    active_history,
         "intent":     None,
         "condition":  req.condition or "",

@@ -516,8 +516,12 @@ export const ChatWindow = () => {
 
     const history = buildHistory();
 
+    const imagePrompt = i18n.language === 'bn'
+      ? 'অনুগ্রহ করে এই খাবারে কী আছে এবং এটি আমার ডায়েটে কীভাবে মানানসই তা ব্যাখ্যা করুন।'
+      : 'Please describe what you see in this image and how it fits my diet.';
+
     chatApi.unified(
-      textToSend || 'Please describe what you see in this image and how it fits my diet.',
+      textToSend || imagePrompt,
       i18n.language,
       history
     )

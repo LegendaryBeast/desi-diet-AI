@@ -47,5 +47,14 @@ graphify-out/
 
 backend/prisma/dev.db
 
-# Paper
+# Paper build artifacts
 paper/
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.spl
+Materials/test_fig1.*
+Materials/page_*.png
+Materials/fig1_*.png
