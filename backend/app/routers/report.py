@@ -397,6 +397,14 @@ async def get_health_summary(
         except Exception as e:
             print(f"Neo4j micronutrient aggregation error: {e}")
 
+    # Fallback to local offline dataset if Neo4j is offline, paused, or targets missing
+    if not micro_targets_map or len(micro_targets_map) < len(TRACKED_NUTRIENTS):
+        from app.logic.offline_nutrients import get_offline_rda_targets
+        offline_targets = get_offline_rda_targets(profile.age or 30, profile.gender or "male", TRACKED_NUTRIENTS)
+        for ot in offline_targets:
+            if ot["name"] not in micro_targets_map and ot.get("target", 0.0) > 0:
+                micro_targets_map[ot["name"]] = float(ot["target"])
+
     # Build micronutrient result list
     micronutrient_targets = []
     for nut_name in TRACKED_NUTRIENTS:

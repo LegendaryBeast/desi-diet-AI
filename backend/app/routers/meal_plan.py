@@ -27,7 +27,12 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
 
     # 2. Get RDA Key
     from rag_engine.planner import get_rda_key
-    rda_key = get_rda_key(age, gender)
+    rda_res = get_rda_key(age, gender)
+    rda_key = None
+    if isinstance(rda_res, dict) and rda_res.get("status") == "ok":
+        rda_key = rda_res.get("key")
+    elif isinstance(rda_res, str):
+        rda_key = rda_res
 
     # 3. Get required and default nutrients list
     # IMPORTANT: Names MUST match the Nutrient node names stored in Neo4j (from nutrients_abbreviations.csv)
@@ -51,7 +56,7 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
     rag = KhadokGraphRAG()
     driver = rag.get_neo4j_driver()
     nutrients_targets = []
-    if driver is not None:
+    if driver is not None and rda_key:
         query = f"""
         MATCH (n:Nutrient)
         WHERE n.name IN $default_nutrients OR EXISTS {{
@@ -64,16 +69,27 @@ async def _get_micronutrient_details(plan_data: dict, user_id: str, completed_sl
             with driver.session() as session:
                 records = session.run(query, default_nutrients=default_nutrients, conditions=conditions)
                 for record in records:
-                    nutrients_targets.append({
-                        "name": record["name"],
-                        "target": record["rda_val"] or 0.0
-                    })
+                    val = record["rda_val"]
+                    if val is not None and float(val) > 0:
+                        nutrients_targets.append({
+                            "name": record["name"],
+                            "target": float(val)
+                        })
         except Exception as e:
             print(f"Error querying Neo4j for nutrient targets: {e}")
 
-    # Fallback to local offline dataset if Neo4j is offline, paused, or returned empty
-    if not nutrients_targets:
+    # Fallback to local offline dataset if Neo4j is offline, paused, or returned empty/zero targets
+    if not nutrients_targets or all(nt.get("target", 0.0) == 0.0 for nt in nutrients_targets):
         nutrients_targets = get_offline_rda_targets(age, gender, default_nutrients)
+    else:
+        # If Neo4j was missing some default nutrients, backfill from offline targets
+        found_names = {nt["name"] for nt in nutrients_targets if nt.get("target", 0.0) > 0}
+        missing_defaults = [n for n in default_nutrients if n not in found_names]
+        if missing_defaults:
+            offline_fallback = get_offline_rda_targets(age, gender, missing_defaults)
+            for fb in offline_fallback:
+                if fb.get("target", 0.0) > 0:
+                    nutrients_targets.append(fb)
 
     # Helper for units and scaling standard_rda_mg
     def get_nutrient_unit_and_val(name: str, db_val_mg: float):
