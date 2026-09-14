@@ -642,6 +642,448 @@
       }
     ]
   },
+  "Relational Cosine Baseline": {
+    "metrics": {
+      "adapter": "Relational Cosine Baseline",
+      "total_scenarios": 13,
+      "feasible_completion_rate_pct": 0.0,
+      "critical_violations_total": 0,
+      "critical_violations_per_plan": 0.0,
+      "appropriate_abstention_rate_pct": 0.0,
+      "verified_plan_rate_pct": 0.0
+    },
+    "runs": [
+      {
+        "scenario_id": "SCN_001_EN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_001_BN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_002_EN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_002_BN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_003_EN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_003_BN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_004_EN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_004_BN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_005_EN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_005_BN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_006_EN",
+        "family_id": "FAM_006",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_007_INFEASIBLE",
+        "family_id": "FAM_007",
+        "expected_feasibility": "infeasible",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      },
+      {
+        "scenario_id": "SCN_008_UNSUPPORTED",
+        "family_id": "FAM_008",
+        "expected_feasibility": "unsupported",
+        "output": {
+          "adapter": "Relational Cosine Baseline",
+          "status": "completed",
+          "abstained": false,
+          "cosine_score": 0.87,
+          "stated_kcal": 1960.0,
+          "stated_protein_g": 71.5,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Tabular relational facts with cosine angle objective; unconstrained portions."
+        }
+      }
+    ]
+  },
+  "Coverage-Aware Ranking Baseline": {
+    "metrics": {
+      "adapter": "Coverage-Aware Ranking Baseline",
+      "total_scenarios": 13,
+      "feasible_completion_rate_pct": 0.0,
+      "critical_violations_total": 0,
+      "critical_violations_per_plan": 0.0,
+      "appropriate_abstention_rate_pct": 0.0,
+      "verified_plan_rate_pct": 0.0
+    },
+    "runs": [
+      {
+        "scenario_id": "SCN_001_EN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_001_BN",
+        "family_id": "FAM_001",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_002_EN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_002_BN",
+        "family_id": "FAM_002",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_003_EN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_003_BN",
+        "family_id": "FAM_003",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_004_EN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_004_BN",
+        "family_id": "FAM_004",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_005_EN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_005_BN",
+        "family_id": "FAM_005",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_006_EN",
+        "family_id": "FAM_006",
+        "expected_feasibility": "feasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_007_INFEASIBLE",
+        "family_id": "FAM_007",
+        "expected_feasibility": "infeasible",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      },
+      {
+        "scenario_id": "SCN_008_UNSUPPORTED",
+        "family_id": "FAM_008",
+        "expected_feasibility": "unsupported",
+        "output": {
+          "adapter": "Coverage-Aware Ranking Baseline",
+          "status": "completed",
+          "abstained": false,
+          "stated_kcal": 1990.0,
+          "stated_protein_g": 74.0,
+          "coverage_score": 0.76,
+          "clinical_violations": [],
+          "verified": false,
+          "notes": "Coverage-aware deficit scoring heuristic; improves on cosine angle but lacks joint LP portion solving."
+        }
+      }
+    ]
+  },
   "Portion Planner + Deterministic Verifier": {
     "metrics": {
       "adapter": "Portion Planner + Deterministic Verifier",

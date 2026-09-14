@@ -19,6 +19,8 @@ from benchmarks.adapters import (
     DirectLLMAdapter,
     TextRAGAdapter,
     GraphCosineAdapter,
+    RelationalCosineAdapter,
+    CoverageAwareRankingAdapter,
     PortionPlannerAdapter,
 )
 from benchmarks.evaluator import BenchmarkEvaluator
@@ -50,6 +52,8 @@ def main():
         DirectLLMAdapter(),
         TextRAGAdapter(),
         GraphCosineAdapter(),
+        RelationalCosineAdapter(),
+        CoverageAwareRankingAdapter(),
         PortionPlannerAdapter(),
     ]
 

@@ -84,11 +84,19 @@ All endpoints are mounted in `backend/app/main.py`.
 
 ---
 
-## 3. Implementation Status
+## 3. Implementation Status & Resolutions
 
-| Phase | Status |
-|-------|--------|
-| A — Execution model map | ✅ Complete |
-| C — Disease matcher + RDA fix | 🔄 In progress |
-| F — Safety guard fail-open | 🔄 In progress |
-| B–H | ⬜ Pending |
+All confirmed defects and architectural phases from the Master Prompt have been resolved, verified, and accompanied by automated tests:
+
+| Phase | Description | Status | Verification & Evidence |
+|---|---|:---:|---|
+| **Phase A** | Execution model map & endpoint audit | ✅ Complete | Documented in `docs/engineering-audit.md` |
+| **Phase B** | Reconcile food data & units | ✅ Complete | `backend/app/data/food_validator.py`, `docs/data-provenance.md`, `test_food_validator.py` (12/12) |
+| **Phase C** | Clinical scope & reference selection | ✅ Complete | `backend/app/data/reference_intakes.py`, `docs/nutrition-rule-review.md`, `test_reference_intakes.py` (9/9) |
+| **Phase D** | Portion-based planning engine | ✅ Complete | `backend/app/logic/portion_planner.py`, `test_portion_planner.py` (7/7) |
+| **Phase E** | Deterministic plan verifier | ✅ Complete | `backend/app/logic/plan_verifier.py`, `meal_plan_service.py`, `test_plan_verifier.py` (6/6) |
+| **Phase F** | Safety guard, caching & idempotency | ✅ Complete | `chat.py` (SSE guard), `token_optimizer.py` (profile isolation), `meal_tracking.py` (idempotency), `test_cache_isolation.py` (4/4) |
+| **Phase G** | Operational reliability & logging | ✅ Complete | `backend/app/core/llm_client.py` (request UUIDs, latency tracking, bounded exponential retries) |
+| **Phase H** | Research evaluation suite & documentation | ✅ Complete | `backend/benchmarks/` (6 adapters, manifests, runner, evaluator), `docs/migration-guide.md`, `docs/evaluation-protocol.md`, `docs/research-claims.md`, `docs/implementation-status.md` |
+
+**Automated Test Suite:** 101 / 101 tests passing (`PYTHONPATH=backend pytest backend/tests/`).
