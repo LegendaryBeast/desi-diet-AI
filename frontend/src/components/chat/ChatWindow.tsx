@@ -71,9 +71,43 @@ function isFoodRelatedQuery(text: string): boolean {
   return FOOD_QUERY_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()));
 }
 
+function cleanMathAndLatex(text: string): string {
+  if (!text) return text;
+  let cleaned = text;
+  // Fractions: \frac{a}{b} -> (a / b)
+  cleaned = cleaned.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1 / $2)');
+  // Font/text styling inside math: \text{...}, \mathrm{...}, \mathbf{...}, \mathit{...}
+  cleaned = cleaned.replace(/\\(?:text|mathrm|mathbf|mathit)\{\s*([^}]+?)\s*\}/g, '$1');
+  // Math operators & symbols
+  cleaned = cleaned.replace(/\\times/g, '×');
+  cleaned = cleaned.replace(/\\cdot/g, '·');
+  cleaned = cleaned.replace(/\\approx/g, '≈');
+  cleaned = cleaned.replace(/\\div/g, '÷');
+  cleaned = cleaned.replace(/\\pm/g, '±');
+  cleaned = cleaned.replace(/\\le(q)?\b/g, '≤');
+  cleaned = cleaned.replace(/\\ge(q)?\b/g, '≥');
+  cleaned = cleaned.replace(/\\ne(q)?\b/g, '≠');
+  // Delimiters
+  cleaned = cleaned.replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+  cleaned = cleaned.replace(/\\left\[/g, '[').replace(/\\right\]/g, ']');
+  cleaned = cleaned.replace(/\\left\{/g, '{').replace(/\\right\}/g, '}');
+  // Math block delimiters \[ and \]
+  cleaned = cleaned.replace(/\\\[\s*/g, '').replace(/\s*\\\]/g, '');
+  // Inline math delimiters \( and \)
+  cleaned = cleaned.replace(/\\\(\s*/g, '').replace(/\s*\\\)/g, '');
+  // Double dollars $$ ... $$
+  cleaned = cleaned.replace(/\$\$([^\$]+)\$\$/g, '$1');
+  // Single dollars $ ... $
+  cleaned = cleaned.replace(/(?<!\$)\$(?!\$)([^\$\n]+)(?<!\$)\$(?!\$)/g, '$1');
+  // Collapse multiple inline spaces
+  cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
+  return cleaned;
+}
+
 const renderFormattedText = (text: string) => {
   if (!text) return null;
-  const lines = text.split('\n');
+  const sanitized = cleanMathAndLatex(text);
+  const lines = sanitized.split('\n');
   return lines.map((line, lineIndex) => {
     let content = line;
     let isHeader = false;
@@ -84,11 +118,28 @@ const renderFormattedText = (text: string) => {
       headerLevel = headerMatch[1].length;
       content = headerMatch[2];
     }
-    const isBullet = content.trim().startsWith('-');
-    if (isBullet) content = content.replace(/^\s*-\s*/, '');
+    const isBullet = content.trim().startsWith('-') || content.trim().startsWith('•');
+    if (isBullet) content = content.replace(/^[\s-•]+\s*/, '');
     const parts = content.split('**');
     const formattedLine = parts.map((part, partIndex) => {
       if (partIndex % 2 === 1) return <strong key={partIndex} className="font-bold text-accent">{part}</strong>;
+      if (part.includes('`')) {
+        const codeParts = part.split('`');
+        return (
+          <span key={partIndex}>
+            {codeParts.map((sub, subIdx) => {
+              if (subIdx % 2 === 1) {
+                return (
+                  <code key={subIdx} className="bg-sand-light/80 text-accent font-semibold px-1.5 py-0.5 rounded text-xs">
+                    {sub}
+                  </code>
+                );
+              }
+              return sub;
+            })}
+          </span>
+        );
+      }
       return part;
     });
     if (isHeader) {

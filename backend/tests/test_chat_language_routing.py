@@ -117,3 +117,39 @@ class TestSafetyGuardLanguagePropagation:
         ):
             result = await safety_guard_node(state)
         assert result.get("language") == "en"
+
+
+class TestCleanMathAndLatex:
+    """Verify raw LaTeX syntax and math delimiters are cleanly sanitized into plain text."""
+
+    def test_sanitize_bmr_tdee_formula_from_user_screenshot(self):
+        from app.utils import clean_math_and_latex
+
+        raw = (
+            "পুরুষদের জন্য BMR হিসাব:\n"
+            r"\[ \text{BMR} = 10 \times \text{ওজন (কেজি)} + 6.25 \times \text{উচ্চতা (সেমি)} - 5 \times \text{বয়স (বছর)} + 5 \]"
+            "\n"
+            r"\[ \text{BMR} = 560 + 1015.625 - 130 + 5 = 1450.625 \text{ ক্যালোরি (প্রায় 1451 ক্যালোরি)} \]"
+            "\n"
+            r"\[ \text{TDEE} = 1451 \times 1.375 \approx 1990 \text{ ক্যালোরি} \]"
+        )
+
+        cleaned = clean_math_and_latex(raw)
+
+        # Raw LaTeX delimiters and commands must NOT be present
+        assert r"\[" not in cleaned
+        assert r"\]" not in cleaned
+        assert r"\text{" not in cleaned
+        assert r"\times" not in cleaned
+        assert r"\approx" not in cleaned
+
+        # Clean Unicode representations must be present
+        assert "BMR = 10 × ওজন (কেজি) + 6.25 × উচ্চতা (সেমি) - 5 × বয়স (বছর) + 5" in cleaned
+        assert "TDEE = 1451 × 1.375 ≈ 1990 ক্যালোরি" in cleaned
+
+    def test_sanitize_fractions_and_delimiters(self):
+        from app.utils import clean_math_and_latex
+
+        raw = r"Formula: $\frac{A}{B}$ and \(\text{Result} = 10 \pm 2\)"
+        cleaned = clean_math_and_latex(raw)
+        assert cleaned == "Formula: (A / B) and Result = 10 ± 2"

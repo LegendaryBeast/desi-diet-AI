@@ -74,9 +74,6 @@
 
 \author[1]{Tanzim Hasan Prappo\corref{cor1}}
 \ead{tanzimh46@gmail.com}
-\author[1]{Nazrul Islam}
-\author[1]{Md. Shymon Islam}
-\author[1]{Forhad Rabbi}
 \cortext[cor1]{Corresponding author}
 
 \affiliation[1]{organization={Department of Computer Science and Engineering, Shahjalal University of Science and Technology},
@@ -88,7 +85,7 @@
 % ABSTRACT
 % =============================================================================
 \begin{abstract}
-Automating personalized clinical dietary guidance in South Asia requires bridging population-specific food composition tables, metabolic disease constraints, and regional culinary structures into a verifiable reasoning pipeline. In Bangladesh, where non-communicable diseases (NCDs) account for 67\% of annual mortality alongside endemic micronutrient malnutrition, ungrounded generative large language models (LLMs) routinely hallucinate portion sizes, omit cooking staples (oil and salt), and violate hard clinical contraindications. Conversely, existing GraphRAG formulations rely on unconstrained cosine-similarity heuristics that evaluate vector direction rather than caloric and nutritional adequacy, lacking portion-solving capabilities and post-generation safety controls. This paper presents an artifact-grounded systems and engineering evaluation of \systemname{}, an open-source, culturally tailored clinical nutrition framework for Bangladesh. \systemname{} anchors dietary decision support in three core software artifacts: (1)~a verified canonical knowledge graph reconciling all 582 foods from the Bangladesh Food Composition Table (FCT 2014) with explicit mass/energy unit normalization and thermodynamic proximate sum validation ($95.0\,\text{g} \le \text{sum} \le 105.0\,\text{g}$); (2)~a clinically adjudicated demographic reference engine formalizing life-stage Recommended Dietary Allowances (RDA) and Estimated Average Requirements (EAR), specifically adjudicating the 29.0\,mg/day adult female iron RDA under low-bioavailability cereal diets codified in the \textit{Nutritional Dietary Guidelines for Bangladesh 2025}; and (3)~a deterministic portion-constrained linear optimization engine that computes exact gram weights ($\text{Nutrient} = \sum g_i \times N_i / 100$) across five daily meal slots while enforcing spice caps ($\le 10$\,g), salt caps ($\le 5$\,g), and mandatory cooking oil accounting ($15$--$30$\,g/day). Generative model output is intercepted by an independent deterministic Plan Verifier that recalculates nutrient sums from raw ingredients, flags caloric drift exceeding 5\%, detects clinical contraindications, and applies a bounded repair loop. We present an empirical audit of the underlying software artifacts, provide mathematical proofs and geometric counterexamples demonstrating why angular cosine ranking is structurally incapable of ensuring nutritional adequacy, and report scenario-level verification benchmarks across 13 clinical manifests demonstrating the elimination of contraindications and control of caloric drift to 2.45\% ($p < 0.001$).
+Personalized clinical dietary decision support in South Asia faces severe public health challenges driven by the dual burden of non-communicable diseases (NCDs) and widespread micronutrient malnutrition. In Bangladesh, where NCDs account for 67\% of annual mortality, ungrounded generative large language models (LLMs) frequently hallucinate food portion sizes, omit cultural cooking staples such as added salt and cooking oil, and violate critical clinical contraindications. Furthermore, prevailing GraphRAG methods rely on scale-invariant cosine similarity, which evaluates nutrient vector orientation rather than physical caloric and quantitative adequacy. This paper presents an artifact-grounded systems and engineering evaluation of \systemname{}, an open-source, culturally tailored clinical nutrition framework for Bangladesh. \systemname{} anchors dietary guidance in three deterministic software artifacts: (1)~a canonical knowledge graph reconciling 582 foods from the Bangladesh Food Composition Table (FCT 2014) validated against thermodynamic mass-balance bounds ($95$--$105$\,g proximate sum); (2)~a clinical reference engine codifying national dietary guidelines and life-stage Recommended Dietary Allowances (RDA); and (3)~a portion-constrained linear optimization engine that computes exact gram weights across daily meal slots while enforcing strict caps on spices, salt ($\le 5$\,g), and cooking oil ($15$--$30$\,g). Candidate plans from bilingual LLMs are intercepted by an independent, deterministic Plan Verifier that audits ingredient-level nutrient sums, catches clinical contraindications, and executes a bounded repair loop for caloric drift exceeding 5\%. Evaluating \systemname{} across 13 cross-lingual clinical scenarios demonstrates that the system completely eliminates clinical contraindications (from 0.62 to 0.00 violations per plan) and constrains caloric drift to 2.45\% ($p < 0.001$), providing a verifiable and reproducible foundation for AI-assisted dietetics.
 \end{abstract}
 
 \begin{keyword}
@@ -156,9 +153,9 @@ Despite the urgent public health demand, access to professional clinical dietary
   \node[box] (llm) at (10.8, -3.6) {\textbf{LLM Formatter}\\\tiny Bilingual Presentation};
 
   % Row 4: Verification & Delivery
-  \node[verif] (verifier) at (10.8, -5.4) {\textbf{Plan Verifier}\\\tiny Raw Ingredient Recalculation\\Drift Check ($>5\%$) \& Violations};
-  \node[box] (output) at (7.0, -5.4) {\textbf{Verified Plan Output}\\\tiny Structured JSON + UI Delivery};
-  \node[box] (refusal) at (3.5, -5.4) {\textbf{Safe Refusal}\\\tiny Emergency Medical Warning};
+  \node[verif] (verifier) at (10.8, -5.8) {\textbf{Plan Verifier}\\\tiny Raw Ingredient Recalculation\\Drift Check ($>5\%$) \& Violations};
+  \node[box] (output) at (6.2, -5.8) {\textbf{Verified Plan Output}\\\tiny Structured JSON + UI Delivery};
+  \node[box] (refusal) at (3.2, -5.8) {\textbf{Safe Refusal}\\\tiny Emergency Medical Warning};
 
   % Arrows
   \draw[arrow] (raw) -- (validator);
@@ -175,8 +172,8 @@ Despite the urgent public health demand, access to professional clinical dietary
   \draw[arrow] (planner) -- (llm);
   \draw[arrow] (llm) -- (verifier);
   
-  \draw[arrow] (verifier) -- node[above, font=\tiny, text=green!60!black] {Passed} (output);
-  \draw[feedback] (verifier) -- ++(-1.8, 0) -- ++(0, 1.2) -| node[above, near start, font=\tiny, text=red!70!black] {Repair Drift $> 5\%$ (Max 3)} (planner);
+  \draw[arrow] (verifier) -- node[above, font=\tiny, text=green!60!black] {\textbf{Passed}} (output);
+  \draw[feedback] ([xshift=-6mm]verifier.north) -- (10.2, -4.8) -- node[midway, above, font=\tiny, text=red!70!black] {Repair Drift $> 5\%$ (Max 3)} (6.6, -4.8) -- ([xshift=-4mm]planner.south);
 
   \end{tikzpicture}
   }
@@ -1000,38 +997,12 @@ The necessity of deterministic verification is highlighted by two critical edge 
 \label{sec:deployment}
 
 \subsection{Multi-Channel Accessibility}
-User attrition in digital health apps frequently exceeds 75\% within 30 days due to manual data logging friction~\cite{villinger2019health}. In Bangladesh, where health literacy varies widely, requiring patients to weigh food and navigate complex English drop-down menus leads to rapid abandonment. \systemname{} addresses this by deploying across three synchronized interfaces (\Cref{fig:user_interfaces}):
+User attrition in digital health applications frequently exceeds 75\% within 30 days due to manual data logging friction~\cite{villinger2019health}. In Bangladesh, where health literacy varies widely, requiring patients to weigh food and navigate complex English drop-down menus leads to rapid abandonment. \systemname{} addresses this by deploying across three synchronized modalities:
 \begin{enumerate}[leftmargin=*,itemsep=1.5pt]
-  \item \textbf{Web Clinical Dashboard (\Cref{fig:ui_web}):} Provides weekly meal schedules, macro progress bars, and micronutrient radar trackers.
-  \item \textbf{Native Bengali WhatsApp Chatbot (\Cref{fig:ui_wa}):} Allows patients to query recommendations and log meals via natural language text in Bengali without installing standalone software.
-  \item \textbf{Portion Verification UI (\Cref{fig:ui_verif}):} Displays ground-truth recalculations alongside visual meal scores and safe alternative suggestions.
+  \item \textbf{Web Clinical Dashboard:} Provides structured weekly meal schedules, macronutrient progress indicators, and micronutrient tracking against reference intake envelopes.
+  \item \textbf{Native Bengali WhatsApp Interface:} Enables patients to query dietary recommendations and log meals via natural conversational Bengali without requiring the installation of standalone applications.
+  \item \textbf{Deterministic Portion Verification Engine:} Displays transparent nutrient recalculations alongside validated portion allocations and contraindication-safe alternatives in real time.
 \end{enumerate}
-
-\begin{figure*}[!t]
-  \centering
-  \begin{subfigure}[b]{0.31\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/app_meal_plan.png}
-    \caption{Web Dashboard Meal Calendar}
-    \label{fig:ui_web}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.31\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/whatsapp_advice.png}
-    \caption{WhatsApp Conversational Agent}
-    \label{fig:ui_wa}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.31\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/output_comparison.png}
-    \caption{Portion \& Macro Verification UI}
-    \label{fig:ui_verif}
-  \end{subfigure}
-  \caption{\textbf{Multi-channel deployment artifacts of \systemname{}:} (a)~Web dashboard displaying verified meal slots and micronutrient progress; (b)~Native Bengali consultation via WhatsApp; and (c)~Real-time nutrient recalculation and portion verification interface.}
-  \label{fig:user_interfaces}
-\end{figure*}
 
 \subsection{Bilingual Conversational Interaction}
 Below is an authentic trace of a patient consultation over the WhatsApp interface:

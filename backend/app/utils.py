@@ -123,14 +123,31 @@ def resolve_chat_language(message: str, client_language: Optional[str] = None) -
 
 def get_language_prompt_directive(language: str) -> str:
     """
-    Generate an authoritative system prompt directive to enforce the response language.
+    Generate an authoritative system prompt directive to enforce the response language
+    and strictly prohibit raw LaTeX or code formatting in formula explanations.
     """
+    no_latex_instruction_en = (
+        "STRICT PRESENTATION RULE — NO RAW LATEX OR CODE:\n"
+        "NEVER output raw LaTeX code, math delimiters (such as \\[ \\], \\( \\), $$, $), "
+        "or LaTeX commands (such as \\text{...}, \\times, \\approx) for formulas or calculations.\n"
+        "Always present BMR, TDEE, calorie calculations, and nutritional arithmetic in clean, "
+        "human-friendly plain text with standard symbols (e.g. BMR = (10 × weight) + (6.25 × height)...).\n"
+    )
+    no_latex_instruction_bn = (
+        "STRICT PRESENTATION RULE — NO RAW LATEX OR CODE:\n"
+        "কখনোই কোনো হিসাব বা সূত্রের জন্য raw LaTeX কোড, গণিত ডিলিমিটার (যেমন \\[ \\], \\( \\), $$, $), "
+        "বা LaTeX কমান্ড (যেমন \\text{...}, \\times, \\approx) ব্যবহার করবেন না।\n"
+        "সকল BMR, TDEE এবং ক্যালোরির হিসাব পরিষ্কার ও সুন্দর সাধারণ বাংলা টেক্সটে উপস্থাপন করুন "
+        "(যেমন: BMR = (১০ × ওজন) + (৬.২৫ × উচ্চতা)..., TDEE = BMR × ১.৩৭৫)।\n"
+    )
+
     if language == "en":
         return (
             "\n\n=== MANDATORY LANGUAGE DIRECTIVE ===\n"
             "The user asked FULLY in English.\n"
             "You MUST formulate your response ENTIRELY in pure, professional English.\n"
             "Do not include Bengali script unless specifically requested.\n"
+            f"{no_latex_instruction_en}"
         )
     return (
         "\n\n=== MANDATORY LANGUAGE DIRECTIVE ===\n"
@@ -139,5 +156,55 @@ def get_language_prompt_directive(language: str) -> str:
         "CRITICAL: Even if the user typed using English letters (Banglish, e.g. 'amar height... koto calorie lagbe'), "
         "YOU MUST RESPOND COMPLETELY IN BANGLA (বাংলা).\n"
         "Translate all nutritional explanations, calorie calculations, portion sizes, and food names into warm, natural Bengali.\n"
+        f"{no_latex_instruction_bn}"
     )
+
+
+def clean_math_and_latex(text: str) -> str:
+    """
+    Sanitize and clean raw LaTeX math delimiters and commands from LLM responses
+    so that users see clean, readable plain-text formulas instead of raw code.
+    """
+    if not text:
+        return text
+
+    # Fractions: \frac{a}{b} -> (a / b)
+    cleaned = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1 / \2)', text)
+
+    # Font styles: \text{...}, \mathrm{...}, \mathbf{...}, \mathit{...}
+    cleaned = re.sub(r'\\(?:text|mathrm|mathbf|mathit)\{\s*([^}]+?)\s*\}', r'\1', cleaned)
+
+    # Math operators & symbols
+    cleaned = cleaned.replace(r'\times', '×')
+    cleaned = cleaned.replace(r'\cdot', '·')
+    cleaned = cleaned.replace(r'\approx', '≈')
+    cleaned = cleaned.replace(r'\div', '÷')
+    cleaned = cleaned.replace(r'\pm', '±')
+    cleaned = re.sub(r'\\le(q)?\b', '≤', cleaned)
+    cleaned = re.sub(r'\\ge(q)?\b', '≥', cleaned)
+    cleaned = re.sub(r'\\ne(q)?\b', '≠', cleaned)
+
+    # Parentheses and brackets
+    cleaned = cleaned.replace(r'\left(', '(').replace(r'\right)', ')')
+    cleaned = cleaned.replace(r'\left[', '[').replace(r'\right]', ']')
+    cleaned = cleaned.replace(r'\left\{', '{').replace(r'\right\}', '}')
+
+    # Math block delimiters \[ and \]
+    cleaned = re.sub(r'\\\[\s*', '', cleaned)
+    cleaned = re.sub(r'\s*\\\]', '', cleaned)
+
+    # Inline math delimiters \( and \)
+    cleaned = re.sub(r'\\\(\s*', '', cleaned)
+    cleaned = re.sub(r'\s*\\\)', '', cleaned)
+
+    # Double dollars $$ ... $$
+    cleaned = re.sub(r'\$\$([^\$]+)\$\$', r'\1', cleaned)
+
+    # Single dollars $ ... $ (only if on single line with equation)
+    cleaned = re.sub(r'(?<!\$)\$(?!\$)([^\$\n]+)(?<!\$)\$(?!\$)', r'\1', cleaned)
+
+    # Collapse multiple inline horizontal spaces
+    cleaned = re.sub(r'[ \t]{2,}', ' ', cleaned)
+
+    return cleaned
 

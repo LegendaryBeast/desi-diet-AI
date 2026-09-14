@@ -678,7 +678,8 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
             "   - 'Show my medicines' → call get_medicine_reminders\n"
             "   - 'I feel dizzy' → call log_health with symptoms\n"
             "   - 'My blood pressure is 140/90' → call log_health with blood_pressure\n"
-            "Do NOT describe what you would do — actually call the tool.\n\n"
+            "Do NOT describe what you would do — actually call the tool.\n"
+            "11. CLEAN PRESENTATION — NO RAW LATEX OR CODE: NEVER output raw LaTeX math delimiters (such as \\[ \\], \\( \\), $$, $), LaTeX math syntax (such as \\text{...}, \\times, \\approx), or programming code blocks when presenting BMR, TDEE, or nutritional formulas. Always write clean, natural plain-text arithmetic formulas with standard symbols (e.g. 'BMR = (১০ × ওজন) + (৬.২৫ × উচ্চতা)...', 'TDEE = BMR × ১.৩৭৫').\n\n"
             f"=== USER'S COMPLETE CONTEXT ===\n{user_context}\n"
             f"{rag_food_context}"
         )
@@ -1171,7 +1172,8 @@ async def chat(req: ChatRequest, current_user=Depends(get_current_user)):
                         "   - 'Show my medicines' → call get_medicine_reminders\n"
                         "   - 'I feel dizzy' → call log_health with symptoms\n"
                         "   - 'My blood pressure is 140/90' → call log_health with blood_pressure\n"
-                        "Do NOT describe what you would do — actually call the tool.\n\n"
+                        "Do NOT describe what you would do — actually call the tool.\n"
+                        "11. CLEAN PRESENTATION — NO RAW LATEX OR CODE: NEVER output raw LaTeX math delimiters (such as \\[ \\], \\( \\), $$, $), LaTeX math syntax (such as \\text{...}, \\times, \\approx), or programming code blocks when presenting BMR, TDEE, or nutritional formulas. Always write clean, natural plain-text arithmetic formulas with standard symbols (e.g. 'BMR = (১০ × ওজন) + (৬.২৫ × উচ্চতা)...', 'TDEE = BMR × ১.৩৭৫').\n\n"
                         f"=== USER'S COMPLETE CONTEXT ===\n{fresh_context}\n"
                     )
                     fresh_system += get_language_prompt_directive(effective_language)
@@ -1652,8 +1654,11 @@ async def unified_chat(req: UnifiedChatRequest, current_user=Depends(get_current
 
     try:
         result = await unified_graph.ainvoke(initial_state)
+        from app.utils import clean_math_and_latex
+        raw_reply = result.get("reply") or ""
+        clean_reply = clean_math_and_latex(raw_reply)
         response_data = {
-            "reply":      result.get("reply") or "",
+            "reply":      clean_reply,
             "intent":     result.get("intent") or "pusti_ai",
             "tool_calls": result.get("tool_calls"),
             "error":      result.get("error"),
