@@ -397,7 +397,7 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
           <div className="w-1.5 h-5 bg-accent rounded-full" />
           <div>
             <h2 className="font-display text-lg md:text-xl font-black text-ink">
-              আজ আপনি কী খেয়েছেন?
+              {lang === 'bn' ? 'আজ আপনি কী খেয়েছেন?' : 'What did you eat today?'}
             </h2>
             <p className="text-[0.7rem] uppercase tracking-widest text-ink-faint font-body font-bold mt-1">
               {lang === 'bn' ? 'টাইপ · কথা বলুন · ছবি তুলুন' : 'Type · Speak · Snap a photo'}
@@ -469,9 +469,9 @@ export const MealLogSection: React.FC<MealLogSectionProps> = ({ onTrackingUpdate
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder='e.g. "এক প্লেট ভাত, ডাল আর মাছ" or "1 banana and a glass of milk"'
+              placeholder={lang === 'bn' ? 'যেমন: "এক প্লেট ভাত, ডাল আর মাছ" অথবা "1 banana and a glass of milk"' : 'e.g. "1 plate rice, dal, and fish" or "1 banana and a glass of milk"'}
               rows={3}
-              className="w-full bg-cream/50 border border-ink/10 rounded-2xl p-4 font-bn text-sm focus:outline-none focus:border-accent/60 focus:ring-2 ring-accent/10 resize-none"
+              className={`w-full bg-cream/50 border border-ink/10 rounded-2xl p-4 ${lang === 'bn' ? 'font-bn' : ''} text-sm focus:outline-none focus:border-accent/60 focus:ring-2 ring-accent/10 resize-none`}
             />
             <button
               onClick={() => submitText(true)}

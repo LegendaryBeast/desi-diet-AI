@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   Crown,
   Sparkles,
-  Check,
-  Loader2,
   CreditCard,
   ShieldCheck,
   X,
@@ -12,12 +11,12 @@ import {
   CalendarDays,
   MessageSquare,
   Zap,
-  Heart,
   Users,
   Stethoscope,
   Baby,
   Star,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { useSubscription, SubscriptionTier } from '../../contexts/SubscriptionContext';
 
@@ -28,22 +27,30 @@ interface ProModalProps {
   trigger?: 'chat_limit' | 'regenerate' | 'tomorrow' | 'general';
 }
 
-const TRIGGER_MESSAGES: Record<string, { title: string; subtitle: string }> = {
+const TRIGGER_MESSAGES: Record<string, { titleBn: string; titleEn: string; subBn: string; subEn: string }> = {
   chat_limit: {
-    title: 'আপনার ফ্রি মেসেজ শেষ!',
-    subtitle: 'আরো কথা বলতে একটি প্ল্যান বেছে নিন',
+    titleBn: 'আপনার ফ্রি মেসেজ শেষ!',
+    titleEn: 'Free Message Limit Reached!',
+    subBn: 'আরো কথা বলতে একটি প্ল্যান বেছে নিন',
+    subEn: 'Choose a plan to continue asking unlimited questions',
   },
   regenerate: {
-    title: 'ফ্রি প্ল্যানে পুনরায় তৈরি সম্ভব নয়',
-    subtitle: 'প্ল্যান রিজেনারেট করতে আপগ্রেড করুন',
+    titleBn: 'ফ্রি প্ল্যানে পুনরায় তৈরি সম্ভব নয়',
+    titleEn: 'Regenerate is a Pro Feature',
+    subBn: 'প্ল্যান রিজেনারেট করতে আপগ্রেড করুন',
+    subEn: 'Upgrade to customize and regenerate daily meal plans',
   },
   tomorrow: {
-    title: 'আগামীকালের প্ল্যান প্রো ফিচার',
-    subtitle: 'অ্যাডভান্স মিল প্ল্যানিং-এর জন্য আপগ্রেড করুন',
+    titleBn: 'আগামীকালের প্ল্যান প্রো ফিচার',
+    titleEn: "Tomorrow's Plan is a Pro Feature",
+    subBn: 'অ্যাডভান্স মিল প্ল্যানিং-এর জন্য আপগ্রেড করুন',
+    subEn: 'Upgrade for advance meal planning and forecasting',
   },
   general: {
-    title: 'আপনার প্ল্যান বেছে নিন',
-    subtitle: 'আপনার প্রয়োজন অনুযায়ী সেরা প্ল্যান সিলেক্ট করুন',
+    titleBn: 'আপনার প্ল্যান বেছে নিন',
+    titleEn: 'Choose Your Plan',
+    subBn: 'আপনার প্রয়োজন অনুযায়ী সেরা প্ল্যান সিলেক্ট করুন',
+    subEn: 'Select the best plan suited for your health and lifestyle',
   },
 };
 
@@ -52,7 +59,8 @@ interface PlanTier {
   name: string;
   nameEn: string;
   price: number;
-  badge?: string;
+  badgeBn?: string;
+  badgeEn?: string;
   badgeColor?: string;
   gradient: string;
   borderColor: string;
@@ -81,7 +89,8 @@ const PLAN_TIERS: PlanTier[] = [
     name: 'প্রো',
     nameEn: 'Pro',
     price: 399,
-    badge: 'জনপ্রিয়',
+    badgeBn: 'জনপ্রিয়',
+    badgeEn: 'Popular',
     badgeColor: 'from-amber-400 to-orange-500',
     gradient: 'from-amber-500 via-orange-500 to-rose-500',
     borderColor: 'border-orange-300',
@@ -99,7 +108,8 @@ const PLAN_TIERS: PlanTier[] = [
     name: 'ফ্যামিলি',
     nameEn: 'Family',
     price: 999,
-    badge: '৫ জন সদস্য',
+    badgeBn: '৫ জন সদস্য',
+    badgeEn: '5 Members',
     badgeColor: 'from-violet-500 to-purple-600',
     gradient: 'from-violet-500 via-purple-600 to-fuchsia-600',
     borderColor: 'border-purple-200',
@@ -116,6 +126,9 @@ const PLAN_TIERS: PlanTier[] = [
 type PaymentStep = 'idle' | 'processing' | 'verifying' | 'success';
 
 export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = 'general' }) => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+
   const { subscribe } = useSubscription();
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('idle');
   const [selectedPlan, setSelectedPlan] = useState<PlanTier>(PLAN_TIERS[1]); // default: Pro
@@ -131,13 +144,11 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
 
   const handleSubscribe = async () => {
     setPaymentStep('processing');
-    // Simulate bKash/card processing
     await new Promise((r) => setTimeout(r, 2000));
     setPaymentStep('verifying');
     await new Promise((r) => setTimeout(r, 1500));
     setPaymentStep('success');
     subscribe(selectedPlan.id);
-    // Auto-close after success animation
     setTimeout(() => {
       onClose();
     }, 2200);
@@ -150,7 +161,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-3"
+          className={`fixed inset-0 z-[99999] flex items-center justify-center p-3 ${isBn ? 'font-bn' : ''}`}
         >
           {/* Backdrop */}
           <motion.div
@@ -185,21 +196,23 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
 
               <div className="flex items-center gap-4">
-              <motion.div
-                initial={{ rotate: -15, scale: 0 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: 'spring', delay: 0.15 }}
-                className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shrink-0"
-              >
-                <Crown className="w-5 h-5 text-white" />
-              </motion.div>
+                <motion.div
+                  initial={{ rotate: -15, scale: 0 }}
+                  animate={{ rotate: 0, scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.15 }}
+                  className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shrink-0"
+                >
+                  <Crown className="w-5 h-5 text-white" />
+                </motion.div>
 
-              <div>
-              <h2 className="font-display text-xl font-black leading-snug">
-                {triggerMsg.title}
-              </h2>
-              <p className="font-bn text-xs text-white/80 mt-0.5">{triggerMsg.subtitle}</p>
-              </div>
+                <div>
+                  <h2 className="font-display text-xl font-black leading-snug">
+                    {isBn ? triggerMsg.titleBn : triggerMsg.titleEn}
+                  </h2>
+                  <p className="text-xs text-white/80 mt-0.5">
+                    {isBn ? triggerMsg.subBn : triggerMsg.subEn}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -209,6 +222,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 {PLAN_TIERS.map((plan, idx) => {
                   const isSelected = selectedPlan.id === plan.id;
+                  const badgeText = isBn ? plan.badgeBn : plan.badgeEn;
                   return (
                     <motion.button
                       key={plan.id}
@@ -231,9 +245,9 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                       `}
                     >
                       {/* Badge */}
-                      {plan.badge && (
-                        <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-px bg-gradient-to-r ${plan.badgeColor} text-white text-[0.55rem] font-bold uppercase tracking-wider rounded-full shadow-lg font-bn`}>
-                          {plan.badge}
+                      {badgeText && (
+                        <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-px bg-gradient-to-r ${plan.badgeColor} text-white text-[0.55rem] font-bold uppercase tracking-wider rounded-full shadow-lg`}>
+                          {badgeText}
                         </div>
                       )}
 
@@ -246,13 +260,15 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                             {plan.id === 'premium' && <Users className="w-3.5 h-3.5" />}
                           </div>
                           <div>
-                            <span className="font-bn text-xs font-bold text-ink">{plan.name}</span>
-                            <span className="text-[0.55rem] text-ink-faint ml-1 uppercase tracking-wider font-bold">{plan.nameEn}</span>
+                            <span className="font-bold text-xs text-ink">{isBn ? plan.name : plan.nameEn}</span>
+                            {isBn && (
+                              <span className="text-[0.55rem] text-ink-faint ml-1 uppercase tracking-wider font-bold">{plan.nameEn}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-baseline gap-1 mt-2">
                           <span className="font-display text-2xl font-black text-ink">৳{plan.price}</span>
-                          <span className="font-bn text-[0.65rem] text-ink-muted font-bold">/মাস</span>
+                          <span className="text-[0.65rem] text-ink-muted font-bold">{isBn ? '/মাস' : '/month'}</span>
                         </div>
                       </div>
 
@@ -267,20 +283,19 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                               <feat.icon className="w-2.5 h-2.5" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bn text-[0.7rem] font-bold text-ink leading-tight">{feat.text}</p>
-                              <p className="text-[0.5rem] text-ink-faint uppercase tracking-wider font-bold leading-tight">{feat.textEn}</p>
+                              <p className="text-[0.7rem] font-bold text-ink leading-tight">{isBn ? feat.text : feat.textEn}</p>
                             </div>
                           </div>
                         ))}
                       </div>
 
                       {/* Selection indicator */}
-                      <div className={`mt-3 w-full py-1.5 rounded-lg text-center text-[0.7rem] font-bold font-bn transition-all ${
+                      <div className={`mt-3 w-full py-1.5 rounded-lg text-center text-[0.7rem] font-bold transition-all ${
                         isSelected
                           ? `bg-gradient-to-r ${plan.gradient} text-white shadow-md`
                           : 'bg-ink/5 text-ink-muted'
                       }`}>
-                        {isSelected ? '✓ নির্বাচিত' : 'সিলেক্ট করুন'}
+                        {isSelected ? (isBn ? '✓ নির্বাচিত' : '✓ Selected') : (isBn ? 'সিলেক্ট করুন' : 'Select Plan')}
                       </div>
                     </motion.button>
                   );
@@ -296,7 +311,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     onClick={handleSubscribe}
-                    className={`w-full py-3 bg-gradient-to-r ${selectedPlan.gradient} text-white font-bn font-black text-base rounded-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
+                    className={`w-full py-3 bg-gradient-to-r ${selectedPlan.gradient} text-white font-black text-base rounded-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
                     style={{
                       boxShadow: selectedPlan.id === 'basic'
                         ? '0 10px 40px -10px rgba(16, 185, 129, 0.4)'
@@ -306,7 +321,9 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     }}
                   >
                     <Sparkles className="w-5 h-5" />
-                    {selectedPlan.name} সাবস্ক্রাইব করুন — ৳{selectedPlan.price}/মাস
+                    {isBn
+                      ? `${selectedPlan.name} সাবস্ক্রাইব করুন — ৳${selectedPlan.price}/মাস`
+                      : `Subscribe to ${selectedPlan.nameEn} — ৳${selectedPlan.price}/month`}
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </motion.button>
                 )}
@@ -317,7 +334,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="w-full py-4 bg-ink text-cream font-bn font-bold text-base rounded-2xl flex items-center justify-center gap-3"
+                    className="w-full py-4 bg-ink text-cream font-bold text-base rounded-2xl flex items-center justify-center gap-3"
                   >
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -325,7 +342,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     >
                       <CreditCard className="w-5 h-5" />
                     </motion.div>
-                    পেমেন্ট প্রসেস হচ্ছে...
+                    {isBn ? 'পেমেন্ট প্রসেস হচ্ছে...' : 'Processing payment...'}
                     <div className="flex gap-1 ml-2">
                       {[0, 1, 2].map((d) => (
                         <motion.div
@@ -345,10 +362,10 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="w-full py-4 bg-blue-600 text-white font-bn font-bold text-base rounded-2xl flex items-center justify-center gap-3"
+                    className="w-full py-4 bg-blue-600 text-white font-bold text-base rounded-2xl flex items-center justify-center gap-3"
                   >
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    পেমেন্ট ভেরিফাই হচ্ছে...
+                    {isBn ? 'পেমেন্ট ভেরিফাই হচ্ছে...' : 'Verifying payment...'}
                   </motion.div>
                 )}
 
@@ -357,7 +374,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     key="success"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bn font-bold text-base rounded-2xl flex items-center justify-center gap-3 relative overflow-hidden"
+                    className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-base rounded-2xl flex items-center justify-center gap-3 relative overflow-hidden"
                   >
                     {/* Success confetti-like particles */}
                     {Array.from({ length: 12 }).map((_, i) => (
@@ -386,7 +403,9 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
                     >
                       <ShieldCheck className="w-6 h-6" />
                     </motion.div>
-                    {selectedPlan.name} সাবস্ক্রিপশন সফল! 🎉
+                    {isBn
+                      ? `${selectedPlan.name} সাবস্ক্রিপশন সফল! 🎉`
+                      : `${selectedPlan.nameEn} subscription activated! 🎉`}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -394,7 +413,7 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, trigger = '
               {/* Secure badge */}
               <div className="flex items-center justify-center gap-2 mt-4 text-[0.62rem] text-ink-faint uppercase tracking-widest font-bold">
                 <ShieldCheck className="w-3 h-3" />
-                SSL সুরক্ষিত পেমেন্ট • যেকোনো সময় বাতিল করুন
+                {isBn ? 'SSL সুরক্ষিত পেমেন্ট • যেকোনো সময় বাতিল করুন' : 'SSL Secured Payment • Cancel Anytime'}
               </div>
             </div>
           </motion.div>

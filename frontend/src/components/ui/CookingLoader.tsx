@@ -1,14 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Carrot, Salad, Egg } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface CookingLoaderProps {
   text?: string;
 }
 
 export const CookingLoader: React.FC<CookingLoaderProps> = ({ 
-  text = "AI আপনার জন্য পরিকল্পনা তৈরি করছে..." 
+  text 
 }) => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+  const displayText = text ?? (isBn ? "AI আপনার জন্য পরিকল্পনা তৈরি করছে..." : "AI is preparing your personalized plan...");
   // Aggressive tossing timeline
   // Pan flips at 0s, 1.5s, 3.0s...
   // Food launches at the flip with custom easing and rotation
@@ -224,9 +228,9 @@ export const CookingLoader: React.FC<CookingLoaderProps> = ({
           repeat: Infinity,
           ease: "easeInOut"
         }}
-        className="font-bn text-ink-muted text-sm font-bold tracking-wide mt-2 text-center"
+        className={`${isBn ? 'font-bn' : ''} text-ink-muted text-sm font-bold tracking-wide mt-2 text-center`}
       >
-        {text}
+        {displayText}
       </motion.p>
     </div>
   );

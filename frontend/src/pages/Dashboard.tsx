@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { WhatsAppConnectModal } from '../components/whatsapp/WhatsAppConnectModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -61,6 +62,8 @@ const WaveChart = () => (
 );
 
 export const Dashboard = () => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   const { profileData, user } = useAuth();
   const [mealPlan, setMealPlan] = useState<MealPlanResponse | null>(null);
   const [medicines, setMedicines] = useState<MedicineReminderListItem[]>([]);
@@ -74,7 +77,7 @@ export const Dashboard = () => {
     }
     try {
       const [todayPlan, medsList, trackedMealsList] = await Promise.all([
-        mealPlanApi.getDaily('bn', 0, false, false).catch(() => null),
+        mealPlanApi.getDaily(isBn ? 'bn' : 'en', 0, false, false).catch(() => null),
         medicineApi.list().catch(() => []),
         mealTrackingApi.today().catch(() => []),
       ]);
@@ -86,7 +89,7 @@ export const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [profileData]);
+  }, [profileData, isBn]);
 
   useEffect(() => {
     fetchData(true);
@@ -102,7 +105,9 @@ export const Dashboard = () => {
 
   const targets = profileData?.targets;
   const profile = profileData?.profile;
-  const userName = profile?.name_bn || profile?.name_en || user?.phone || user?.email || 'ব্যবহারকারী';
+  const userName = isBn
+    ? (profile?.name_bn || profile?.name_en || user?.phone || user?.email || 'ব্যবহারকারী')
+    : (profile?.name_en || profile?.name_bn || user?.phone || user?.email || 'User');
   const weight = profile?.weight_kg || 0;
   const height = profile?.height_cm || 0;
 
@@ -139,18 +144,18 @@ export const Dashboard = () => {
   }
 
   const QUICK_ACTIONS = [
-    { label: 'সেফ ফুড', icon: Apple, route: '/foods', bg: 'bg-[#EBF0D8]', color: 'text-forest' },
-    { label: 'হেলথ লগ', icon: Activity, route: '/health-log', bg: 'bg-[#E2F2F5]', color: 'text-accent' },
-    { label: 'ওষুধ', icon: Pill, route: '/medicine', bg: 'bg-[#FFF7E6]', color: 'text-amber-600' },
-    { label: 'পুষ্টি', icon: Shield, route: '/report', bg: 'bg-[#EAF7EE]', color: 'text-forest' },
-    { label: 'রান্নাঘর', icon: ChefHat, route: '/personal-cooker', bg: 'bg-[#F0F8E2]', color: 'text-green-700' },
-    { label: 'বাজার', icon: ShoppingCart, route: '/grocery', bg: 'bg-[#FFF0F5]', color: 'text-pink-600' },
+    { label: isBn ? 'সেফ ফুড' : 'Safe Foods', icon: Apple, route: '/foods', bg: 'bg-[#EBF0D8]', color: 'text-forest' },
+    { label: isBn ? 'হেলথ লগ' : 'Health Log', icon: Activity, route: '/health-log', bg: 'bg-[#E2F2F5]', color: 'text-accent' },
+    { label: isBn ? 'ওষুধ' : 'Medicine', icon: Pill, route: '/medicine', bg: 'bg-[#FFF7E6]', color: 'text-amber-600' },
+    { label: isBn ? 'পুষ্টি' : 'Nutrition', icon: Shield, route: '/report', bg: 'bg-[#EAF7EE]', color: 'text-forest' },
+    { label: isBn ? 'রান্নাঘর' : 'Cooker', icon: ChefHat, route: '/personal-cooker', bg: 'bg-[#F0F8E2]', color: 'text-green-700' },
+    { label: isBn ? 'বাজার' : 'Grocery', icon: ShoppingCart, route: '/grocery', bg: 'bg-[#FFF0F5]', color: 'text-pink-600' },
     { label: 'WhatsApp', icon: FaWhatsapp, onClick: () => setShowWhatsAppModal(true), bg: 'bg-[#DCF8C6]', color: 'text-[#128C7E]' }
   ];
 
   if (loading) {
     return (
-      <DashboardLayout title="ড্যাশবোর্ড" subtitle="Overview">
+      <DashboardLayout title={isBn ? "ড্যাশবোর্ড" : "Dashboard"} subtitle={isBn ? "দৈনন্দিন ওভারভিউ" : "Overview"}>
         <div className="max-w-[1200px] w-full mx-auto space-y-6 px-4 md:px-6 pt-6">
           <div className="h-10 w-48 bg-ink/5 rounded-lg animate-pulse mb-6"></div>
           <div className="h-48 w-full bg-ink/5 rounded-[2rem] animate-pulse"></div>
@@ -168,14 +173,18 @@ export const Dashboard = () => {
   }
 
   return (
-    <DashboardLayout title="ড্যাশবোর্ড" subtitle="Overview">
-      <div className="max-w-[1200px] w-full mx-auto space-y-6 font-bn pb-12 px-4 md:px-6">
+    <DashboardLayout title={isBn ? "ড্যাশবোর্ড" : "Dashboard"} subtitle={isBn ? "দৈনন্দিন ওভারভিউ" : "Overview"}>
+      <div className={`max-w-[1200px] w-full mx-auto space-y-6 ${isBn ? 'font-bn' : ''} pb-12 px-4 md:px-6`}>
 
         {/* Header Greeting */}
         <div className="flex justify-between items-end mb-2">
           <div>
-            <h1 className="text-3xl font-extrabold text-ink leading-tight">হ্যালো, {userName}!</h1>
-            <p className="text-sm text-ink-muted mt-1 font-medium">আজকের দৈনন্দিন অ্যাক্টিভিটি ওভারভিউ দেখে নিন।</p>
+            <h1 className="text-3xl font-extrabold text-ink leading-tight">
+              {isBn ? `হ্যালো, ${userName}!` : `Hello, ${userName}!`}
+            </h1>
+            <p className="text-sm text-ink-muted mt-1 font-medium">
+              {isBn ? 'আজকের দৈনন্দিন অ্যাক্টিভিটি ওভারভিউ দেখে নিন।' : 'Here is your daily activity and nutrition overview.'}
+            </p>
           </div>
         </div>
 
@@ -183,17 +192,27 @@ export const Dashboard = () => {
         <Link to="/meal-plan" className="block bg-gradient-to-br from-[#1C2123] to-[#2D3436] rounded-[2rem] p-6 md:p-8 relative overflow-hidden shadow-xl hover:shadow-2xl transition-all group">
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-5 leading-tight text-white">আপনার ডায়েট প্ল্যান<br />এখান থেকেই শুরু!</h2>
+              <h2 className="text-3xl md:text-4xl font-extrabold mb-5 leading-tight text-white">
+                {isBn ? (
+                  <>আপনার ডায়েট প্ল্যান<br />এখান থেকেই শুরু!</>
+                ) : (
+                  <>Your Personalized Diet Plan<br />Starts Right Here!</>
+                )}
+              </h2>
               <div className="inline-flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-[#A7C924]/20 flex items-center justify-center border border-[#A7C924]/40 group-hover:scale-110 transition-transform">
                   <Play fill="#A7C924" color="#A7C924" size={18} />
                 </div>
-                <span className="text-white font-medium text-lg">এক্সপ্লোর করুন</span>
+                <span className="text-white font-medium text-lg">
+                  {isBn ? 'এক্সপ্লোর করুন' : 'Explore Meal Plan'}
+                </span>
               </div>
             </div>
 
             <div className="flex flex-col items-start md:items-end">
-              <span className="text-xs text-white/70 mb-3">আমাদের প্রোগ্রামে যুক্ত আছেন:</span>
+              <span className="text-xs text-white/70 mb-3">
+                {isBn ? 'আমাদের প্রোগ্রামে যুক্ত আছেন:' : 'Joined our community:'}
+              </span>
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex -space-x-3">
                   <div className="w-10 h-10 rounded-full border-2 border-[#1C2123] bg-[#FFD1DC]"></div>
@@ -201,12 +220,16 @@ export const Dashboard = () => {
                   <div className="w-10 h-10 rounded-full border-2 border-[#1C2123] bg-[#FEEBC8]"></div>
                 </div>
                 <div>
-                  <div className="text-white font-extrabold text-lg leading-none">৫.৮ হাজার+</div>
-                  <div className="text-white/60 text-[10px]">মেম্বারস</div>
+                  <div className="text-white font-extrabold text-lg leading-none">
+                    {isBn ? '৫.৮ হাজার+' : '5.8k+'}
+                  </div>
+                  <div className="text-white/60 text-[10px]">
+                    {isBn ? 'মেম্বারস' : 'Members'}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm font-extrabold bg-[#A7C924] text-ink px-5 py-2.5 rounded-full hover:bg-white hover:text-ink transition-colors">
-                শুরু করুন <ChevronRight size={18} />
+                {isBn ? 'শুরু করুন' : 'Get Started'} <ChevronRight size={18} />
               </div>
             </div>
           </div>
@@ -249,16 +272,25 @@ export const Dashboard = () => {
                 <Bot size={22} />
               </div>
               <div>
-                <h3 className="font-extrabold text-xl text-ink">পুষ্টি এআই</h3>
-                <p className="text-xs text-ink-muted mt-0.5">আপনার স্বাস্থ্য সহচর</p>
+                <h3 className="font-extrabold text-xl text-ink">
+                  {isBn ? 'পুষ্টি এআই' : 'DesiDiet AI'}
+                </h3>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  {isBn ? 'আপনার স্বাস্থ্য সহচর' : 'Your Personal Nutrition Companion'}
+                </p>
               </div>
             </div>
             <p className="text-[13px] text-ink font-medium leading-relaxed mb-10 z-10 relative pr-4">
-              আপনার ডায়েট বা স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন এবং তাৎক্ষণিক বিজ্ঞানভিত্তিক সমাধান পান।
+              {isBn 
+                ? 'আপনার ডায়েট বা স্বাস্থ্য সংক্রান্ত যেকোনো প্রশ্ন জিজ্ঞাসা করুন এবং তাৎক্ষণিক বিজ্ঞানভিত্তিক সমাধান পান।'
+                : 'Ask any question regarding your dietary needs, local cuisine, or health conditions for instant scientific guidance.'
+              }
             </p>
 
             <div className="bg-white rounded-[1.25rem] p-2 pl-4 flex items-center justify-between border border-accent/20 z-10 relative shadow-sm">
-              <span className="text-[13px] text-ink-faint">কীভাবে সাহায্য করতে পারি?</span>
+              <span className="text-[13px] text-ink-faint">
+                {isBn ? 'কীভাবে সাহায্য করতে পারি?' : 'How can I help you today?'}
+              </span>
               <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center group-hover:scale-110 transition-transform">
                 <ChevronRight size={16} />
               </div>
@@ -274,7 +306,9 @@ export const Dashboard = () => {
                   <div className="w-7 h-7 bg-[#1C2123] rounded-full flex items-center justify-center text-white">
                     <Flame size={12} fill="currentColor" />
                   </div>
-                  <span className="font-extrabold text-lg text-ink">ক্যালোরি</span>
+                  <span className="font-extrabold text-lg text-ink">
+                    {isBn ? 'ক্যালোরি' : 'Calories'}
+                  </span>
                 </div>
                 <div className="text-right">
                   <span className="font-extrabold text-xl">{calorieTarget.toLocaleString()}</span> <span className="text-xs text-ink-muted">Kcal</span>
@@ -282,12 +316,14 @@ export const Dashboard = () => {
               </div>
 
               <div className="flex justify-between text-[11px] text-ink-faint mb-2 mt-4">
-                <span>অভাবনীয় পুষ্টি</span>
-                <span>দৈনিক লক্ষ্যমাত্রা</span>
+                <span>{isBn ? 'গৃহীত পুষ্টি' : 'Consumed'}</span>
+                <span>{isBn ? 'দৈনিক লক্ষ্যমাত্রা' : 'Daily Target'}</span>
               </div>
 
               <div className="flex items-end gap-1">
-                <span className="font-bn text-5xl font-bold leading-none tracking-tight text-ink">{Math.round(consumedCal).toLocaleString()}</span>
+                <span className={`${isBn ? 'font-bn' : 'font-body'} text-5xl font-bold leading-none tracking-tight text-ink`}>
+                  {Math.round(consumedCal).toLocaleString()}
+                </span>
                 <span className="text-base text-ink-muted mb-1">/ Kcal</span>
               </div>
 
@@ -301,15 +337,15 @@ export const Dashboard = () => {
               <div className="flex justify-between mt-2">
                 <div className="text-left">
                   <div className="font-extrabold text-lg text-ink">{Math.round(consumedCarbs)} <span className="text-[10px] text-ink-muted font-normal">g</span></div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">শর্করা</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">{isBn ? 'শর্করা' : 'Carbs'}</div>
                 </div>
                 <div className="text-center">
                   <div className="font-extrabold text-lg text-ink">{Math.round(consumedProtein)} <span className="text-[10px] text-ink-muted font-normal">g</span></div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">আমিষ</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">{isBn ? 'আমিষ' : 'Protein'}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-extrabold text-lg text-ink">{Math.round(consumedFat)} <span className="text-[10px] text-ink-muted font-normal">g</span></div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">চর্বি</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">{isBn ? 'চর্বি' : 'Fat'}</div>
                 </div>
               </div>
             </Link>
@@ -322,7 +358,9 @@ export const Dashboard = () => {
                 <div className="w-7 h-7 bg-[#1C2123] rounded-full flex items-center justify-center text-white">
                   <span className="text-[10px] font-extrabold">↔</span>
                 </div>
-                <span className="font-extrabold text-lg text-ink">ওজন ট্র্যাকিং</span>
+                <span className="font-extrabold text-lg text-ink">
+                  {isBn ? 'ওজন ট্র্যাকিং' : 'Weight Tracking'}
+                </span>
               </div>
               <div className="text-right">
                 <span className="font-extrabold text-xl">{height}</span> <span className="text-xs text-ink-muted">cm</span>
@@ -330,21 +368,29 @@ export const Dashboard = () => {
             </div>
 
             <div className="flex justify-between text-[11px] text-ink-faint mb-2 mt-4">
-              <span>লক্ষ্য: {targets?.ideal_body_weight_kg || 65}kg</span>
-              <span>উচ্চতা</span>
+              <span>{isBn ? `লক্ষ্য: ${targets?.ideal_body_weight_kg || 65}kg` : `Target: ${targets?.ideal_body_weight_kg || 65} kg`}</span>
+              <span>{isBn ? 'উচ্চতা' : 'Height'}</span>
             </div>
 
             <WaveChart />
 
             <div className="flex justify-between items-end mt-4">
               <div className="flex items-end gap-1">
-                <span className="font-bn text-[56px] font-bold leading-none tracking-tight text-ink">{weight}</span>
+                <span className={`${isBn ? 'font-bn' : 'font-body'} text-[56px] font-bold leading-none tracking-tight text-ink`}>
+                  {weight}
+                </span>
                 <span className="text-xl text-ink-muted mb-2">kg</span>
               </div>
               <div className="text-right pb-1">
-                <span className="block text-[10px] text-ink-muted">সাপ্তাহিক ট্র্যাকিং</span>
-                <span className="block text-[10px] text-ink-muted">সম্পন্ন হয়েছে</span>
-                <span className="block text-xs font-extrabold text-ink mt-0.5">চালিয়ে যান!</span>
+                <span className="block text-[10px] text-ink-muted">
+                  {isBn ? 'সাপ্তাহিক ট্র্যাকিং' : 'Weekly Tracking'}
+                </span>
+                <span className="block text-[10px] text-ink-muted">
+                  {isBn ? 'সম্পন্ন হয়েছে' : 'Up to date'}
+                </span>
+                <span className="block text-xs font-extrabold text-ink mt-0.5">
+                  {isBn ? 'চালিয়ে যান!' : 'Keep it up!'}
+                </span>
               </div>
             </div>
           </Link>
@@ -357,8 +403,12 @@ export const Dashboard = () => {
                   <Pill size={18} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-lg text-ink">ওষুধ রিমাইন্ডার</h3>
-                  <p className="text-[11px] text-ink-muted mt-0.5">আপনার দৈনন্দিন রুটিন</p>
+                  <h3 className="font-extrabold text-lg text-ink">
+                    {isBn ? 'ওষুধ রিমাইন্ডার' : 'Medicine Reminders'}
+                  </h3>
+                  <p className="text-[11px] text-ink-muted mt-0.5">
+                    {isBn ? 'আপনার দৈনন্দিন রুটিন' : 'Your daily schedule'}
+                  </p>
                 </div>
               </div>
               <div className="bg-[#B06000] text-white font-extrabold text-sm min-w-[28px] h-7 rounded-full flex items-center justify-center px-2">
@@ -373,7 +423,9 @@ export const Dashboard = () => {
                     <div className="w-2 h-2 rounded-full bg-[#B06000]"></div>
                     <div>
                       <div className="font-extrabold text-sm text-ink truncate max-w-[120px]">{med.name} {med.dose && <span className="font-normal text-[10px] text-ink-muted">- {med.dose}</span>}</div>
-                      <div className="text-[11px] text-ink-muted mt-0.5">{med.with_food ? 'খাবারের পর' : 'খালি পেটে'}</div>
+                      <div className="text-[11px] text-ink-muted mt-0.5">
+                        {med.with_food ? (isBn ? 'খাবারের পর' : 'After meal') : (isBn ? 'খালি পেটে' : 'Before meal')}
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 justify-end">
@@ -387,13 +439,15 @@ export const Dashboard = () => {
               )) : (
                 <div className="h-full flex flex-col items-center justify-center text-[#B06000]/50 gap-2 py-6">
                   <Pill size={32} />
-                  <span className="text-[13px] font-extrabold text-ink-muted">কোনো ওষুধ যোগ করা নেই</span>
+                  <span className="text-[13px] font-extrabold text-ink-muted">
+                    {isBn ? 'কোনো ওষুধ যোগ করা নেই' : 'No medicines added yet'}
+                  </span>
                 </div>
               )}
             </div>
 
             <div className="flex items-center gap-1.5 mt-auto pt-3 text-[11px] text-[#B06000] font-bold">
-              <Bell size={12} /> রিমাইন্ডার ম্যানেজ করুন <ChevronRight size={14} className="ml-auto" />
+              <Bell size={12} /> {isBn ? 'রিমাইন্ডার ম্যানেজ করুন' : 'Manage Reminders'} <ChevronRight size={14} className="ml-auto" />
             </div>
           </Link>
 

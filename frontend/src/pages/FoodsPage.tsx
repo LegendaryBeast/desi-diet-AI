@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import {
   foodsApi,
@@ -19,15 +20,18 @@ import {
   type FoodDetailResponse,
 } from '../lib/api';
 
-const SAFETY_CONFIG = {
-  safe: { label: 'নিরাপদ', icon: Shield, color: 'text-green-600', bg: 'bg-green-50 border-green-100' },
-  caution: { label: 'সতর্কতা', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
-  avoid: { label: 'এড়িয়ে চলুন', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
-};
-
 type Tab = 'search' | 'safe';
 
 export const FoodsPage = () => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+
+  const safetyConfig = {
+    safe: { label: isBn ? 'নিরাপদ' : 'Safe', icon: Shield, color: 'text-green-600', bg: 'bg-green-50 border-green-100' },
+    caution: { label: isBn ? 'সতর্কতা' : 'Caution', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+    avoid: { label: isBn ? 'এড়িয়ে চলুন' : 'Avoid', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+  };
+
   const [tab, setTab] = useState<Tab>('safe');
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodWithInsightResponse[]>([]);
@@ -45,11 +49,11 @@ export const FoodsPage = () => {
       const data = await foodsApi.safeFoods();
       setSafeFoods(data);
     } catch {
-      setError('নিরাপদ খাবার লোড করতে সমস্যা হয়েছে');
+      setError(isBn ? 'নিরাপদ খাবার লোড করতে সমস্যা হয়েছে' : 'Failed to load safe foods');
     } finally {
       setSafeFoodsLoading(false);
     }
-  }, []);
+  }, [isBn]);
 
   useEffect(() => {
     if (tab === 'safe') fetchSafeFoods();
@@ -63,12 +67,12 @@ export const FoodsPage = () => {
       const data = await foodsApi.searchWithInsight(q);
       setSearchResults(data);
     } catch {
-      setError('অনুসন্ধান করতে সমস্যা হয়েছে');
+      setError(isBn ? 'অনুসন্ধান করতে সমস্যা হয়েছে' : 'Search failed');
       setSearchResults([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isBn]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -89,8 +93,8 @@ export const FoodsPage = () => {
   };
 
   const renderFoodCard = (food: FoodWithInsightResponse | SafeFoodsResponse, showInsight: boolean) => {
-    const safetyKey = 'safety' in food ? (food.safety as keyof typeof SAFETY_CONFIG) : 'safe';
-    const safety = SAFETY_CONFIG[safetyKey] || SAFETY_CONFIG.safe;
+    const safetyKey = 'safety' in food ? (food.safety as keyof typeof safetyConfig) : 'safe';
+    const safety = safetyConfig[safetyKey] || safetyConfig.safe;
     const SafetyIcon = safety.icon;
     const isExpanded = expandedCode === food.code;
     const insight = 'ai_insight' in food ? food.ai_insight : null;
@@ -122,19 +126,25 @@ export const FoodsPage = () => {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-bn font-bold text-ink text-xs truncate">{food.name_bn}</span>
+              <span className={`${isBn ? 'font-bn' : ''} font-bold text-ink text-xs truncate`}>
+                {isBn ? food.name_bn : (food.name_en || food.name_bn)}
+              </span>
               <span className={`text-[0.55rem] font-bold px-1 rounded flex items-center gap-0.5 ${safety.bg} ${safety.color} flex-shrink-0`}>
                 <SafetyIcon className="w-2.5 h-2.5" /> {safety.label}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[0.68rem] text-ink-faint font-body truncate max-w-[120px] sm:max-w-none">{food.name_en}</span>
+              <span className={`text-[0.68rem] text-ink-faint ${isBn ? 'font-body' : 'font-bn'} truncate max-w-[120px] sm:max-w-none`}>
+                {isBn ? food.name_en : food.name_bn}
+              </span>
             </div>
           </div>
 
-          <div className="text-right flex-shrink-0 font-bn">
+          <div className={`text-right flex-shrink-0 ${isBn ? 'font-bn' : ''}`}>
             <div className="font-bold text-ink text-xs">{food.calories ?? '?'} kcal</div>
-            <div className="text-[0.55rem] text-ink-faint leading-none mt-0.5">১০০ গ্রাম</div>
+            <div className="text-[0.55rem] text-ink-faint leading-none mt-0.5">
+              {isBn ? '১০০ গ্রাম' : 'per 100g'}
+            </div>
           </div>
 
           <div className="text-ink-faint ml-1">
@@ -155,13 +165,13 @@ export const FoodsPage = () => {
                 {/* Macros */}
                 <div className="grid grid-cols-4 gap-2">
                   {[
-                    { label: 'প্রোটিন', val: food.protein ?? '--', color: 'text-emerald-600' },
-                    { label: 'শর্করা', val: 'carbs' in food ? (food.carbs ?? '--') : '--', color: 'text-blue-600' },
-                    { label: 'চর্বি', val: 'fat' in food ? (food.fat ?? '--') : '--', color: 'text-amber-600' },
-                    { label: 'ফাইবার', val: food.fiber ?? '--', color: 'text-ink-muted' },
+                    { label: isBn ? 'প্রোটিন' : 'Protein', val: food.protein ?? '--', color: 'text-emerald-600' },
+                    { label: isBn ? 'শর্করা' : 'Carbs', val: 'carbs' in food ? (food.carbs ?? '--') : '--', color: 'text-blue-600' },
+                    { label: isBn ? 'চর্বি' : 'Fat', val: 'fat' in food ? (food.fat ?? '--') : '--', color: 'text-amber-600' },
+                    { label: isBn ? 'ফাইবার' : 'Fiber', val: food.fiber ?? '--', color: 'text-ink-muted' },
                   ].map((m, i) => (
                     <div key={i} className="bg-cream/30 p-2 rounded-lg text-center border border-ink/5">
-                      <div className="text-[0.52rem] text-ink-faint uppercase font-bold mb-0.5">{m.label}</div>
+                      <div className={`text-[0.52rem] text-ink-faint uppercase font-bold mb-0.5 ${isBn ? 'font-bn' : ''}`}>{m.label}</div>
                       <div className={`font-bold text-xs ${m.color}`}>{m.val}g</div>
                     </div>
                   ))}
@@ -170,12 +180,12 @@ export const FoodsPage = () => {
                 {/* Segmented Macro Distribution Bar */}
                 {total > 0 && (
                   <div className="space-y-1">
-                    <div className="flex justify-between items-center text-[0.58rem] font-bn text-ink-faint">
-                      <span>পুষ্টির শতকরা ভাগ (Macro %)</span>
+                    <div className={`flex justify-between items-center text-[0.58rem] ${isBn ? 'font-bn' : ''} text-ink-faint`}>
+                      <span>{isBn ? 'পুষ্টির শতকরা ভাগ (Macro %)' : 'Macro Distribution (%)'}</span>
                       <span className="flex gap-2">
-                        <span className="text-emerald-600">প্রোটিন: {proteinPct}%</span>
-                        <span className="text-blue-600">শর্করা: {carbsPct}%</span>
-                        <span className="text-amber-600">চর্বি: {fatPct}%</span>
+                        <span className="text-emerald-600">{isBn ? `প্রোটিন: ${proteinPct}%` : `Protein: ${proteinPct}%`}</span>
+                        <span className="text-blue-600">{isBn ? `শর্করা: ${carbsPct}%` : `Carbs: ${carbsPct}%`}</span>
+                        <span className="text-amber-600">{isBn ? `চর্বি: ${fatPct}%` : `Fat: ${fatPct}%`}</span>
                       </span>
                     </div>
                     <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-cream">
@@ -191,7 +201,7 @@ export const FoodsPage = () => {
                   <div className="bg-gradient-to-r from-accent/5 to-transparent p-2.5 rounded-lg border border-accent/10">
                     <div className="flex items-start gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0 mt-0.5" />
-                      <p className="font-bn text-xs text-ink leading-relaxed">{insight}</p>
+                      <p className={`${isBn ? 'font-bn' : ''} text-xs text-ink leading-relaxed`}>{insight}</p>
                     </div>
                   </div>
                 )}
@@ -200,10 +210,12 @@ export const FoodsPage = () => {
                 {selectedFood?.code === food.code && selectedFood.rules.length > 0 && (
                   <div className="space-y-1.5">
                     {selectedFood.rules.map((rule, i) => (
-                      <div key={i} className={`p-2 rounded-lg border text-xs font-bn ${
+                      <div key={i} className={`p-2 rounded-lg border text-xs ${isBn ? 'font-bn' : ''} ${
                         rule.action === 'AVOID' ? 'bg-red-50/70 border-red-100 text-red-700' : 'bg-green-50/70 border-green-100 text-green-700'
                       }`}>
-                        <span className="font-bold">{rule.action === 'AVOID' ? '⚠️ এড়িয়ে চলুন' : '✅ পছন্দনীয়'}</span>
+                        <span className="font-bold">
+                          {rule.action === 'AVOID' ? (isBn ? '⚠️ এড়িয়ে চলুন' : '⚠️ Avoid') : (isBn ? '✅ পছন্দনীয়' : '✅ Recommended')}
+                        </span>
                         {rule.condition && <span className="opacity-70"> ({rule.condition})</span>}: {rule.reason}
                       </div>
                     ))}
@@ -218,19 +230,22 @@ export const FoodsPage = () => {
   };
 
   return (
-    <DashboardLayout title="খাবারের তালিকা" subtitle="Food Database">
+    <DashboardLayout
+      title={isBn ? 'খাবারের তালিকা' : 'Food Database'}
+      subtitle={isBn ? 'নিরাপদ ও পুষ্টিকর খাবারের তালিকা' : 'Explore safe foods and clinical nutrient insights'}
+    >
       <div className="max-w-3xl w-full mx-auto pb-6 space-y-4">
         {/* Tab */}
         <div className="flex justify-center">
           <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
             {[
-              { id: 'safe' as Tab, label: 'নিরাপদ খাবার', icon: Shield },
-              { id: 'search' as Tab, label: 'খাবার খুঁজুন', icon: Search },
+              { id: 'safe' as Tab, label: isBn ? 'নিরাপদ খাবার' : 'Safe Foods', icon: Shield },
+              { id: 'search' as Tab, label: isBn ? 'খাবার খুঁজুন' : 'Search Foods', icon: Search },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => { setTab(id); setQuery(''); setSearchResults([]); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bn text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${isBn ? 'font-bn' : ''} text-xs font-bold transition-all ${
                   tab === id ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
                 }`}
               >
@@ -249,8 +264,8 @@ export const FoodsPage = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="খাবার খুঁজুন... যেমন: রুই মাছ, ডাল, আম"
-              className="w-full bg-white border border-ink/10 rounded-lg py-2 pl-9 pr-3 font-bn text-xs focus:border-accent/30 outline-none transition-all shadow-sm"
+              placeholder={isBn ? 'খাবার খুঁজুন... যেমন: রুই মাছ, ডাল, আম' : 'Search foods... e.g., Rui fish, lentils, mango'}
+              className={`w-full bg-white border border-ink/10 rounded-lg py-2 pl-9 pr-3 ${isBn ? 'font-bn' : ''} text-xs focus:border-accent/30 outline-none transition-all shadow-sm`}
               autoFocus
             />
             {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-accent" />}
@@ -259,7 +274,7 @@ export const FoodsPage = () => {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-100 rounded-lg text-red-500 font-bn text-xs">
+          <div className={`flex items-center gap-2 p-2.5 bg-red-50 border border-red-100 rounded-lg text-red-500 ${isBn ? 'font-bn' : ''} text-xs`}>
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -272,14 +287,16 @@ export const FoodsPage = () => {
               {safeFoodsLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                  <p className="font-bn text-xs text-ink-muted">আপনার অবস্থার জন্য নিরাপদ খাবার খুঁজছি...</p>
+                  <p className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted`}>
+                    {isBn ? 'আপনার অবস্থার জন্য নিরাপদ খাবার খুঁজছি...' : 'Finding safe foods for your health profile...'}
+                  </p>
                 </div>
               ) : (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bn font-bold text-ink text-xs flex items-center gap-1.5">
+                    <h3 className={`${isBn ? 'font-bn' : ''} font-bold text-ink text-xs flex items-center gap-1.5`}>
                       <Shield className="w-4 h-4 text-green-500" />
-                      আপনার জন্য নিরাপদ {safeFoods.length}টি খাবার
+                      {isBn ? `আপনার জন্য নিরাপদ ${safeFoods.length}টি খাবার` : `${safeFoods.length} Safe Foods for You`}
                     </h3>
                   </div>
                   <div className="space-y-2">
@@ -293,15 +310,15 @@ export const FoodsPage = () => {
           {tab === 'search' && (
             <motion.div key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {query.length < 2 ? (
-                <div className="text-center py-12 text-ink-muted font-bn text-xs">
+                <div className={`text-center py-12 text-ink-muted ${isBn ? 'font-bn' : ''} text-xs`}>
                   <Apple className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                  <p>খাবারের নাম লিখুন অনুসন্ধান করতে</p>
-                  <p className="opacity-60 mt-0.5">বাংলা বা ইংরেজি উভয়তে খুঁজতে পারেন</p>
+                  <p>{isBn ? 'খাবারের নাম লিখুন অনুসন্ধান করতে' : 'Type a food name to search'}</p>
+                  <p className="opacity-60 mt-0.5">{isBn ? 'বাংলা বা ইংরেজি উভয়তে খুঁজতে পারেন' : 'You can search in both Bengali and English'}</p>
                 </div>
               ) : searchResults.length === 0 && !loading ? (
-                <div className="text-center py-12 text-ink-muted font-bn text-xs">
+                <div className={`text-center py-12 text-ink-muted ${isBn ? 'font-bn' : ''} text-xs`}>
                   <Search className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                  <p>"{query}" এর জন্য কোনো ফলাফল পাওয়া যায়নি</p>
+                  <p>{isBn ? `"${query}" এর জন্য কোনো ফলাফল পাওয়া যায়নি` : `No results found for "${query}"`}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -315,3 +332,4 @@ export const FoodsPage = () => {
     </DashboardLayout>
   );
 };
+

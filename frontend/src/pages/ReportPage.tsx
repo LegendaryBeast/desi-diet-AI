@@ -11,18 +11,12 @@ import {
     CheckCircle2, ChevronRight, Loader2, Calendar,
     Mail, Download, Heart, Brain, ShieldCheck
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { reportsApi, type HealthSummaryReport } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
 type Period = 3 | 7 | 10 | 30;
-
-const PERIOD_LABELS: Record<Period, string> = {
-    3: 'শেষ ৩ দিন',
-    7: 'শেষ ৭ দিন',
-    10: 'শেষ ১০ দিন',
-    30: 'শেষ ৩০ দিন',
-};
 
 const RADIAN = Math.PI / 180;
 const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
@@ -38,8 +32,20 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
 };
 
 export const ReportPage = () => {
+    const { i18n } = useTranslation();
+    const isBn = i18n.language === 'bn';
+
     const { profileData } = useAuth();
-    const userName = profileData?.profile?.name_bn || profileData?.profile?.name_en || 'সম্মানিত সদস্য';
+    const userName = isBn
+        ? (profileData?.profile?.name_bn || profileData?.profile?.name_en || 'সম্মানিত সদস্য')
+        : (profileData?.profile?.name_en || profileData?.profile?.name_bn || 'Valued Member');
+
+    const periodLabels: Record<Period, string> = {
+        3: isBn ? 'শেষ ৩ দিন' : 'Last 3 Days',
+        7: isBn ? 'শেষ ৭ দিন' : 'Last 7 Days',
+        10: isBn ? 'শেষ ১০ দিন' : 'Last 10 Days',
+        30: isBn ? 'শেষ ৩০ দিন' : 'Last 30 Days',
+    };
 
     const [period, setPeriod] = useState<Period>(7);
     const [report, setReport] = useState<HealthSummaryReport | null>(null);
@@ -60,11 +66,11 @@ export const ReportPage = () => {
             const data = await reportsApi.healthSummary(selectedPeriod);
             setReport(data);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'রিপোর্ট তৈরিতে সমস্যা হয়েছে');
+            setError(err instanceof Error ? err.message : (isBn ? 'রিপোর্ট তৈরিতে সমস্যা হয়েছে' : 'Failed to generate health report'));
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [isBn]);
 
     useEffect(() => {
         fetchReport(period);
@@ -72,16 +78,16 @@ export const ReportPage = () => {
 
     const handleSendEmail = async () => {
         if (!email.includes('@')) {
-            setEmailError('অনুগ্রহ করে সঠিক ইমেইল দিন');
+            setEmailError(isBn ? 'অনুগ্রহ করে সঠিক ইমেইল দিন' : 'Please enter a valid email address');
             return;
         }
         setEmailSending(true);
         setEmailError('');
         try {
-            await reportsApi.sendEmail(email, 'bn');
+            await reportsApi.sendEmail(email, isBn ? 'bn' : 'en');
             setEmailSent(true);
         } catch (err: unknown) {
-            setEmailError(err instanceof Error ? err.message : 'ইমেইল পাঠাতে সমস্যা হয়েছে');
+            setEmailError(err instanceof Error ? err.message : (isBn ? 'ইমেইল পাঠাতে সমস্যা হয়েছে' : 'Failed to send email'));
         } finally {
             setEmailSending(false);
         }
@@ -113,9 +119,9 @@ export const ReportPage = () => {
 
         const isOptimal = (avgVal: number, targetVal: number) => {
             const pct = (avgVal / targetVal) * 100;
-            if (pct < 70) return { label: 'ঘাটতি', color: '#C62828', bg: '#FFEBEE' };
-            if (pct > 115) return { label: 'অতিরিক্ত', color: '#EF6C00', bg: '#FFF3E0' };
-            return { label: 'সঠিক', color: '#2E7D32', bg: '#E8F5E9' };
+            if (pct < 70) return { label: isBn ? 'ঘাটতি' : 'Deficit', color: '#C62828', bg: '#FFEBEE' };
+            if (pct > 115) return { label: isBn ? 'অতিরিক্ত' : 'Excess', color: '#EF6C00', bg: '#FFF3E0' };
+            return { label: isBn ? 'সঠিক' : 'Optimal', color: '#2E7D32', bg: '#E8F5E9' };
         };
 
         const caloriesStatus = isOptimal(avgCalories, activeTargets.target_calories);
@@ -140,9 +146,9 @@ export const ReportPage = () => {
         <head>
           <meta charset="utf-8">
           <title>DesiDiet Clinical Report</title>
-          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;800&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Noto+Sans+Bengali:wght@400;600;800&display=swap" rel="stylesheet">
           <style>
-            body { font-family: 'Noto Sans Bengali', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 30px; line-height: 1.6; }
+            body { font-family: ${isBn ? "'Noto Sans Bengali'," : ''} 'Plus Jakarta Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2123; padding: 30px; line-height: 1.6; }
             .header { border-bottom: 3px solid #A7C924; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
             .logo { font-size: 28px; font-weight: bold; color: #8FB41E; letter-spacing: -0.5px; }
             .meta-info { text-align: right; font-size: 12px; color: #7A8487; }
@@ -166,17 +172,17 @@ export const ReportPage = () => {
               <div style="font-size: 11px; color: #7A8487; margin-top: 2px;">PushtiAI Clinical Nutrition System</div>
             </div>
             <div class="meta-info">
-              <strong>রিপোর্ট আইডি:</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
-              <strong>তারিখ:</strong> ${new Date().toLocaleDateString('bn-BD')}<br>
-              <strong>রিপোর্ট মেয়াদ:</strong> ${period} দিন
+              <strong>${isBn ? 'রিপোর্ট আইডি:' : 'Report ID:'}</strong> DD-${Math.floor(100000 + Math.random() * 900000)}<br>
+              <strong>${isBn ? 'তারিখ:' : 'Date:'}</strong> ${new Date().toLocaleDateString(isBn ? 'bn-BD' : 'en-US')}<br>
+              <strong>${isBn ? 'রিপোর্ট মেয়াদ:' : 'Report Period:'}</strong> ${period} ${isBn ? 'দিন' : 'Days'}
             </div>
           </div>
 
           <div class="user-box">
             <table style="border: none; margin: 0; width: 100%; box-shadow: none;">
               <tr style="border: none;">
-                <td style="border: none; padding: 0; width: 50%;"><strong>সদস্য:</strong> ${userName}</td>
-                <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>ডায়েট লক্ষ্য:</strong> পুষ্টি পরিমাপ ও সুস্বাস্থ্য</td>
+                <td style="border: none; padding: 0; width: 50%;"><strong>${isBn ? 'সদস্য:' : 'Member:'}</strong> ${userName}</td>
+                <td style="border: none; padding: 0; width: 50%; text-align: right;"><strong>${isBn ? 'ডায়েট লক্ষ্য:' : 'Diet Goal:'}</strong> ${isBn ? 'পুষ্টি পরিমাপ ও সুস্বাস্থ্য' : 'Nutritional Balance & Healthy Living'}</td>
               </tr>
             </table>
           </div>
@@ -184,7 +190,7 @@ export const ReportPage = () => {
           ${report.ai_verdict ? `
             <div style="background-color: #FFFDF9; border: 1px dashed #A7C924; padding: 18px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; line-height: 1.6;">
               <div style="font-weight: bold; color: #8FB41E; font-size: 14px; margin-bottom: 6px;">
-                📋 এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)
+                ${isBn ? '📋 এআই ও সামগ্রিক মূল্যায়ন (Clinical AI Assessment & Verdict)' : '📋 Clinical AI Assessment & Verdict'}
               </div>
               <p style="margin: 0; color: #1C2123; font-weight: 500;">
                 "${report.ai_verdict}"
@@ -192,19 +198,19 @@ export const ReportPage = () => {
             </div>
           ` : ''}
 
-          <h2>📋 সামগ্রিক স্বাস্থ্যের সারসংক্ষেপ (Overall Health Summary)</h2>
+          <h2>📋 ${isBn ? 'সামগ্রিক স্বাস্থ্যের সারসংক্ষেপ (Overall Health Summary)' : 'Overall Health Summary'}</h2>
           <table style="margin-bottom: 20px;">
             <thead>
               <tr>
-                <th>বিশ্লেষিত দিন</th>
-                <th>গড় ক্যালোরি/দিন</th>
-                <th>লক্ষ্য ক্যালোরি</th>
-                <th>অনুসরণ হার (%)</th>
+                <th>${isBn ? 'বিশ্লেষিত দিন' : 'Analyzed Days'}</th>
+                <th>${isBn ? 'গড় ক্যালোরি/দিন' : 'Avg Calories/Day'}</th>
+                <th>${isBn ? 'লক্ষ্য ক্যালোরি' : 'Target Calories'}</th>
+                <th>${isBn ? 'অনুসরণ হার (%)' : 'Adherence Rate (%)'}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>${report.days_with_data}/${report.period_days} দিন</strong></td>
+                <td><strong>${report.days_with_data}/${report.period_days} ${isBn ? 'দিন' : 'days'}</strong></td>
                 <td><strong>${Math.round(report.avg_daily_calories)} kcal</strong></td>
                 <td><strong>${report.target_calories} kcal</strong></td>
                 <td><strong>${report.adherence_pct}%</strong></td>
@@ -212,22 +218,22 @@ export const ReportPage = () => {
             </tbody>
           </table>
 
-          <h2>📊 ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)</h2>
+          <h2>📊 ${isBn ? 'ম্যাক্রো পুষ্টি ও ক্যালোরি খতিয়ান (Macronutrient Summary)' : 'Macronutrient Summary'}</h2>
           <table style="margin-bottom: 20px;">
             <thead>
               <tr>
-                <th>পুষ্টি উপাদান</th>
-                <th>দৈনিক গড় গ্রহণ</th>
-                <th>দৈনিক লক্ষ্য</th>
-                <th>${report.period_days} দিনের মোট গ্রহণ</th>
-                <th>মোট লক্ষ্যমাত্রা</th>
-                <th>পূরণ হার (%)</th>
-                <th>অবস্থা</th>
+                <th>${isBn ? 'পুষ্টি উপাদান' : 'Nutrient'}</th>
+                <th>${isBn ? 'দৈনিক গড় গ্রহণ' : 'Daily Avg Intake'}</th>
+                <th>${isBn ? 'দৈনিক লক্ষ্য' : 'Daily Target'}</th>
+                <th>${isBn ? `${report.period_days} দিনের মোট গ্রহণ` : `${report.period_days}-Day Total Intake`}</th>
+                <th>${isBn ? 'মোট লক্ষ্যমাত্রা' : 'Total Target'}</th>
+                <th>${isBn ? 'পূরণ হার (%)' : 'Fulfillment (%)'}</th>
+                <th>${isBn ? 'অবস্থা' : 'Status'}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>ক্যালোরি (Calories)</strong></td>
+                <td><strong>${isBn ? 'ক্যালোরি (Calories)' : 'Calories'}</strong></td>
                 <td>${Math.round(avgCalories)} kcal</td>
                 <td>${activeTargets.target_calories} kcal</td>
                 <td>${Math.round(avgCalories * report.days_with_data)} kcal</td>
@@ -236,7 +242,7 @@ export const ReportPage = () => {
                 <td><span class="status-badge" style="background-color: ${caloriesStatus.bg}; color: ${caloriesStatus.color};">${caloriesStatus.label}</span></td>
               </tr>
               <tr>
-                <td><strong>আমিষ (Protein)</strong></td>
+                <td><strong>${isBn ? 'আমিষ (Protein)' : 'Protein'}</strong></td>
                 <td>${Math.round(avgProtein)}g</td>
                 <td>${activeTargets.protein_g}g</td>
                 <td>${Math.round(totalProtein)}g</td>
@@ -245,7 +251,7 @@ export const ReportPage = () => {
                 <td><span class="status-badge" style="background-color: ${proteinStatus.bg}; color: ${proteinStatus.color};">${proteinStatus.label}</span></td>
               </tr>
               <tr>
-                <td><strong>শর্করা (Carbs)</strong></td>
+                <td><strong>${isBn ? 'শর্করা (Carbs)' : 'Carbs'}</strong></td>
                 <td>${Math.round(avgCarbs)}g</td>
                 <td>${activeTargets.carbs_g}g</td>
                 <td>${Math.round(totalCarbs)}g</td>
@@ -254,7 +260,7 @@ export const ReportPage = () => {
                 <td><span class="status-badge" style="background-color: ${carbsStatus.bg}; color: ${carbsStatus.color};">${carbsStatus.label}</span></td>
               </tr>
               <tr>
-                <td><strong>চর্বি (Fat)</strong></td>
+                <td><strong>${isBn ? 'চর্বি (Fat)' : 'Fat'}</strong></td>
                 <td>${Math.round(avgFat)}g</td>
                 <td>${activeTargets.fat_g}g</td>
                 <td>${Math.round(totalFat)}g</td>
@@ -263,7 +269,7 @@ export const ReportPage = () => {
                 <td><span class="status-badge" style="background-color: ${fatStatus.bg}; color: ${fatStatus.color};">${fatStatus.label}</span></td>
               </tr>
               <tr>
-                <td><strong>আঁশ (Fiber)</strong></td>
+                <td><strong>${isBn ? 'আঁশ (Fiber)' : 'Fiber'}</strong></td>
                 <td>${Math.round(avgFiber)}g</td>
                 <td>${activeTargets.fiber_g}g</td>
                 <td>${Math.round(totalFiber)}g</td>
@@ -275,13 +281,13 @@ export const ReportPage = () => {
           </table>
 
           ${report.clinical_insights && report.clinical_insights.length > 0 ? `
-            <h2>🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical Nutrition Insights)</h2>
+            <h2>🩺 ${isBn ? 'ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical Nutrition Insights)' : 'Clinical Nutrition Insights'}</h2>
             <table style="margin-bottom: 20px;">
               <thead>
                 <tr>
-                  <th style="width: 25%;">সতর্কবার্তা / উপাদান</th>
-                  <th style="width: 55%;">পুষ্টিবিদ মূল্যায়ন ও পরামর্শ</th>
-                  <th style="width: 20%;">রেফারেন্স গাইডলাইন</th>
+                  <th style="width: 25%;">${isBn ? 'সতর্কবার্তা / উপাদান' : 'Alert / Nutrient'}</th>
+                  <th style="width: 55%;">${isBn ? 'পুষ্টিবিদ মূল্যায়ন ও পরামর্শ' : 'Clinical Assessment & Advice'}</th>
+                  <th style="width: 20%;">${isBn ? 'রেফারেন্স গাইডলাইন' : 'Reference Guideline'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,7 +298,7 @@ export const ReportPage = () => {
                     <tr>
                       <td>
                         <span class="status-badge" style="background-color: ${badgeBg}; color: ${badgeColor}; margin-bottom: 4px;">${ins.title}</span>
-                        ${ins.disease ? `<br><small style="color: #7A8487; font-size: 10px;">শারীরিক অবস্থা: ${ins.disease}</small>` : ''}
+                        ${ins.disease ? `<br><small style="color: #7A8487; font-size: 10px;">${isBn ? 'শারীরিক অবস্থা: ' : 'Condition: '}${ins.disease}</small>` : ''}
                       </td>
                       <td>${ins.message}</td>
                       <td><em style="color: #7A8487; font-size: 11px;">${ins.reference || 'Bangladesh Dietary Guidelines'}</em></td>
@@ -304,14 +310,14 @@ export const ReportPage = () => {
           ` : ''}
 
           ${report.calorie_history && report.calorie_history.length > 0 ? `
-            <h2>📅 প্রতিদিনের ক্যালোরি বিবরণী (Daily Calorie Consumption Log)</h2>
+            <h2>📅 ${isBn ? 'প্রতিদিনের ক্যালোরি বিবরণী (Daily Calorie Consumption Log)' : 'Daily Calorie Consumption Log'}</h2>
             <table style="margin-bottom: 20px;">
               <thead>
                 <tr>
-                  <th>তারিখ</th>
-                  <th>ক্যালোরি গ্রহণ</th>
-                  <th>পরিকল্পিত ক্যালোরি</th>
-                  <th>পূরণ হার (%)</th>
+                  <th>${isBn ? 'তারিখ' : 'Date'}</th>
+                  <th>${isBn ? 'ক্যালোরি গ্রহণ' : 'Calories Consumed'}</th>
+                  <th>${isBn ? 'পরিকল্পিত ক্যালোরি' : 'Planned Calories'}</th>
+                  <th>${isBn ? 'পূরণ হার (%)' : 'Fulfillment (%)'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -331,12 +337,12 @@ export const ReportPage = () => {
           ` : ''}
 
           ${report.weight_history && report.weight_history.length > 0 ? `
-            <h2>⚖️ ওজন পরিবর্তনের ইতিহাস (Weight Tracking History)</h2>
+            <h2>⚖️ ${isBn ? 'ওজন পরিবর্তনের ইতিহাস (Weight Tracking History)' : 'Weight Tracking History'}</h2>
             <table style="margin-bottom: 20px;">
               <thead>
                 <tr>
-                  <th>তারিখ</th>
-                  <th>ওজন (কেজি)</th>
+                  <th>${isBn ? 'তারিখ' : 'Date'}</th>
+                  <th>${isBn ? 'ওজন (কেজি)' : 'Weight (kg)'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,18 +356,18 @@ export const ReportPage = () => {
             </table>
           ` : ''}
 
-          <h2>🩺 ভিটামিন ও খনিজ খতিয়ান (Micronutrient Tracker)</h2>
+          <h2>🩺 ${isBn ? 'ভিটামিন ও খনিজ খতিয়ান (Micronutrient Tracker)' : 'Micronutrient Tracker'}</h2>
           
           ${vitamins.length > 0 ? `
-            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #8FB41E; font-size: 14px;">🍊 ভিটামিন (Vitamins)</h3>
+            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #8FB41E; font-size: 14px;">🍊 ${isBn ? 'ভিটামিন (Vitamins)' : 'Vitamins'}</h3>
             <table style="margin-bottom: 20px;">
               <thead>
                 <tr>
-                  <th>ভিটামিন</th>
-                  <th>গড় দৈনিক গ্রহণ</th>
-                  <th>লক্ষ্যমাত্রা</th>
-                  <th>পূরণ হার (%)</th>
-                  <th>অবস্থা</th>
+                  <th>${isBn ? 'ভিটামিন' : 'Vitamin'}</th>
+                  <th>${isBn ? 'গড় দৈনিক গ্রহণ' : 'Avg Daily Intake'}</th>
+                  <th>${isBn ? 'লক্ষ্যমাত্রা' : 'Target'}</th>
+                  <th>${isBn ? 'পূরণ হার (%)' : 'Fulfillment (%)'}</th>
+                  <th>${isBn ? 'অবস্থা' : 'Status'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -369,7 +375,7 @@ export const ReportPage = () => {
             const status = isOptimal(nut.consumed, nut.target);
             return `
                     <tr>
-                      <td><strong>${nut.name_bn || nut.name} (${nut.name})</strong></td>
+                      <td><strong>${isBn ? (nut.name_bn || nut.name) : nut.name} ${isBn ? `(${nut.name})` : ''}</strong></td>
                       <td>${Math.round(nut.consumed)} ${nut.unit}</td>
                       <td>${Math.round(nut.target)} ${nut.unit}</td>
                       <td>${Math.round(nut.percentage)}%</td>
@@ -382,15 +388,15 @@ export const ReportPage = () => {
           ` : ''}
 
           ${minerals.length > 0 ? `
-            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #3b82f6; font-size: 14px;">💎 খনিজ (Minerals)</h3>
+            <h3 style="margin-top: 15px; margin-bottom: 5px; color: #3b82f6; font-size: 14px;">💎 ${isBn ? 'খনিজ (Minerals)' : 'Minerals'}</h3>
             <table style="margin-bottom: 20px;">
               <thead>
                 <tr>
-                  <th>খনিজ</th>
-                  <th>গড় দৈনিক গ্রহণ</th>
-                  <th>লক্ষ্যমাত্রা</th>
-                  <th>পূরণ হার (%)</th>
-                  <th>অবস্থা</th>
+                  <th>${isBn ? 'খনিজ' : 'Mineral'}</th>
+                  <th>${isBn ? 'গড় দৈনিক গ্রহণ' : 'Avg Daily Intake'}</th>
+                  <th>${isBn ? 'লক্ষ্যমাত্রা' : 'Target'}</th>
+                  <th>${isBn ? 'পূরণ হার (%)' : 'Fulfillment (%)'}</th>
+                  <th>${isBn ? 'অবস্থা' : 'Status'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -398,7 +404,7 @@ export const ReportPage = () => {
             const status = isOptimal(nut.consumed, nut.target);
             return `
                     <tr>
-                      <td><strong>${nut.name_bn || nut.name} (${nut.name})</strong></td>
+                      <td><strong>${isBn ? (nut.name_bn || nut.name) : nut.name} ${isBn ? `(${nut.name})` : ''}</strong></td>
                       <td>${Math.round(nut.consumed)} ${nut.unit}</td>
                       <td>${Math.round(nut.target)} ${nut.unit}</td>
                       <td>${Math.round(nut.percentage)}%</td>
@@ -412,7 +418,7 @@ export const ReportPage = () => {
 
 
           <div class="footer">
-            এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।<br>
+            ${isBn ? 'এটি একটি এআই-সহায়ক পুষ্টি রিপোর্ট। সুনির্দিষ্ট চিকিৎসা পরামর্শের জন্য অনুগ্রহ করে নিবন্ধিত পুষ্টিবিদ বা ডাক্তারের পরামর্শ নিন।' : 'This is an AI-assisted nutrition report. For professional medical advice, please consult a registered dietitian or physician.'}<br>
             © ${new Date().getFullYear()} DesiDiet Inc. All rights reserved.
           </div>
         </body>
@@ -452,12 +458,12 @@ export const ReportPage = () => {
 
     return (
         <DashboardLayout
-            title="স্বাস্থ্য রিপোর্ট"
-            subtitle="Health Report"
+            title={isBn ? 'স্বাস্থ্য রিপোর্ট' : 'Health Report'}
+            subtitle={isBn ? 'পুষ্টি ও ক্যালোরি বিশ্লেষণের সারসংক্ষেপ' : 'Comprehensive Nutrition & Calorie Analysis'}
             headerActions={
                 <button onClick={() => fetchReport(period)}
                     className="p-1.5 bg-cream rounded-lg text-ink-muted hover:bg-accent hover:text-white transition-all"
-                    title="রিফ্রেশ করুন"
+                    title={isBn ? 'রিফ্রেশ করুন' : 'Refresh'}
                 >
                     <RefreshCw className="w-4 h-4" />
                 </button>
@@ -474,13 +480,19 @@ export const ReportPage = () => {
                             <Activity className="w-4 h-4 text-accent" />
                         </div>
                         <div>
-                            <h2 className="font-display font-black text-sm text-ink leading-none">স্বাস্থ্য রিপোর্ট</h2>
-                            <p className="text-[0.62rem] text-ink-faint font-bn mt-1">আপনার পুষ্টি ও ক্যালোরি গ্রহণের বিস্তারিত বিশ্লেষণ</p>
+                            <h2 className="font-display font-black text-sm text-ink leading-none">
+                                {isBn ? 'স্বাস্থ্য রিপোর্ট' : 'Health Report'}
+                            </h2>
+                            <p className={`text-[0.62rem] text-ink-faint ${isBn ? 'font-bn' : ''} mt-1`}>
+                                {isBn ? 'আপনার পুষ্টি ও ক্যালোরি গ্রহণের বিস্তারিত বিশ্লেষণ' : 'Detailed breakdown of your nutrition and caloric intake'}
+                            </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <span className="text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint font-body whitespace-nowrap">রিপোর্টের সময়কাল</span>
+                        <span className="text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint font-body whitespace-nowrap">
+                            {isBn ? 'রিপোর্টের সময়কাল' : 'Report Period'}
+                        </span>
                         <div className="flex gap-1 bg-cream/40 p-1 rounded-lg border border-ink/5 relative">
                             {([3, 7, 10, 30] as Period[]).map(p => (
                                 <button
@@ -497,7 +509,7 @@ export const ReportPage = () => {
                                             transition={{ type: "spring", stiffness: 380, damping: 30 }}
                                         />
                                     )}
-                                    {PERIOD_LABELS[p]}
+                                    {periodLabels[p]}
                                 </button>
                             ))}
                         </div>
@@ -509,10 +521,12 @@ export const ReportPage = () => {
                     <div className="bg-red-50/50 border border-red-200/60 p-4 rounded-xl flex items-start gap-3 max-w-2xl mx-auto">
                         <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                         <div className="space-y-1">
-                            <h3 className="font-bn font-bold text-xs text-red-800">রিপোর্ট লোড করা যায়নি</h3>
-                            <p className="font-bn text-xs text-red-600/90">{error}</p>
+                            <h3 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-red-800`}>
+                                {isBn ? 'রিপোর্ট লোড করা যায়নি' : 'Could not load report'}
+                            </h3>
+                            <p className={`${isBn ? 'font-bn' : ''} text-xs text-red-600/90`}>{error}</p>
                             <button onClick={() => fetchReport(period)} className="mt-2 text-xs font-bold text-red-700 hover:text-red-950 underline flex items-center gap-1">
-                                <RefreshCw className="w-3 h-3" /> পুনরায় চেষ্টা করুন
+                                <RefreshCw className="w-3 h-3" /> {isBn ? 'পুনরায় চেষ্টা করুন' : 'Try Again'}
                             </button>
                         </div>
                     </div>
@@ -522,9 +536,11 @@ export const ReportPage = () => {
                 {loading && (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                         <Loader2 className="w-10 h-10 animate-spin text-accent" />
-                        <p className="font-bn text-xs text-ink-muted text-center">
-                            আপনার স্বাস্থ্য ডেটা বিশ্লেষণ করা হচ্ছে...<br />
-                            <span className="text-[0.62rem] opacity-60">গত {period} দিনের মিল প্ল্যান ও ওজন তথ্য প্রসেস করছে</span>
+                        <p className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted text-center`}>
+                            {isBn ? 'আপনার স্বাস্থ্য ডেটা বিশ্লেষণ করা হচ্ছে...' : 'Analyzing your health data...'}<br />
+                            <span className="text-[0.62rem] opacity-60">
+                                {isBn ? `গত ${period} দিনের মিল প্ল্যান ও ওজন তথ্য প্রসেস করছে` : `Processing meal plans and health logs from the past ${period} days`}
+                            </span>
                         </p>
                     </div>
                 )}
@@ -543,12 +559,12 @@ export const ReportPage = () => {
                                 </div>
                                 <div className="relative grid grid-cols-2 md:grid-cols-4 gap-6">
                                     {[
-                                        { icon: Calendar, label: 'বিশ্লেষিত দিন', val: `${report.days_with_data}/${report.period_days}`, unit: 'দিন', color: 'text-accent' },
-                                        { icon: Flame, label: 'গড় ক্যালোরি/দিন', val: report.avg_daily_calories.toLocaleString(), unit: 'kcal', color: 'text-amber-400' },
-                                        { icon: Target, label: 'লক্ষ্য ক্যালোরি', val: report.target_calories.toLocaleString(), unit: 'kcal/দিন', color: 'text-blue-400' },
-                                        { icon: CheckCircle2, label: 'অনুসরণ হার', val: `${report.adherence_pct}%`, unit: 'adherence', color: 'text-green-400' },
+                                        { icon: Calendar, label: isBn ? 'বিশ্লেষিত দিন' : 'Analyzed Days', val: `${report.days_with_data}/${report.period_days}`, unit: isBn ? 'দিন' : 'days', color: 'text-accent' },
+                                        { icon: Flame, label: isBn ? 'গড় ক্যালোরি/দিন' : 'Avg Calories/Day', val: report.avg_daily_calories.toLocaleString(), unit: 'kcal', color: 'text-amber-400' },
+                                        { icon: Target, label: isBn ? 'লক্ষ্য ক্যালোরি' : 'Target Calories', val: report.target_calories.toLocaleString(), unit: isBn ? 'kcal/দিন' : 'kcal/day', color: 'text-blue-400' },
+                                        { icon: CheckCircle2, label: isBn ? 'অনুসরণ হার' : 'Adherence Rate', val: `${report.adherence_pct}%`, unit: 'adherence', color: 'text-green-400' },
                                     ].map((item, i) => (
-                                        <div key={i} className="font-bn">
+                                        <div key={i} className={`${isBn ? 'font-bn' : ''}`}>
                                             <div className="flex items-center gap-1.5 opacity-60 mb-0.5">
                                                 <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
                                                 <span className="text-[0.58rem] font-bold uppercase tracking-wider">{item.label}</span>
@@ -575,15 +591,19 @@ export const ReportPage = () => {
                                                     <Brain className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <h2 className="font-bn font-black text-xs text-ink leading-tight">এআই ও সামগ্রিক পুষ্টি মূল্যায়ন (Clinical AI Assessment)</h2>
-                                                    <p className="text-[0.52rem] font-bn text-ink-faint leading-none mt-0.5">PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত</p>
+                                                    <h2 className={`${isBn ? 'font-bn' : ''} font-black text-xs text-ink leading-tight`}>
+                                                        {isBn ? 'এআই ও সামগ্রিক পুষ্টি মূল্যায়ন (Clinical AI Assessment)' : 'Clinical AI Nutrition Assessment'}
+                                                    </h2>
+                                                    <p className={`text-[0.52rem] ${isBn ? 'font-bn' : ''} text-ink-faint leading-none mt-0.5`}>
+                                                        {isBn ? 'PushtiAI™ সিনিয়র ডায়েট পরামর্শক দ্বারা প্রস্তুত' : 'Prepared by PushtiAI™ Senior Dietitian'}
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <p className="font-bn text-[0.68rem] text-ink/90 leading-relaxed font-medium pl-2 border-l-2 border-accent/40 bg-cream/10 py-1 pr-1.5 rounded-xl">
+                                            <p className={`${isBn ? 'font-bn' : ''} text-[0.68rem] text-ink/90 leading-relaxed font-medium pl-2 border-l-2 border-accent/40 bg-cream/10 py-1 pr-1.5 rounded-xl`}>
                                                 "{report.ai_verdict}"
                                             </p>
-                                            <div className="flex items-center justify-between text-[0.52rem] font-bn text-ink-faint pt-1 border-t border-ink/5">
-                                                <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3 text-accent" /> অনুমোদিত ক্লিনিক্যাল পুষ্টি নির্দেশিকা</span>
+                                            <div className={`flex items-center justify-between text-[0.52rem] ${isBn ? 'font-bn' : ''} text-ink-faint pt-1 border-t border-ink/5`}>
+                                                <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3 text-accent" /> {isBn ? 'অনুমোদিত ক্লিনিক্যাল পুষ্টি নির্দেশিকা' : 'Approved Clinical Nutrition Guidelines'}</span>
                                                 <span className="font-semibold">DesiDiet AI Engine</span>
                                             </div>
                                         </div>
@@ -595,7 +615,9 @@ export const ReportPage = () => {
                                         <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="w-1 h-3.5 bg-accent rounded-full" />
-                                                <h2 className="font-bn font-bold text-xs text-ink">ক্যালোরি গ্রহণ (প্রতিদিন)</h2>
+                                                <h2 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink`}>
+                                                    {isBn ? 'ক্যালোরি গ্রহণ (প্রতিদিন)' : 'Daily Calorie Intake'}
+                                                </h2>
                                             </div>
                                             {report.calorie_history.length > 0 ? (
                                                 <ResponsiveContainer width="100%" height={150}>
@@ -611,7 +633,7 @@ export const ReportPage = () => {
                                                         <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                                                         <Tooltip
                                                             contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                                                            formatter={(val: number) => [`${val} kcal`, 'ক্যালোরি']}
+                                                            formatter={(val: number) => [`${val} kcal`, isBn ? 'ক্যালোরি' : 'Calories']}
                                                         />
                                                         <ReferenceLine y={report.target_calories} stroke="#3b82f6" strokeDasharray="4 4" />
                                                         <Area type="monotone" dataKey="calories_consumed" stroke="#e05a1c" strokeWidth={2}
@@ -620,7 +642,9 @@ export const ReportPage = () => {
                                                 </ResponsiveContainer>
                                             ) : (
                                                 <div className="h-[150px] flex items-center justify-center">
-                                                    <p className="font-bn text-ink-faint text-[0.68rem]">কোনো মিল প্ল্যান সম্পন্ন করা হয়নি</p>
+                                                    <p className={`${isBn ? 'font-bn' : ''} text-ink-faint text-[0.68rem]`}>
+                                                        {isBn ? 'কোনো মিল প্ল্যান সম্পন্ন করা হয়নি' : 'No meal plans logged yet'}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
@@ -629,7 +653,9 @@ export const ReportPage = () => {
                                         <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                                                <h2 className="font-bn font-bold text-xs text-ink">ওজনের পরিবর্তন</h2>
+                                                <h2 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink`}>
+                                                    {isBn ? 'ওজনের পরিবর্তন' : 'Weight Trend'}
+                                                </h2>
                                             </div>
                                             {report.weight_history.length > 1 ? (
                                                 <ResponsiveContainer width="100%" height={150}>
@@ -639,7 +665,7 @@ export const ReportPage = () => {
                                                         <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}kg`} />
                                                         <Tooltip
                                                             contentStyle={{ borderRadius: 8, border: 'none', fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                                                            formatter={(val: number) => [`${val} kg`, 'ওজন']}
+                                                            formatter={(val: number) => [`${val} kg`, isBn ? 'ওজন' : 'Weight']}
                                                         />
                                                         <Line type="monotone" dataKey="weight_kg" stroke="#3b82f6" strokeWidth={2}
                                                             dot={{ r: 3, fill: '#3b82f6', stroke: 'white', strokeWidth: 1 }} activeDot={{ r: 4 }} />
@@ -648,9 +674,11 @@ export const ReportPage = () => {
                                             ) : (
                                                 <div className="h-[150px] flex flex-col items-center justify-center gap-1 text-center">
                                                     <TrendingUp className="w-6 h-6 text-ink/10" />
-                                                    <p className="font-bn text-ink-faint text-[0.68rem]">
-                                                        ওজন লগ করুন পরিবর্তন দেখতে<br />
-                                                        <span className="opacity-60 text-[0.62rem]">আজ: {report.current_weight_kg} কেজি</span>
+                                                    <p className={`${isBn ? 'font-bn' : ''} text-ink-faint text-[0.68rem]`}>
+                                                        {isBn ? 'ওজন লগ করুন পরিবর্তন দেখতে' : 'Log your weight to see progress'}<br />
+                                                        <span className="opacity-60 text-[0.62rem]">
+                                                            {isBn ? `আজ: ${report.current_weight_kg} কেজি` : `Current: ${report.current_weight_kg} kg`}
+                                                        </span>
                                                     </p>
                                                 </div>
                                             )}
@@ -663,7 +691,9 @@ export const ReportPage = () => {
                                         <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm flex flex-col justify-between">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-1 h-3.5 bg-amber-500 rounded-full" />
-                                                <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো বিভাজন</h2>
+                                                <h2 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink`}>
+                                                    {isBn ? 'ম্যাক্রো বিভাজন' : 'Macro Ratio'}
+                                                </h2>
                                             </div>
                                             {report.pie_data.length > 0 ? (
                                                 <>
@@ -688,7 +718,7 @@ export const ReportPage = () => {
                                                     </div>
                                                     <div className="flex justify-center gap-3 flex-wrap mt-1">
                                                         {report.pie_data.map((d, i) => (
-                                                            <div key={i} className="flex items-center gap-1 text-[0.62rem] font-bn">
+                                                            <div key={i} className={`flex items-center gap-1 text-[0.62rem] ${isBn ? 'font-bn' : ''}`}>
                                                                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
                                                                 <span className="font-bold text-ink">{d.name}</span>
                                                                 <span className="text-ink-faint">{d.grams}g</span>
@@ -698,7 +728,9 @@ export const ReportPage = () => {
                                                 </>
                                             ) : (
                                                 <div className="h-[140px] flex items-center justify-center">
-                                                    <p className="font-bn text-ink-faint text-[0.68rem]">পর্যাপ্ত ডেটা নেই</p>
+                                                    <p className={`${isBn ? 'font-bn' : ''} text-ink-faint text-[0.68rem]`}>
+                                                        {isBn ? 'পর্যাপ্ত ডেটা নেই' : 'Not enough data'}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
@@ -707,31 +739,33 @@ export const ReportPage = () => {
                                         <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="w-1 h-3.5 bg-green-500 rounded-full" />
-                                                <h2 className="font-bn font-bold text-xs text-ink">ম্যাক্রো পুষ্টি খতিয়ান (Macros Summary)</h2>
+                                                <h2 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink`}>
+                                                    {isBn ? 'ম্যাক্রো পুষ্টি খতিয়ান (Macros Summary)' : 'Macronutrient Summary'}
+                                                </h2>
                                             </div>
                                             <div className="space-y-4">
                                                 {[
-                                                    { label: 'আমিষ (Protein)', consumed: report.macro_summary.protein_g, target: report.macro_summary.target_protein_g, color: 'bg-emerald-500', unit: 'g' },
-                                                    { label: 'শর্করা (Carbs)', consumed: report.macro_summary.carbs_g, target: report.macro_summary.target_carbs_g, color: 'bg-blue-500', unit: 'g' },
-                                                    { label: 'চর্বি (Fat)', consumed: report.macro_summary.fat_g, target: report.macro_summary.target_fat_g, color: 'bg-amber-500', unit: 'g' },
-                                                    { label: 'আঁশ (Fiber)', consumed: report.macro_summary.fiber_g, target: report.period_days * 30, color: 'bg-purple-500', unit: 'g' },
+                                                    { label: isBn ? 'আমিষ (Protein)' : 'Protein', consumed: report.macro_summary.protein_g, target: report.macro_summary.target_protein_g, color: 'bg-emerald-500', unit: 'g' },
+                                                    { label: isBn ? 'শর্করা (Carbs)' : 'Carbs', consumed: report.macro_summary.carbs_g, target: report.macro_summary.target_carbs_g, color: 'bg-blue-500', unit: 'g' },
+                                                    { label: isBn ? 'চর্বি (Fat)' : 'Fat', consumed: report.macro_summary.fat_g, target: report.macro_summary.target_fat_g, color: 'bg-amber-500', unit: 'g' },
+                                                    { label: isBn ? 'আঁশ (Fiber)' : 'Fiber', consumed: report.macro_summary.fiber_g, target: report.period_days * 30, color: 'bg-purple-500', unit: 'g' },
                                                 ].map((m, i) => {
                                                     const pct = m.target > 0 ? Math.round((m.consumed / m.target) * 100) : 0;
                                                     const avgDaily = m.consumed / report.period_days;
                                                     const targetDaily = m.target / report.period_days;
 
-                                                    let statusLabel = 'সঠিক';
+                                                    let statusLabel = isBn ? 'সঠিক' : 'Optimal';
                                                     let statusColor = 'text-green-600 bg-green-50';
                                                     if (pct < 70) {
-                                                        statusLabel = 'ঘাটতি';
+                                                        statusLabel = isBn ? 'ঘাটতি' : 'Deficit';
                                                         statusColor = 'text-red-600 bg-red-50';
                                                     } else if (pct > 115) {
-                                                        statusLabel = 'অতিরিক্ত';
+                                                        statusLabel = isBn ? 'অতিরিক্ত' : 'Excess';
                                                         statusColor = 'text-amber-600 bg-amber-50';
                                                     }
 
                                                     return (
-                                                        <div key={i} className="font-bn border-b border-ink/5 pb-2.5 last:border-b-0 last:pb-0">
+                                                        <div key={i} className={`${isBn ? 'font-bn' : ''} border-b border-ink/5 pb-2.5 last:border-b-0 last:pb-0`}>
                                                             <div className="flex justify-between items-center text-[0.68rem] mb-1">
                                                                 <span className="font-bold text-ink">{m.label}</span>
                                                                 <span className={`text-[0.52rem] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
@@ -741,15 +775,21 @@ export const ReportPage = () => {
 
                                                             <div className="grid grid-cols-3 gap-2 text-[0.62rem] text-ink-muted mb-1.5">
                                                                 <div>
-                                                                    <span className="text-[0.52rem] text-ink-faint block">দৈনিক গড় গ্রহণ</span>
+                                                                    <span className="text-[0.52rem] text-ink-faint block">
+                                                                        {isBn ? 'দৈনিক গড় গ্রহণ' : 'Daily Avg'}
+                                                                    </span>
                                                                     <strong className="text-ink font-display">{avgDaily.toFixed(1)}{m.unit}</strong>
                                                                 </div>
                                                                 <div>
-                                                                    <span className="text-[0.52rem] text-ink-faint block">দৈনিক লক্ষ্য</span>
+                                                                    <span className="text-[0.52rem] text-ink-faint block">
+                                                                        {isBn ? 'দৈনিক লক্ষ্য' : 'Daily Target'}
+                                                                    </span>
                                                                     <strong className="text-ink font-display">{targetDaily.toFixed(1)}{m.unit}</strong>
                                                                 </div>
                                                                 <div>
-                                                                    <span className="text-[0.52rem] text-ink-faint block">{report.period_days} দিনের মোট</span>
+                                                                    <span className="text-[0.52rem] text-ink-faint block">
+                                                                        {isBn ? `${report.period_days} দিনের মোট` : `${report.period_days}d Total`}
+                                                                    </span>
                                                                     <strong className="text-ink font-display">{m.consumed.toFixed(0)}{m.unit} / {m.target.toFixed(0)}{m.unit}</strong>
                                                                 </div>
                                                             </div>
@@ -770,13 +810,15 @@ export const ReportPage = () => {
                                         <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1.5 h-3.5 bg-rose-500 rounded-full" />
-                                                <h2 className="font-bn font-black text-xs text-ink">🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical AI Insights)</h2>
+                                                <h2 className={`${isBn ? 'font-bn' : ''} font-black text-xs text-ink`}>
+                                                    {isBn ? '🩺 ক্লিনিক্যাল পুষ্টি সতর্কবার্তা ও পরামর্শ (Clinical AI Insights)' : '🩺 Clinical AI Nutrition Insights'}
+                                                </h2>
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 {report.clinical_insights.map((ins, i) => {
                                                     const isError = ins.type === 'error';
                                                     return (
-                                                        <div key={i} className={`p-3 rounded-xl border flex flex-col justify-between font-bn transition-all hover:shadow ${isError
+                                                        <div key={i} className={`p-3 rounded-xl border flex flex-col justify-between ${isBn ? 'font-bn' : ''} transition-all hover:shadow ${isError
                                                                 ? 'bg-red-50/20 border-red-100 text-red-950'
                                                                 : 'bg-amber-50/10 border-amber-100 text-amber-950'
                                                             }`}>
@@ -788,7 +830,7 @@ export const ReportPage = () => {
                                                                         {ins.disease && (
                                                                             <span className={`inline-block text-[0.48rem] font-bold px-1 py-0.2 rounded mt-0.5 ${isError ? 'bg-red-100/60 text-red-700' : 'bg-amber-100/60 text-amber-700'
                                                                                 }`}>
-                                                                                শারীরিক অবস্থা: {ins.disease}
+                                                                                {isBn ? 'শারীরিক অবস্থা: ' : 'Condition: '}{ins.disease}
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -799,7 +841,7 @@ export const ReportPage = () => {
                                                             </div>
                                                             {ins.reference && (
                                                                 <div className="mt-2 pt-1.5 border-t border-ink/5 flex items-center justify-between text-[0.48rem] text-ink-faint leading-none">
-                                                                    <span>রেফারেন্স:</span>
+                                                                    <span>{isBn ? 'রেফারেন্স:' : 'Reference:'}</span>
                                                                     <span className="font-bold text-accent">{ins.reference}</span>
                                                                 </div>
                                                             )}
@@ -821,20 +863,22 @@ export const ReportPage = () => {
                                         const vitamins = all.filter(n => VITAMIN_NAMES.includes(n.name));
                                         const minerals = all.filter(n => !VITAMIN_NAMES.includes(n.name) && !EXCLUDE_NAMES.includes(n.name));
                                         const groups = [
-                                            { id: 'v', label: 'ভিটামিন', items: vitamins, color: 'bg-amber-500' },
-                                            { id: 'm', label: 'খনিজ', items: minerals, color: 'bg-blue-500' },
+                                            { id: 'v', label: isBn ? 'ভিটামিন' : 'Vitamins', items: vitamins, color: 'bg-amber-500' },
+                                            { id: 'm', label: isBn ? 'খনিজ' : 'Minerals', items: minerals, color: 'bg-blue-500' },
                                         ];
                                         return (
                                             <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm space-y-4">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-1 h-3.5 bg-purple-500 rounded-full" />
-                                                    <h2 className="font-bn font-bold text-xs text-ink">মাইক্রোনিউট্রিয়েন্ট ট্র্যাকার</h2>
+                                                    <h2 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink`}>
+                                                        {isBn ? 'মাইক্রোনিউট্রিয়েন্ট ট্র্যাকার' : 'Micronutrient Tracker'}
+                                                    </h2>
                                                 </div>
                                                 {groups.map(g => g.items.length > 0 && (
                                                     <div key={g.id} className="space-y-2.5">
                                                         <div className="flex items-center gap-1.5">
                                                             <div className={`w-2 h-2 rounded-full ${g.color}`} />
-                                                            <h3 className="font-bn font-bold text-[0.68rem] text-ink">{g.label}</h3>
+                                                            <h3 className={`${isBn ? 'font-bn' : ''} font-bold text-[0.68rem] text-ink`}>{g.label}</h3>
                                                             <div className="flex-1 h-px bg-ink/5" />
                                                         </div>
                                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -846,8 +890,12 @@ export const ReportPage = () => {
                                                                     <div key={i} className="bg-cream/30 p-2.5 rounded-xl border border-ink/5 space-y-2 flex flex-col justify-between hover:shadow transition-all duration-300">
                                                                         <div className="flex justify-between items-start gap-1">
                                                                             <div className="min-w-0 flex-1">
-                                                                                <p className="font-bn font-bold text-[0.62rem] text-ink leading-tight truncate">{nut.name_bn}</p>
-                                                                                <p className="text-[0.52rem] text-ink-faint uppercase truncate leading-none mt-0.5">{nut.name}</p>
+                                                                                <p className={`${isBn ? 'font-bn' : ''} font-bold text-[0.62rem] text-ink leading-tight truncate`}>
+                                                                                    {isBn ? (nut.name_bn || nut.name) : nut.name}
+                                                                                </p>
+                                                                                <p className="text-[0.52rem] text-ink-faint uppercase truncate leading-none mt-0.5">
+                                                                                    {isBn ? nut.name : ''}
+                                                                                </p>
                                                                             </div>
                                                                             <span className={`text-[0.58rem] font-bold shrink-0 px-1.5 py-0.5 rounded ${nut.percentage >= 100 ? 'text-green-700 bg-green-50' : nut.percentage >= 50 ? 'text-amber-700 bg-amber-50' : 'text-ink-muted bg-cream'
                                                                                 }`}>{nut.percentage}%</span>
@@ -857,7 +905,7 @@ export const ReportPage = () => {
                                                                                 <div className={`h-full ${barColor} transition-all duration-700 rounded-full`}
                                                                                     style={{ width: `${Math.min(100, nut.percentage)}%` }} />
                                                                             </div>
-                                                                            <div className="flex justify-between text-[0.52rem] font-bn text-ink-faint leading-none">
+                                                                            <div className={`flex justify-between text-[0.52rem] ${isBn ? 'font-bn' : ''} text-ink-faint leading-none`}>
                                                                                 <span>{Math.round(nut.consumed)} {nut.unit}</span>
                                                                                 <span>{Math.round(nut.target)} {nut.unit}</span>
                                                                             </div>
@@ -881,17 +929,21 @@ export const ReportPage = () => {
                                     <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">
                                         <div className="flex items-center gap-2">
                                             <Download className="w-5 h-5 text-accent animate-bounce" />
-                                            <h3 className="font-display font-black text-sm text-ink">স্বাস্থ্য রিপোর্ট ডাউনলোড</h3>
+                                            <h3 className="font-display font-black text-sm text-ink">
+                                                {isBn ? 'স্বাস্থ্য রিপোর্ট ডাউনলোড' : 'Download Health Report'}
+                                            </h3>
                                         </div>
-                                        <p className="font-bn text-xs text-ink-muted leading-relaxed">
-                                            আপনার {period} দিনের পুষ্টি, এআই ও ক্লিনিক্যাল পরামর্শ সংবলিত একটি প্রফেশনাল পিডিএফ রিপোর্ট ডাউনলোড করুন।
+                                        <p className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted leading-relaxed`}>
+                                            {isBn
+                                                ? `আপনার ${period} দিনের পুষ্টি, এআই ও ক্লিনিক্যাল পরামর্শ সংবলিত একটি প্রফেশনাল পিডিএফ রিপোর্ট ডাউনলোড করুন।`
+                                                : `Download a professional clinical PDF report summarizing your ${period}-day nutrition and AI health insights.`}
                                         </p>
                                         <button
                                             onClick={handlePrint}
-                                            className="w-full py-2.5 bg-accent hover:opacity-90 text-white rounded-xl font-bn font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                                            className={`w-full py-2.5 bg-accent hover:opacity-90 text-white rounded-xl ${isBn ? 'font-bn' : ''} font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all`}
                                         >
                                             <Download className="w-4 h-4" />
-                                            পিডিএফ রিপোর্ট প্রিন্ট / সেভ
+                                            {isBn ? 'পিডিএফ রিপোর্ট প্রিন্ট / সেভ' : 'Print / Save PDF Report'}
                                         </button>
                                     </div>
 
@@ -899,21 +951,25 @@ export const ReportPage = () => {
                                     <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm space-y-4">
                                         <div className="flex items-center gap-2">
                                             <Mail className="w-5 h-5 text-accent" />
-                                            <h3 className="font-display font-black text-sm text-ink">ইমেইলে রিপোর্ট পাঠান</h3>
+                                            <h3 className="font-display font-black text-sm text-ink">
+                                                {isBn ? 'ইমেইলে রিপোর্ট পাঠান' : 'Email Health Report'}
+                                            </h3>
                                         </div>
-                                        <p className="font-bn text-xs text-ink-muted leading-relaxed">
-                                            আপনার এই স্বাস্থ্য রিপোর্টের সারসংক্ষেপটি সরাসরি আপনার ইমেইলে পাঠিয়ে রাখুন।
+                                        <p className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted leading-relaxed`}>
+                                            {isBn
+                                                ? 'আপনার এই স্বাস্থ্য রিপোর্টের সারসংক্ষেপটি সরাসরি আপনার ইমেইলে পাঠিয়ে রাখুন।'
+                                                : 'Send a comprehensive summary of this health report directly to your email inbox.'}
                                         </p>
 
                                         {emailSent ? (
-                                            <div className="p-3 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 flex items-center justify-center gap-2 font-bn text-xs font-bold">
-                                                <CheckCircle2 className="w-4 h-4" /> রিপোর্ট সফলভাবে ইমেইলে পাঠানো হয়েছে!
+                                            <div className={`p-3 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 flex items-center justify-center gap-2 ${isBn ? 'font-bn' : ''} text-xs font-bold`}>
+                                                <CheckCircle2 className="w-4 h-4" /> {isBn ? 'রিপোর্ট সফলভাবে ইমেইলে পাঠানো হয়েছে!' : 'Report successfully sent to your email!'}
                                             </div>
                                         ) : (
                                             <div className="flex gap-2">
                                                 <input
                                                     type="email"
-                                                    placeholder="আপনার ইমেইল ঠিকানা"
+                                                    placeholder={isBn ? 'আপনার ইমেইল ঠিকানা' : 'Your email address'}
                                                     value={email}
                                                     onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
                                                     className="flex-1 px-3 py-2 bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-xl font-display text-xs outline-none transition-all"
@@ -921,14 +977,14 @@ export const ReportPage = () => {
                                                 <button
                                                     onClick={handleSendEmail}
                                                     disabled={emailSending || !email.includes('@')}
-                                                    className="px-4 py-2 bg-ink text-cream hover:bg-accent rounded-xl font-display font-bold text-xs transition-all disabled:opacity-50 shrink-0"
+                                                    className={`px-4 py-2 bg-ink text-cream hover:bg-accent rounded-xl font-display font-bold text-xs transition-all disabled:opacity-50 shrink-0 ${isBn ? 'font-bn' : ''}`}
                                                 >
-                                                    {emailSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'পাঠান'}
+                                                    {emailSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (isBn ? 'পাঠান' : 'Send')}
                                                 </button>
                                             </div>
                                         )}
                                         {emailError && (
-                                            <p className="text-[0.68rem] text-red-500 font-bn mt-1 flex items-center gap-1">
+                                            <p className={`text-[0.68rem] text-red-500 ${isBn ? 'font-bn' : ''} mt-1 flex items-center gap-1`}>
                                                 <AlertCircle className="w-3.5 h-3.5" /> {emailError}
                                             </p>
                                         )}
@@ -941,9 +997,9 @@ export const ReportPage = () => {
                             {/* Refresh button */}
                             <div className="flex justify-center pt-2">
                                 <button onClick={() => fetchReport(period)}
-                                    className="flex items-center gap-1.5 px-5 py-2.5 border border-ink/10 rounded-xl font-bn text-xs text-ink-muted hover:border-accent/30 hover:text-accent hover:bg-cream transition-all shadow-sm"
+                                    className={`flex items-center gap-1.5 px-5 py-2.5 border border-ink/10 rounded-xl ${isBn ? 'font-bn' : ''} text-xs text-ink-muted hover:border-accent/30 hover:text-accent hover:bg-cream transition-all shadow-sm`}
                                 >
-                                    <RefreshCw className="w-3 h-3" /> রিপোর্ট রিফ্রেশ করুন
+                                    <RefreshCw className="w-3 h-3" /> {isBn ? 'রিপোর্ট রিফ্রেশ করুন' : 'Refresh Report'}
                                 </button>
                             </div>
 

@@ -1,6 +1,9 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 export const PageLoader = () => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   return (
     <motion.div
       initial={{ opacity: 1 }}
@@ -59,9 +62,9 @@ export const PageLoader = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="font-bn text-[2.5rem] lg:text-[3.5rem] font-bold text-cream tracking-tight leading-none mb-4"
+            className={`${isBn ? 'font-bn' : 'font-display'} text-[2.5rem] lg:text-[3.5rem] font-bold text-cream tracking-tight leading-none mb-4`}
           >
-            দেশিডায়েট এআই
+            {isBn ? 'দেশিডায়েট এআই' : 'DesiDiet AI'}
           </motion.h1>
           
           <motion.div

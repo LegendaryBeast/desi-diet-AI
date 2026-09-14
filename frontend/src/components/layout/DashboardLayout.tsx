@@ -360,7 +360,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   );
 
   return (
-    <div className="h-screen h-[100dvh] bg-cream flex overflow-hidden font-bn relative">
+    <div className={`h-screen h-[100dvh] bg-cream flex overflow-hidden ${isBn ? 'font-bn' : ''} relative`}>
 
       {/* Desktop Sidebar (Collapsible) */}
       {renderDesktopSidebar()}
@@ -411,7 +411,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="flex items-center gap-3">
               {headerExtra}
               <div>
-                <h2 className="font-bn font-black text-base md:text-lg text-ink tracking-tight leading-tight">{title}</h2>
+                <h2 className={`font-black text-base md:text-lg text-ink tracking-tight leading-tight ${isBn ? 'font-bn' : ''}`}>{title}</h2>
                 {subtitle && (
                   <div className="flex items-center gap-1">
                     <div className="w-1 h-1 rounded-full bg-accent animate-pulse" />

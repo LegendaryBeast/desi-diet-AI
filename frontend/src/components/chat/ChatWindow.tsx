@@ -1191,8 +1191,10 @@ export const ChatWindow = () => {
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>
                   {canSendMessage
-                    ? `ফ্রি মেসেজ: ${messageCount}/${FREE_MESSAGE_LIMIT} ব্যবহৃত`
-                    : 'ফ্রি মেসেজ শেষ!'}
+                    ? (isBn
+                        ? `ফ্রি মেসেজ: ${messageCount}/${FREE_MESSAGE_LIMIT} ব্যবহৃত`
+                        : `Free messages: ${messageCount}/${FREE_MESSAGE_LIMIT} used`)
+                    : (isBn ? 'ফ্রি মেসেজ শেষ!' : 'Free messages limit reached!')}
                 </span>
               </div>
               <button
@@ -1200,7 +1202,7 @@ export const ChatWindow = () => {
                 className="px-2.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[0.58rem] rounded font-black hover:shadow transition-all flex items-center gap-0.5"
               >
                 <Crown className="w-2.5 h-2.5" />
-                Pro তে আপগ্রেড
+                {isBn ? 'Pro তে আপগ্রেড' : 'Upgrade to Pro'}
               </button>
             </div>
           </div>

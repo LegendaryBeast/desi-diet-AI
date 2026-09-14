@@ -4,6 +4,7 @@ import { X, Smartphone, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-rea
 import { FaWhatsapp } from 'react-icons/fa';
 import { useWhatsappOptin } from '../../hooks/useWhatsappOptin';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface WhatsAppConnectModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface WhatsAppConnectModalProps {
 }
 
 export const WhatsAppConnectModal: React.FC<WhatsAppConnectModalProps> = ({ isOpen, onClose }) => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   const { user } = useAuth();
   const { optin, status, errorMessage, reset } = useWhatsappOptin();
   const phone = user?.phone;
@@ -63,8 +66,12 @@ export const WhatsAppConnectModal: React.FC<WhatsAppConnectModalProps> = ({ isOp
                   <FaWhatsapp size={26} />
                 </div>
                 <div>
-                  <h3 className="font-bn font-extrabold text-lg">WhatsApp-এ চ্যাট করুন</h3>
-                  <p className="text-white/80 text-xs font-medium">Chat on WhatsApp</p>
+                  <h3 className={`${isBn ? 'font-bn' : ''} font-extrabold text-lg`}>
+                    {isBn ? 'WhatsApp-এ চ্যাট করুন' : 'Chat on WhatsApp'}
+                  </h3>
+                  <p className="text-white/80 text-xs font-medium">
+                    {isBn ? 'Chat on WhatsApp' : 'Direct assistant connection'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -81,8 +88,12 @@ export const WhatsAppConnectModal: React.FC<WhatsAppConnectModalProps> = ({ isOp
                   >
                     <CheckCircle2 size={32} className="text-green-600" />
                   </motion.div>
-                  <h4 className="font-bn font-extrabold text-lg text-ink mb-1">বার্তা পাঠানো হয়েছে!</h4>
-                  <p className="text-sm text-ink-muted">Message sent!</p>
+                  <h4 className={`${isBn ? 'font-bn' : ''} font-extrabold text-lg text-ink mb-1`}>
+                    {isBn ? 'বার্তা পাঠানো হয়েছে!' : 'Message Sent!'}
+                  </h4>
+                  <p className="text-sm text-ink-muted">
+                    {isBn ? 'আপনার ফোনে মেসেজ পাঠানো হয়েছে।' : 'Check your WhatsApp for the initial message.'}
+                  </p>
                   <p className="text-sm text-ink-muted mt-3">
                     Check WhatsApp on <span className="font-bold text-ink">{phone}</span>. PushtiAI has sent you a message.
                   </p>

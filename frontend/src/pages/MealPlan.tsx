@@ -30,6 +30,7 @@ import {
   ChefHat,
 } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -134,6 +135,8 @@ interface PlanData {
 }
 
 export const MealPlan = () => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   const { profileData } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -210,7 +213,7 @@ export const MealPlan = () => {
         }
         setTrackingVersion((v) => v + 1);
       } catch (err: unknown) {
-        alert(err instanceof Error ? err.message : 'লগ মুছে ফেলতে সমস্যা হয়েছে');
+        alert(err instanceof Error ? err.message : (isBn ? 'লগ মুছে ফেলতে সমস্যা হয়েছে' : 'Failed to delete meal log'));
       } finally {
         setLoggingFoods((prev) => ({ ...prev, [key]: false }));
       }
@@ -220,19 +223,19 @@ export const MealPlan = () => {
     setLoggingFoods((prev) => ({ ...prev, [key]: true }));
     try {
       const amountStr = cleanPortionText(food.portion_bn) || (food.amount_g ? `${food.amount_g}g` : food.amount ? String(food.amount) : '1 portion');
-      const foodName = food.name_en || food.name_bn || '';
+      const foodName = isBn ? (food.name_bn || food.name_en || '') : (food.name_en || food.name_bn || '');
       const inputStr = `${amountStr} of ${foodName}`;
 
       const res = await mealTrackingApi.log({
         input: inputStr,
         meal_slot: backendSlot,
-        language: 'bn',
+        language: isBn ? 'bn' : 'en',
         direct_code: food.food_code || food.code || undefined,
         direct_calories: food.calories ? Number(food.calories) : undefined,
         direct_protein: food.protein_g ? Number(food.protein_g) : undefined,
         direct_carbs: undefined,
         direct_fat: undefined,
-        direct_name: food.name_en || food.name_bn || undefined,
+        direct_name: isBn ? (food.name_bn || food.name_en || undefined) : (food.name_en || food.name_bn || undefined),
         direct_amount_g: food.amount_g ? Number(food.amount_g) : food.amount ? Number(food.amount) : undefined,
       });
       setLoggedFoods((prev) => ({ ...prev, [key]: true }));
@@ -240,7 +243,7 @@ export const MealPlan = () => {
       // Trigger MealLogSection to re-fetch tracked data
       setTrackingVersion((v) => v + 1);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'খাবারটি লগ করতে সমস্যা হয়েছে');
+      alert(err instanceof Error ? err.message : (isBn ? 'খাবারটি লগ করতে সমস্যা হয়েছে' : 'Failed to log food item'));
     } finally {
       setLoggingFoods((prev) => ({ ...prev, [key]: false }));
     }
@@ -500,31 +503,31 @@ export const MealPlan = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await mealPlanApi.getDaily('bn');
+      const data = await mealPlanApi.getDaily(isBn ? 'bn' : 'en');
       setPlan(data);
       setCompletedSlots(data.completed_slots || []);
       setFeedback(data.feedback || 0);
       setEditingPlanData(data.plan_data as PlanData);
       setIsEditing(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'প্ল্যান লোড করতে সমস্যা হয়েছে');
+      setError(err instanceof Error ? err.message : (isBn ? 'প্ল্যান লোড করতে সমস্যা হয়েছে' : 'Failed to load meal plan'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isBn]);
 
   const fetchTomorrow = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await mealPlanApi.getDaily('bn', 1);
+      const data = await mealPlanApi.getDaily(isBn ? 'bn' : 'en', 1);
       setTomorrowPlan(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'আগামীকালের প্ল্যান লোড করতে সমস্যা হয়েছে');
+      setError(err instanceof Error ? err.message : (isBn ? 'আগামীকালের প্ল্যান লোড করতে সমস্যা হয়েছে' : 'Failed to load tomorrow’s plan'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isBn]);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -533,11 +536,11 @@ export const MealPlan = () => {
       const data = await mealPlanApi.getHistory(20);
       setHistoryPlans(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'ইতিহাস লোড করতে সমস্যা হয়েছে');
+      setError(err instanceof Error ? err.message : (isBn ? 'ইতিহাস লোড করতে সমস্যা হয়েছে' : 'Failed to load meal history'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isBn]);
 
   const regenerateDaily = async (offset = 0) => {
     // Free users cannot regenerate
@@ -549,7 +552,7 @@ export const MealPlan = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await mealPlanApi.getDaily('bn', offset, true);
+      const data = await mealPlanApi.getDaily(isBn ? 'bn' : 'en', offset, true);
       if (offset === 0) {
         setPlan(data);
         setCompletedSlots(data.completed_slots || []);
@@ -754,7 +757,7 @@ export const MealPlan = () => {
       setIsEditing(false);
       window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
-      setError('প্ল্যান সেভ করতে সমস্যা হয়েছে');
+      setError(isBn ? 'প্ল্যান সেভ করতে সমস্যা হয়েছে' : 'Failed to save meal plan');
     } finally {
       setSavingEdit(false);
     }
@@ -822,11 +825,13 @@ export const MealPlan = () => {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h1 className="font-bn text-sm font-black text-ink">
-                {p.plan_id === tomorrowPlan?.plan_id ? 'আগামীকালের' : 'আজকের'} খাবার
+              <h1 className={`${isBn ? 'font-bn' : 'font-body'} text-sm font-black text-ink`}>
+                {p.plan_id === tomorrowPlan?.plan_id
+                  ? (isBn ? 'আগামীকালের খাবার' : "Tomorrow's Meals")
+                  : (isBn ? 'আজকের খাবার' : "Today's Meals")}
               </h1>
               <span className="text-[0.5rem] text-ink-faint font-body font-bold uppercase tracking-wider">
-                {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {new Date(p.plan_date).toLocaleDateString(isBn ? 'bn-BD' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </span>
             </div>
 
@@ -852,16 +857,16 @@ export const MealPlan = () => {
                 } : slotMacros;
 
                 return [
-                  { icon: Flame, label: 'গৃহীত/লক্ষ্য', val: `${consumedCal}/${totalCal}`, unit: 'kcal', color: 'text-ink' },
-                  { icon: Zap, label: 'শর্করা', val: targets ? `${consumedMacros.carbs_g}/${targets.carbs_g}` : '--', unit: 'g', color: 'text-accent' },
-                  { icon: Utensils, label: 'প্রোটিন', val: targets ? `${consumedMacros.protein_g}/${targets.protein_g}` : '--', unit: 'g', color: 'text-forest' },
-                  { icon: Droplet, label: 'চর্বি', val: targets ? `${consumedMacros.fat_g}/${targets.fat_g}` : '--', unit: 'g', color: 'text-gold' },
+                  { icon: Flame, label: isBn ? 'গৃহীত/লক্ষ্য' : 'Consumed/Target', val: `${consumedCal}/${totalCal}`, unit: 'kcal', color: 'text-ink' },
+                  { icon: Zap, label: isBn ? 'শর্করা' : 'Carbs', val: targets ? `${consumedMacros.carbs_g}/${targets.carbs_g}` : '--', unit: 'g', color: 'text-accent' },
+                  { icon: Utensils, label: isBn ? 'প্রোটিন' : 'Protein', val: targets ? `${consumedMacros.protein_g}/${targets.protein_g}` : '--', unit: 'g', color: 'text-forest' },
+                  { icon: Droplet, label: isBn ? 'চর্বি' : 'Fat', val: targets ? `${consumedMacros.fat_g}/${targets.fat_g}` : '--', unit: 'g', color: 'text-gold' },
                 ];
               })().map((item, i) => (
                 <div key={i} className="bg-cream/40 p-2.5 rounded-xl border border-ink/5 text-center lg:text-left">
                   <div className="flex items-center gap-1.5 text-ink-faint mb-0.5 justify-center lg:justify-start">
                     <item.icon className={`w-3 h-3 ${item.color}`} />
-                    <span className="font-bn text-[0.6rem] font-bold uppercase tracking-wider">{item.label}</span>
+                    <span className={`${isBn ? 'font-bn' : 'font-body'} text-[0.6rem] font-bold uppercase tracking-wider`}>{item.label}</span>
                   </div>
                   <div className="font-bold text-sm md:text-base text-ink">{item.val}</div>
                 </div>
@@ -871,23 +876,23 @@ export const MealPlan = () => {
             {isToday && (
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {aiCal && (
-                  <div className="text-[10px] font-bn px-2.5 py-1 bg-ink/5 text-ink-muted rounded-lg">
-                    AI Suggestion: <span className="font-bold">{aiCal} kcal</span>
+                  <div className="text-[10px] px-2.5 py-1 bg-ink/5 text-ink-muted rounded-lg">
+                    {isBn ? 'এআই প্রস্তাবিত:' : 'AI Suggestion:'} <span className="font-bold">{aiCal} kcal</span>
                   </div>
                 )}
                 {userCal && (
-                  <div className="text-[10px] font-bn px-2.5 py-1 bg-accent/10 text-accent rounded-lg">
-                    Your Choice: <span className="font-bold">{userCal} kcal</span>
+                  <div className="text-[10px] px-2.5 py-1 bg-accent/10 text-accent rounded-lg">
+                    {isBn ? 'আপনার পছন্দ:' : 'Your Choice:'} <span className="font-bold">{userCal} kcal</span>
                   </div>
                 )}
                 <div className="flex-1" />
                 {isEditing ? (
                   <div className="flex gap-1.5">
-                    <button onClick={() => setIsEditing(false)} className="text-[11px] font-bn font-bold px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5">
-                      <X className="w-3 h-3" /> বাতিল
+                    <button onClick={() => setIsEditing(false)} className={`text-[11px] ${isBn ? 'font-bn' : ''} font-bold px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5`}>
+                      <X className="w-3 h-3" /> {isBn ? 'বাতিল' : 'Cancel'}
                     </button>
-                    <button onClick={saveEdits} disabled={savingEdit} className="text-[11px] font-bn font-bold px-3 py-1.5 bg-ink text-cream rounded-lg hover:bg-accent transition-colors flex items-center gap-1.5">
-                      {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3 h-3" />} সেভ করুন
+                    <button onClick={saveEdits} disabled={savingEdit} className={`text-[11px] ${isBn ? 'font-bn' : ''} font-bold px-3 py-1.5 bg-ink text-cream rounded-lg hover:bg-accent transition-colors flex items-center gap-1.5`}>
+                      {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3 h-3" />} {isBn ? 'সেভ করুন' : 'Save'}
                     </button>
                   </div>
                 ) : (
@@ -895,7 +900,7 @@ export const MealPlan = () => {
                     <button
                       onClick={() => regenerateDaily(tab === 'today' ? 0 : 1)}
                       disabled={loading}
-                      className={`text-[11px] font-bn font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${isPro
+                      className={`text-[11px] ${isBn ? 'font-bn' : ''} font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${isPro
                           ? 'bg-accent text-white hover:bg-accent/85 shadow-accent/10'
                           : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-orange-500/10 hover:shadow-md'
                         }`}
@@ -905,11 +910,11 @@ export const MealPlan = () => {
                       ) : (
                         <Crown className="w-3 h-3" />
                       )}
-                      পুনরায় তৈরি করুন
+                      {isBn ? 'পুনরায় তৈরি করুন' : 'Regenerate Plan'}
                       {!isPro && <span className="text-[0.45rem] bg-white/20 px-1 py-0.5 rounded font-black uppercase">Pro</span>}
                     </button>
-                    <button onClick={() => setIsEditing(true)} className="text-[11px] font-bn font-bold px-3 py-1.5 border border-ink/10 text-ink rounded-lg hover:bg-ink/5 transition-colors flex items-center gap-1.5">
-                      <Edit2 className="w-3 h-3" /> কাস্টমাইজ
+                    <button onClick={() => setIsEditing(true)} className={`text-[11px] ${isBn ? 'font-bn' : ''} font-bold px-3 py-1.5 border border-ink/10 text-ink rounded-lg hover:bg-ink/5 transition-colors flex items-center gap-1.5`}>
+                      <Edit2 className="w-3 h-3" /> {isBn ? 'কাস্টমাইজ' : 'Customize'}
                     </button>
                   </div>
                 )}
@@ -934,18 +939,22 @@ export const MealPlan = () => {
                 </div>
                 <div>
                   <h3 className="font-display font-black text-xs text-ink">
-                    পুষ্টি উপাদান ট্র্যাকার (Micronutrient Tracker)
+                    {isBn ? 'পুষ্টি উপাদান ট্র্যাকার (Micronutrient Tracker)' : 'Micronutrient Tracker'}
                   </h3>
-                  <p className="font-bn text-[11px] text-ink-muted mt-0.5">
-                    আজকের ভিটামিন ও মিনারেল গ্রহণের মাত্রা: <b className="text-accent font-body font-bold">{completed}/{total}</b> সম্পূর্ণ ({pct}%)
+                  <p className="text-[11px] text-ink-muted mt-0.5">
+                    {isBn ? (
+                      <>আজকের ভিটামিন ও মিনারেল গ্রহণের মাত্রা: <b className="text-accent font-body font-bold">{completed}/{total}</b> সম্পূর্ণ ({pct}%)</>
+                    ) : (
+                      <>Today's vitamin & mineral intake: <b className="text-accent font-body font-bold">{completed}/{total}</b> completed ({pct}%)</>
+                    )}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => navigate('/micronutrients')}
-                className="w-full sm:w-auto px-4 py-2 bg-ink text-cream hover:bg-accent rounded-lg font-bn font-bold text-[11px] transition-colors shadow-sm"
+                className={`w-full sm:w-auto px-4 py-2 bg-ink text-cream hover:bg-accent rounded-lg ${isBn ? 'font-bn' : ''} font-bold text-[11px] transition-colors shadow-sm`}
               >
-                বিস্তারিত ট্র্যাকিং দেখুন
+                {isBn ? 'বিস্তারিত ট্র্যাকিং দেখুন' : 'View Tracking Details'}
               </button>
             </div>
           );
@@ -975,7 +984,20 @@ export const MealPlan = () => {
                         {isDone ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <SlotIcon className={`w-3.5 h-3.5 ${slotColor}`} />}
                       </div>
                       <div>
-                        <div className="font-bn text-xs font-bold text-ink">{slot.slot_bn || slot.slot}</div>
+                        <div className={`${isBn ? 'font-bn' : 'font-body'} text-xs font-bold text-ink`}>
+                          {(() => {
+                            if (isBn) return slot.slot_bn || slot.slot;
+                            const slotMap: Record<string, string> = {
+                              breakfast: 'Breakfast',
+                              snack1: 'Morning Snack',
+                              lunch: 'Lunch',
+                              snack2: 'Afternoon Snack',
+                              dinner: 'Dinner',
+                              snack: 'Snack',
+                            };
+                            return slotMap[slot.slot?.toLowerCase()] || slot.slot_en || slot.slot;
+                          })()}
+                        </div>
                         <div className="font-body text-[0.5rem] uppercase tracking-wider text-ink-faint font-bold">
                           {(slot.items || []).reduce((sum, item) => sum + (item.calories || 0), 0)} kcal
                         </div>
@@ -987,7 +1009,7 @@ export const MealPlan = () => {
                           onClick={() => handleRegenerateSlot(p, slot.slot)}
                           disabled={loadingSlotKey === `${p.plan_id}-${slot.slot}`}
                           className="p-1.5 rounded-xl bg-cream text-accent hover:bg-accent hover:text-white transition-all border border-transparent hover:border-accent/10 disabled:opacity-50"
-                          title="এই পুরো স্লটের খাবারের নতুন বিকল্প তৈরি করুন"
+                          title={isBn ? "এই পুরো স্লটের খাবারের নতুন বিকল্প তৈরি করুন" : "Regenerate alternatives for this entire slot"}
                         >
                           {loadingSlotKey === `${p.plan_id}-${slot.slot}` ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -997,12 +1019,12 @@ export const MealPlan = () => {
                         </button>
                         <button
                           onClick={() => toggleSlotForPlan(p, slot.slot)}
-                          className={`text-[0.58rem] font-bn font-bold px-2 py-0.5 rounded-xl transition-all ${isDone
+                          className={`text-[0.58rem] ${isBn ? 'font-bn' : ''} font-bold px-2 py-0.5 rounded-xl transition-all ${isDone
                               ? 'bg-green-500 text-white hover:bg-red-400'
                               : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                             }`}
                         >
-                          {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়ানি'}
+                          {isDone ? (isBn ? '✓ খাওয়া হয়েছে' : '✓ Completed') : (isBn ? 'খাওয়া হয়নি' : 'Mark Eaten')}
                         </button>
                       </div>
                     )}
@@ -1020,16 +1042,18 @@ export const MealPlan = () => {
                               <FoodIcon emoji={food.emoji} name={food.name_en || food.name_bn} size={15} />
                             </span>
                             <div className="min-w-0">
-                              <h4 className="font-bn font-bold text-ink text-xs truncate leading-tight">
-                                {food.name_bn || food.name_en}
+                              <h4 className={`${isBn ? 'font-bn' : 'font-body'} font-bold text-ink text-xs truncate leading-tight`}>
+                                {isBn ? (food.name_bn || food.name_en) : (food.name_en || food.name_bn)}
                               </h4>
                               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                {food.portion_bn || food.household_measure_bn ? (
-                                  <span className="text-[0.62rem] text-accent font-bold font-bn bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20">
-                                    {cleanPortionText(food.portion_bn || food.household_measure_bn)}
+                                {food.portion_bn || food.household_measure_bn || food.household_measure_en || food.portion_en ? (
+                                  <span className={`text-[0.62rem] text-accent font-bold ${isBn ? 'font-bn' : 'font-body'} bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20`}>
+                                    {isBn
+                                      ? cleanPortionText(food.household_measure_bn || food.portion_bn)
+                                      : (food.household_measure_en || food.portion_en || cleanPortionText(food.portion_bn))}
                                   </span>
                                 ) : (food.amount_g || food.amount) ? (
-                                  <span className="text-[0.58rem] text-accent font-bold font-bn">
+                                  <span className={`text-[0.58rem] text-accent font-bold ${isBn ? 'font-bn' : 'font-body'}`}>
                                     {food.amount_g || food.amount}g
                                   </span>
                                 ) : null}
@@ -1057,7 +1081,7 @@ export const MealPlan = () => {
                                       ? 'bg-accent/10 text-accent border-accent/25'
                                       : 'bg-white hover:bg-accent/5 text-ink-faint hover:text-accent border-ink/5'
                                     }`}
-                                  title="কেন এই খাবার?"
+                                  title={isBn ? "কেন এই খাবার?" : "Why this food?"}
                                 >
                                   <Info className="w-3 h-3" />
                                 </button>
@@ -1077,8 +1101,8 @@ export const MealPlan = () => {
                                   }`}
                                   title={
                                     (loggedFoods[`${slot.slot}-${j}`] || isDone)
-                                      ? 'can not re-generate already taken Item'
-                                      : 'এই খাবারের বিকল্প খুঁজুন'
+                                      ? (isBn ? 'খাওয়া খাবার পরিবর্তন করা যাবে না' : 'Cannot re-generate already eaten item')
+                                      : (isBn ? 'এই খাবারের বিকল্প খুঁজুন' : 'Find food alternative')
                                   }
                                 >
                                   {loadingSwapKey === `${slot.slot}-${j}` ? (
@@ -1098,7 +1122,7 @@ export const MealPlan = () => {
                                       ? 'bg-emerald-500 text-white border-emerald-500'
                                       : 'bg-white hover:bg-emerald-50 text-ink-faint hover:text-emerald-600 border-ink/5'
                                     }`}
-                                  title={loggedFoods[`${slot.slot}-${j}`] ? 'বাদ দিতে আবার ক্লিক করুন' : 'খাওয়া হিসেবে যোগ করুন'}
+                                  title={loggedFoods[`${slot.slot}-${j}`] ? (isBn ? 'বাদ দিতে আবার ক্লিক করুন' : 'Click to unlog') : (isBn ? 'খাওয়া হিসেবে যোগ করুন' : 'Mark as eaten')}
                                 >
                                   {loggingFoods[`${slot.slot}-${j}`] ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -1113,7 +1137,7 @@ export const MealPlan = () => {
                                 <button
                                   onClick={() => removeFoodItem(i, j)}
                                   className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="বাদ দিন"
+                                  title={isBn ? "বাদ দিন" : "Remove"}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1124,16 +1148,16 @@ export const MealPlan = () => {
 
                         {/* Collapsible Justification Panels */}
                         {justificationLoading[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
-                          <div className="p-2.5 bg-white/50 rounded-xl text-[11px] font-bn text-ink-muted flex items-center gap-1.5 border border-ink/5">
-                            <Loader2 className="w-3 h-3 animate-spin text-accent" /> বিশ্লেষণ লোড হচ্ছে...
+                          <div className={`p-2.5 bg-white/50 rounded-xl text-[11px] ${isBn ? 'font-bn' : ''} text-ink-muted flex items-center gap-1.5 border border-ink/5`}>
+                            <Loader2 className="w-3 h-3 animate-spin text-accent" /> {isBn ? 'বিশ্লেষণ লোড হচ্ছে...' : 'Loading analysis...'}
                           </div>
                         )}
 
                         {justifications[food.food_code || food.code || food.name_en || food.name_bn || ''] && (
-                          <div className="p-3 bg-accent/5 rounded-xl border border-accent/10 text-[11px] font-bn text-ink-muted leading-relaxed whitespace-pre-wrap shadow-inner relative">
+                          <div className={`p-3 bg-accent/5 rounded-xl border border-accent/10 text-[11px] ${isBn ? 'font-bn' : ''} text-ink-muted leading-relaxed whitespace-pre-wrap shadow-inner relative`}>
                             <p className="font-bold text-accent mb-1 flex items-center gap-1 text-[11px]">
                               <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
-                              ডায়েটিশিয়ান বিশ্লেষণ:
+                              {isBn ? 'ডায়েটিশিয়ান বিশ্লেষণ:' : 'Dietitian Analysis:'}
                             </p>
                             {justifications[food.food_code || food.code || food.name_en || food.name_bn || '']}
                           </div>
@@ -1147,10 +1171,10 @@ export const MealPlan = () => {
                           <div className="flex w-full gap-2">
                             <input
                               type="text"
-                              placeholder="খাবারের নাম খুঁজুন..."
+                              placeholder={isBn ? "খাবারের নাম খুঁজুন..." : "Search foods..."}
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="flex-1 w-full bg-white px-3 py-1.5 rounded-lg border border-ink/10 text-xs font-bn outline-none focus:border-accent/40"
+                              className={`flex-1 w-full bg-white px-3 py-1.5 rounded-lg border border-ink/10 text-xs ${isBn ? 'font-bn' : ''} outline-none focus:border-accent/40`}
                               autoFocus
                             />
                             <button
@@ -1162,8 +1186,8 @@ export const MealPlan = () => {
                           </div>
 
                           {searchLoading && (
-                            <div className="text-[10px] text-ink-muted px-2 py-0.5 font-bn flex items-center gap-1.5">
-                              <Loader2 className="w-3 h-3 animate-spin" /> খুঁজছে...
+                            <div className={`text-[10px] text-ink-muted px-2 py-0.5 ${isBn ? 'font-bn' : ''} flex items-center gap-1.5`}>
+                              <Loader2 className="w-3 h-3 animate-spin" /> {isBn ? 'খুঁজছে...' : 'Searching...'}
                             </div>
                           )}
 
@@ -1189,10 +1213,10 @@ export const MealPlan = () => {
                                     setSearchQuery('');
                                     setSearchResults([]);
                                   }}
-                                  className="text-left w-full p-2 bg-white hover:bg-cream rounded-lg text-xs font-bn border border-ink/5 flex justify-between items-center transition-colors"
+                                  className={`text-left w-full p-2 bg-white hover:bg-cream rounded-lg text-xs ${isBn ? 'font-bn' : ''} border border-ink/5 flex justify-between items-center transition-colors`}
                                 >
                                   <div className="flex flex-col">
-                                    <span className="font-bold text-ink">{res.name_bn || res.name_en}</span>
+                                    <span className="font-bold text-ink">{isBn ? (res.name_bn || res.name_en) : (res.name_en || res.name_bn)}</span>
                                     <span className="text-[9px] text-ink-faint">{res.food_group}</span>
                                   </div>
                                   <span className="text-[10px] font-bold text-accent shrink-0">
@@ -1203,8 +1227,8 @@ export const MealPlan = () => {
                             </div>
                           )}
                           {searchQuery && !searchLoading && searchResults.length === 0 && (
-                            <div className="text-[10px] text-red-400 px-2 py-0.5 font-bn">
-                              কোনো খাবার পাওয়া যায়নি
+                            <div className={`text-[10px] text-red-400 px-2 py-0.5 ${isBn ? 'font-bn' : ''}`}>
+                              {isBn ? 'কোনো খাবার পাওয়া যায়নি' : 'No foods found'}
                             </div>
                           )}
                         </div>
@@ -1215,10 +1239,10 @@ export const MealPlan = () => {
                             setSearchQuery('');
                             setSearchResults([]);
                           }}
-                          className="flex items-center justify-center gap-1.5 p-3.5 border border-dashed border-ink/20 rounded-xl hover:border-accent hover:text-accent hover:bg-accent/5 transition-all text-ink-muted text-xs font-bn font-bold h-full min-h-[3.2rem]"
+                          className={`flex items-center justify-center gap-1.5 p-3.5 border border-dashed border-ink/20 rounded-xl hover:border-accent hover:text-accent hover:bg-accent/5 transition-all text-ink-muted text-xs ${isBn ? 'font-bn' : ''} font-bold h-full min-h-[3.2rem]`}
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>নতুন খাবার যোগ করুন</span>
+                          <span>{isBn ? 'নতুন খাবার যোগ করুন' : 'Add New Food'}</span>
                         </button>
                       )
                     )}
@@ -1235,7 +1259,9 @@ export const MealPlan = () => {
         {/* Feedback */}
         {showToggle && (
           <div className="bg-white p-5 rounded-2xl border border-ink/5 shadow-sm max-w-sm mx-auto">
-            <p className="font-bn text-xs font-bold text-ink-muted mb-3 text-center">এই প্ল্যান কেমন লাগলো?</p>
+            <p className={`text-xs font-bold text-ink-muted mb-3 text-center ${isBn ? 'font-bn' : ''}`}>
+              {isBn ? 'এই প্ল্যান কেমন লাগলো?' : 'How was this meal plan?'}
+            </p>
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -1256,8 +1282,8 @@ export const MealPlan = () => {
 
   return (
     <DashboardLayout
-      title="মিল প্ল্যান"
-      subtitle="Nutrition Strategy"
+      title={isBn ? "মিল প্ল্যান" : "Meal Plan"}
+      subtitle={isBn ? "পুষ্টি পরিকল্পনা" : "Nutrition Strategy"}
       headerActions={(
         <button
           onClick={() => tab === 'today' ? fetchDaily() : tab === 'tomorrow' ? fetchTomorrow() : fetchHistory()}
@@ -1297,25 +1323,28 @@ export const MealPlan = () => {
                 <AlertCircle className="w-7 h-7" />
               </div>
 
-              <h3 className="font-bn text-xl font-black text-ink mb-1">
-                খাবারটি ইতোমধ্যে গ্রহণ করা হয়েছে
+              <h3 className={`${isBn ? 'font-bn' : 'font-body'} text-xl font-black text-ink mb-1`}>
+                {isBn ? 'খাবারটি ইতোমধ্যে গ্রহণ করা হয়েছে' : 'Food already marked as eaten'}
               </h3>
 
               <div className="inline-block my-2 px-3 py-1.5 bg-amber-50 border border-amber-200/70 rounded-xl">
                 <span className="font-body text-xs font-bold text-amber-800 tracking-wide">
-                  can not re-generate already taken Item
+                  {isBn ? 'can not re-generate already taken Item' : 'Cannot re-generate already eaten item'}
                 </span>
               </div>
 
-              <p className="font-bn text-xs text-ink-muted leading-relaxed mt-2 mb-6">
-                আপনি এই খাবারটি খাওয়া হিসেবে চিহ্নিত করেছেন। কোনো খাবার পরিবর্তন বা বিকল্প তৈরি করতে চাইলে প্রথমে ডানপাশের সবুজ টিকচিহ্নে (✓) ক্লিক করে খাবারটি আনলগ করুন।
+              <p className={`${isBn ? 'font-bn' : 'font-body'} text-xs text-ink-muted leading-relaxed mt-2 mb-6`}>
+                {isBn 
+                  ? 'আপনি এই খাবারটি খাওয়া হিসেবে চিহ্নিত করেছেন। কোনো খাবার পরিবর্তন বা বিকল্প তৈরি করতে চাইলে প্রথমে ডানপাশের সবুজ টিকচিহ্নে (✓) ক্লিক করে খাবারটি আনলগ করুন।'
+                  : 'You have already marked this food as eaten. To swap or regenerate this item, first unmark it by clicking the green checkmark (✓).'
+                }
               </p>
 
               <button
                 onClick={() => setShowTakenModal(false)}
-                className="w-full py-3 px-4 bg-ink text-cream font-bn font-bold text-sm rounded-2xl hover:bg-ink/90 active:scale-[0.98] transition-all shadow-lg hover:shadow-xl"
+                className={`w-full py-3 px-4 bg-ink text-cream ${isBn ? 'font-bn' : 'font-body'} font-bold text-sm rounded-2xl hover:bg-ink/90 active:scale-[0.98] transition-all shadow-lg hover:shadow-xl`}
               >
-                ঠিক আছে (Got it)
+                {isBn ? 'ঠিক আছে (Got it)' : 'Got it'}
               </button>
             </motion.div>
           </div>
@@ -1328,10 +1357,10 @@ export const MealPlan = () => {
           <div className="flex justify-start md:justify-center min-w-max px-2 md:px-0">
             <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
             {[
-              { id: 'today' as Tab, label: 'আজকের', icon: Flame, locked: false },
-              { id: 'tomorrow' as Tab, label: 'আগামীকাল', icon: CalendarDays, locked: !isPro },
-              { id: 'history' as Tab, label: 'ইতিহাস', icon: History, locked: false },
-              { id: 'builder' as any, label: 'মিল বিল্ডার', icon: ChefHat, locked: false, isLink: true },
+              { id: 'today' as Tab, label: isBn ? 'আজকের' : 'Today', icon: Flame, locked: false },
+              { id: 'tomorrow' as Tab, label: isBn ? 'আগামীকাল' : 'Tomorrow', icon: CalendarDays, locked: !isPro },
+              { id: 'history' as Tab, label: isBn ? 'ইতিহাস' : 'History', icon: History, locked: false },
+              { id: 'builder' as any, label: isBn ? 'মিল বিল্ডার' : 'Meal Builder', icon: ChefHat, locked: false, isLink: true },
             ].map(({ id, label, icon: Icon, locked, isLink }) => (
               <button
                 key={id}
@@ -1347,7 +1376,7 @@ export const MealPlan = () => {
                   }
                   setTab(id);
                 }}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bn text-xs font-bold transition-all ${tab === id ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg ${isBn ? 'font-bn' : ''} text-xs font-bold transition-all ${tab === id ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
                   } ${locked ? 'opacity-60' : ''}`}
               >
                 {locked ? <Lock className="w-3 h-3" /> : <Icon className="w-3.5 h-3.5" />}
@@ -1363,18 +1392,18 @@ export const MealPlan = () => {
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-500 font-bn text-sm">
+          <div className={`flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-500 ${isBn ? 'font-bn' : ''} text-sm`}>
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold">সমস্যা হয়েছে</p>
+              <p className="font-bold">{isBn ? 'সমস্যা হয়েছে' : 'Something went wrong'}</p>
               <p className="opacity-80">{error}</p>
-              <p className="text-xs mt-1 opacity-60">দয়া করে প্রথমে আপনার প্রোফাইল সেট আপ করুন</p>
+              <p className="text-xs mt-1 opacity-60">{isBn ? 'দয়া করে প্রথমে আপনার প্রোফাইল সেট আপ করুন' : 'Please complete your profile setup first'}</p>
               {error.toLowerCase().includes('profile') && (
                 <Link
                   to="/profile"
                   className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm"
                 >
-                  প্রোফাইল সেট আপ করুন ➔
+                  {isBn ? 'প্রোফাইল সেট আপ করুন ➔' : 'Set up profile ➔'}
                 </Link>
               )}
             </div>
@@ -1383,7 +1412,7 @@ export const MealPlan = () => {
 
         {/* Loading */}
         {loading && (
-          <CookingLoader text="AI আপনার জন্য পরিকল্পনা তৈরি করছে..." />
+          <CookingLoader text={isBn ? "AI আপনার জন্য পরিকল্পনা তৈরি করছে..." : "AI is crafting your personalized meal plan..."} />
         )}
 
         {/* Content */}
@@ -1392,9 +1421,9 @@ export const MealPlan = () => {
             <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               {tab === 'today' && (
                 plan ? renderMealCard(plan, true) : (
-                  <div className="text-center py-20 font-bn text-ink-muted">
+                  <div className={`text-center py-20 ${isBn ? 'font-bn' : ''} text-ink-muted`}>
                     <Info className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                    <p>আজকের প্ল্যান পাওয়া যায়নি</p>
+                    <p>{isBn ? 'আজকের প্ল্যান পাওয়া যায়নি' : 'No meal plan found for today'}</p>
                   </div>
                 )
               )}
@@ -1404,28 +1433,28 @@ export const MealPlan = () => {
                   {tomorrowPlan ? (
                     <div className="bg-white p-6 rounded-[2rem] border border-ink/5 shadow-sm">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bn font-bold text-lg text-ink">
-                          {new Date(tomorrowPlan.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        <h3 className={`${isBn ? 'font-bn' : ''} font-bold text-lg text-ink`}>
+                          {new Date(tomorrowPlan.plan_date).toLocaleDateString(isBn ? 'bn-BD' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </h3>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-xl">{tomorrowPlan.calorie_target} kcal</span>
                           <button
                             onClick={() => regenerateDaily(1)}
                             disabled={loading}
-                            className="text-xs font-bn font-bold px-4 py-2 bg-accent text-white rounded-xl hover:bg-accent/80 transition-colors flex items-center gap-2 shadow-sm shadow-accent/20"
+                            className={`text-xs ${isBn ? 'font-bn' : ''} font-bold px-4 py-2 bg-accent text-white rounded-xl hover:bg-accent/80 transition-colors flex items-center gap-2 shadow-sm shadow-accent/20`}
                           >
-                            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> পুনরায় তৈরি করুন
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> {isBn ? 'পুনরায় তৈরি করুন' : 'Regenerate Plan'}
                           </button>
                         </div>
                       </div>
                       {renderMealCard(tomorrowPlan, true)}
                     </div>
                   ) : (
-                    <div className="text-center py-20 font-bn text-ink-muted">
+                    <div className={`text-center py-20 ${isBn ? 'font-bn' : ''} text-ink-muted`}>
                       <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p>আগামীকালের প্ল্যান পাওয়া যায়নি</p>
-                      <button onClick={fetchTomorrow} className="mt-4 px-6 py-2 bg-accent text-white font-bn font-bold rounded-xl hover:bg-accent/80 transition-colors">
-                        আগামীকালের প্ল্যান তৈরি করুন
+                      <p>{isBn ? 'আগামীকালের প্ল্যান পাওয়া যায়নি' : 'No plan found for tomorrow'}</p>
+                      <button onClick={fetchTomorrow} className={`mt-4 px-6 py-2 bg-accent text-white ${isBn ? 'font-bn' : ''} font-bold rounded-xl hover:bg-accent/80 transition-colors`}>
+                        {isBn ? 'আগামীকালের প্ল্যান তৈরি করুন' : 'Generate Tomorrow’s Plan'}
                       </button>
                     </div>
                   )}
@@ -1465,11 +1494,11 @@ export const MealPlan = () => {
                                 <CalendarDays className="w-5 h-5 text-accent" />
                               </div>
                               <div>
-                                <p className="font-bn font-bold text-ink leading-snug">
-                                  {new Date(p.plan_date).toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                <p className={`${isBn ? 'font-bn' : ''} font-bold text-ink leading-snug`}>
+                                  {new Date(p.plan_date).toLocaleDateString(isBn ? 'bn-BD' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                 </p>
-                                <p className="text-xs text-ink-faint font-bn mt-0.5">
-                                  {planConsumedCal} / {planTotalCal} kcal ({planPct}%) গৃহীত
+                                <p className={`text-xs text-ink-faint ${isBn ? 'font-bn' : ''} mt-0.5`}>
+                                  {planConsumedCal} / {planTotalCal} kcal ({planPct}%) {isBn ? 'গৃহীত' : 'consumed'}
                                 </p>
                               </div>
                             </div>
@@ -1483,7 +1512,7 @@ export const MealPlan = () => {
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-ink-faint font-bn">রেটিং নেই</span>
+                                  <span className={`text-xs text-ink-faint ${isBn ? 'font-bn' : ''}`}>{isBn ? 'রেটিং নেই' : 'No rating'}</span>
                                 )}
                               </div>
                               <div className="text-ink-muted">
@@ -1508,7 +1537,9 @@ export const MealPlan = () => {
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-ink/5 pb-2.5 gap-2">
                                   <div className="flex items-center gap-2">
                                     <Utensils className="w-4 h-4 text-accent" />
-                                    <span className="font-bn font-bold text-xs text-ink">খাবারের সারসংক্ষেপ (Meal Summary)</span>
+                                    <span className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink`}>
+                                      {isBn ? 'খাবারের সারসংক্ষেপ (Meal Summary)' : 'Meal Summary'}
+                                    </span>
                                   </div>
 
                                   <div className="flex items-center gap-2 w-full sm:w-48">
@@ -1518,7 +1549,7 @@ export const MealPlan = () => {
                                         style={{ width: `${planPct}%` }}
                                       />
                                     </div>
-                                    <span className="font-bn text-[0.68rem] text-ink font-bold">{planPct}%</span>
+                                    <span className="text-[0.68rem] text-ink font-bold">{planPct}%</span>
                                   </div>
                                 </div>
 
@@ -1543,12 +1574,25 @@ export const MealPlan = () => {
                                             </div>
                                             <div>
                                               <div className="flex items-baseline gap-2">
-                                                <h4 className="font-bn font-bold text-xs text-ink leading-tight">{slot.slot_bn || slot.slot}</h4>
-                                                <span className="font-bn text-[0.62rem] text-ink-faint font-bold">{slotCal} kcal</span>
+                                                <h4 className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink leading-tight`}>
+                                                  {(() => {
+                                                    if (isBn) return slot.slot_bn || slot.slot;
+                                                    const slotMap: Record<string, string> = {
+                                                      breakfast: 'Breakfast',
+                                                      snack1: 'Morning Snack',
+                                                      lunch: 'Lunch',
+                                                      snack2: 'Afternoon Snack',
+                                                      dinner: 'Dinner',
+                                                      snack: 'Snack',
+                                                    };
+                                                    return slotMap[slot.slot?.toLowerCase()] || slot.slot_en || slot.slot;
+                                                  })()}
+                                                </h4>
+                                                <span className={`text-[0.62rem] text-ink-faint font-bold`}>{slotCal} kcal</span>
                                               </div>
 
-                                              <p className="font-bn text-[0.68rem] text-ink-muted mt-1 leading-relaxed">
-                                                  {(slot.items || []).map((item) => `${item.name_bn || item.name_en || ''} (${cleanPortionText(item.portion_bn || item.household_measure_bn || item.amount || (item.amount_g ? item.amount_g + 'g' : ''))})`).join(', ') || 'কোনো খাবার নেই'}
+                                              <p className={`${isBn ? 'font-bn' : ''} text-[0.68rem] text-ink-muted mt-1 leading-relaxed`}>
+                                                  {(slot.items || []).map((item) => `${isBn ? (item.name_bn || item.name_en || '') : (item.name_en || item.name_bn || '')} (${cleanPortionText(isBn ? (item.portion_bn || item.household_measure_bn) : (item.household_measure_en || item.portion_en || item.portion_bn)) || item.amount || (item.amount_g ? item.amount_g + 'g' : '')})`).join(', ') || (isBn ? 'কোনো খাবার নেই' : 'No items')}
                                               </p>
                                             </div>
                                           </div>
@@ -1559,15 +1603,17 @@ export const MealPlan = () => {
                                                 e.stopPropagation();
                                                 await toggleSlotForPlan(p, slot.slot);
                                               }}
-                                              className={`text-[0.62rem] shrink-0 font-bn font-bold px-2.5 py-1 rounded-xl transition-all ${isDone
+                                              className={`text-[0.62rem] shrink-0 ${isBn ? 'font-bn' : ''} font-bold px-2.5 py-1 rounded-xl transition-all ${isDone
                                                 ? 'bg-green-500 text-white hover:bg-red-400'
                                                 : 'bg-cream text-ink-muted hover:bg-accent hover:text-white'
                                                 }`}
                                             >
-                                              {isDone ? '✓ খাওয়া হয়েছে' : 'খাওয়া হয়নি'}
+                                              {isDone ? (isBn ? '✓ খাওয়া হয়েছে' : '✓ Completed') : (isBn ? 'খাওয়া হয়নি' : 'Mark Eaten')}
                                             </button>
                                           ) : (
-                                            <span className="text-[0.62rem] text-ink-faint font-bn shrink-0">খাওয়া শুরু হয়নি</span>
+                                            <span className={`text-[0.62rem] text-ink-faint ${isBn ? 'font-bn' : ''} shrink-0`}>
+                                              {isBn ? 'খাওয়া শুরু হয়নি' : 'Not started'}
+                                            </span>
                                           )}
                                         </div>
                                       </div>
@@ -1581,9 +1627,9 @@ export const MealPlan = () => {
                       );
                     })
                   ) : (
-                    <div className="text-center py-20 font-bn text-ink-muted">
+                    <div className={`text-center py-20 ${isBn ? 'font-bn' : ''} text-ink-muted`}>
                       <History className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p>কোনো ইতিহাস নেই</p>
+                      <p>{isBn ? 'কোনো ইতিহাস নেই' : 'No history found'}</p>
                     </div>
                   )}
                 </div>

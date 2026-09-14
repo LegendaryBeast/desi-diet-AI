@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
-  ChevronRight,
-  ChevronLeft,
   User,
   Activity,
   CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  TrendingDown,
+  TrendingUp,
+  Scale,
   Loader2,
   AlertCircle,
-  TrendingDown,
-  Scale,
-  TrendingUp,
 } from 'lucide-react';
 import { FaMale, FaFemale } from 'react-icons/fa';
 import { Button } from '../ui/Button';
@@ -19,15 +20,69 @@ import { profileApi } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const steps = [
-  { id: 'intro', q: 'চলুন আপনার প্রোফাইল তৈরি করি', sub: 'আপনার সঠিক তথ্য আমাদের সঠিক পরামর্শ দিতে সাহায্য করবে' },
-  { id: 'name', q: 'আপনার নাম কি?', sub: 'আমরা আপনাকে কী নামে ডাকব?' },
-  { id: 'gender', q: 'আপনার লিঙ্গ নির্বাচন করুন', sub: 'ক্যালোরি গণনায় এটি গুরুত্বপূর্ণ' },
-  { id: 'age', q: 'আপনার বয়স কত?', sub: 'আপনার বিপাকীয় হার (BMR) জানতে এটি প্রয়োজন' },
-  { id: 'stats', q: 'আপনার উচ্চতা ও ওজন', sub: 'BMI এবং আদর্শ ওজন নির্ধারণের জন্য' },
-  { id: 'activity', q: 'আপনার দৈনিক পরিশ্রম কেমন?', sub: 'ব্যায়াম এবং দৈনন্দিন কাজের ধরন' },
-  { id: 'goal', q: 'আপনার লক্ষ্য কি?', sub: 'ডায়েট পরিকল্পনার জন্য' },
-  { id: 'conditions', q: 'কোনো শারীরিক সমস্যা আছে?', sub: 'যেমন ডায়াবেটিস বা উচ্চ রক্তচাপ' },
-  { id: 'result', q: 'প্রোফাইল সংরক্ষণ হচ্ছে...', sub: 'আমাদের এআই আপনার জন্য বিশ্লেষণ করছে' },
+  {
+    id: 'intro',
+    qBn: 'চলুন আপনার প্রোফাইল তৈরি করি',
+    qEn: "Let's build your profile",
+    subBn: 'আপনার সঠিক তথ্য আমাদের সঠিক পরামর্শ দিতে সাহায্য করবে',
+    subEn: 'Accurate details help us provide personalized recommendations',
+  },
+  {
+    id: 'name',
+    qBn: 'আপনার নাম কি?',
+    qEn: "What is your name?",
+    subBn: 'আমরা আপনাকে কী নামে ডাকব?',
+    subEn: "How should we address you?",
+  },
+  {
+    id: 'gender',
+    qBn: 'আপনার লিঙ্গ নির্বাচন করুন',
+    qEn: 'Select your biological sex',
+    subBn: 'ক্যালোরি গণনায় এটি গুরুত্বপূর্ণ',
+    subEn: 'Crucial for accurate metabolic calculations',
+  },
+  {
+    id: 'age',
+    qBn: 'আপনার বয়স কত?',
+    qEn: 'How old are you?',
+    subBn: 'আপনার বিপাকীয় হার (BMR) জানতে এটি প্রয়োজন',
+    subEn: 'Needed to calculate your basal metabolic rate (BMR)',
+  },
+  {
+    id: 'stats',
+    qBn: 'আপনার উচ্চতা ও ওজন',
+    qEn: 'Height & Weight',
+    subBn: 'BMI এবং আদর্শ ওজন নির্ধারণের জন্য',
+    subEn: 'Used to calculate BMI and ideal body weight',
+  },
+  {
+    id: 'activity',
+    qBn: 'আপনার দৈনিক পরিশ্রম কেমন?',
+    qEn: 'Daily Activity Level',
+    subBn: 'ব্যায়াম এবং দৈনন্দিন কাজের ধরন',
+    subEn: 'Your everyday exercise and work movement',
+  },
+  {
+    id: 'goal',
+    qBn: 'আপনার লক্ষ্য কি?',
+    qEn: 'What is your health goal?',
+    subBn: 'ডায়েট পরিকল্পনার জন্য',
+    subEn: 'Tailors your daily calorie and macro targets',
+  },
+  {
+    id: 'conditions',
+    qBn: 'কোনো শারীরিক সমস্যা আছে?',
+    qEn: 'Any health conditions?',
+    subBn: 'যেমন ডায়াবেটিস বা উচ্চ রক্তচাপ',
+    subEn: 'Such as diabetes, hypertension, or gastric issues',
+  },
+  {
+    id: 'result',
+    qBn: 'প্রোফাইল সংরক্ষণ হচ্ছে...',
+    qEn: 'Saving profile...',
+    subBn: 'আমাদের এআই আপনার জন্য বিশ্লেষণ করছে',
+    subEn: 'Our AI is tailoring your personalized nutrition plan',
+  },
 ];
 
 const ALL_DISEASES = [
@@ -119,6 +174,9 @@ interface ProfileFormData {
 
 export const ProfileWizard = () => {
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+
   const { refreshProfile, profileData } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -169,14 +227,13 @@ export const ProfileWizard = () => {
       window.dispatchEvent(new Event('data:refresh'));
       navigate('/dashboard');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'প্রোফাইল সংরক্ষণ করতে সমস্যা হয়েছে');
+      setError(err instanceof Error ? err.message : (isBn ? 'প্রোফাইল সংরক্ষণ করতে সমস্যা হয়েছে' : 'Failed to save profile'));
       setSaving(false);
     }
   };
 
   const next = () => {
     if (currentStep === steps.length - 2) {
-      // Move to result step and save
       setCurrentStep(steps.length - 1);
       saveProfile();
       return;
@@ -200,14 +257,20 @@ export const ProfileWizard = () => {
             <div className="w-14 h-14 bg-cream rounded-xl flex items-center justify-center text-accent shadow-lg rotate-3 shrink-0">
               <User size={24} />
             </div>
-            <p className="font-bn text-ink-muted text-center max-w-xs text-xs">
-              দেশিডায়েট এআই আপনার ব্যক্তিগত পুষ্টিবিদ হিসেবে কাজ করবে। সঠিক তথ্য দিয়ে সাহায্য করুন।
+            <p className={`${isBn ? 'font-bn' : ''} text-ink-muted text-center max-w-xs text-xs`}>
+              {isBn
+                ? 'দেশিডায়েট এআই আপনার ব্যক্তিগত পুষ্টিবিদ হিসেবে কাজ করবে। সঠিক তথ্য দিয়ে সাহায্য করুন।'
+                : 'DesiDiet AI works as your personal clinical dietitian. Please provide accurate information to get the best meal plan.'}
             </p>
             {existingProfile && (
               <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
                 <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto mb-1.5" />
-                <p className="font-bn text-xs text-green-700 font-bold">আপনার প্রোফাইল ইতিমধ্যে আছে</p>
-                <p className="font-bn text-[0.62rem] text-green-600 mt-0.5">এখানে আপডেট করতে পারবেন</p>
+                <p className={`${isBn ? 'font-bn' : ''} text-xs text-green-700 font-bold`}>
+                  {isBn ? 'আপনার প্রোফাইল ইতিমধ্যে আছে' : 'You already have an existing profile'}
+                </p>
+                <p className={`${isBn ? 'font-bn' : ''} text-[0.62rem] text-green-600 mt-0.5`}>
+                  {isBn ? 'এখানে আপডেট করতে পারবেন' : 'You can review and update your values here'}
+                </p>
               </div>
             )}
           </div>
@@ -220,8 +283,8 @@ export const ProfileWizard = () => {
               type="text"
               value={form.nameBn}
               onChange={(e) => update({ nameBn: e.target.value })}
-              placeholder="বাংলায় নাম লিখুন..."
-              className="w-full bg-cream border border-ink/10 focus:border-accent/30 rounded-lg p-2.5 text-center font-bn text-sm outline-none transition-all"
+              placeholder={isBn ? "বাংলায় নাম লিখুন..." : "Name in Bengali (optional)..."}
+              className={`w-full bg-cream border border-ink/10 focus:border-accent/30 rounded-lg p-2.5 text-center ${isBn ? 'font-bn' : ''} text-sm outline-none transition-all`}
               autoFocus
             />
             <input
@@ -238,8 +301,8 @@ export const ProfileWizard = () => {
         return (
           <div className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto">
             {[
-              { id: 'male', label: 'পুরুষ', icon: <FaMale className="w-8 h-8" /> },
-              { id: 'female', label: 'নারী', icon: <FaFemale className="w-8 h-8" /> },
+              { id: 'male', label: isBn ? 'পুরুষ' : 'Male', icon: <FaMale className="w-8 h-8" /> },
+              { id: 'female', label: isBn ? 'নারী' : 'Female', icon: <FaFemale className="w-8 h-8" /> },
             ].map((g) => (
               <button
                 key={g.id}
@@ -251,7 +314,7 @@ export const ProfileWizard = () => {
                 }`}
               >
                 <div className="flex justify-center mb-2">{g.icon}</div>
-                <div className="font-bn font-bold text-xs">{g.label}</div>
+                <div className={`${isBn ? 'font-bn' : ''} font-bold text-xs`}>{g.label}</div>
               </button>
             ))}
           </div>
@@ -261,7 +324,7 @@ export const ProfileWizard = () => {
         return (
           <div className="flex flex-col items-center gap-4">
             <div className="text-3xl font-black font-display text-ink leading-none">
-              {form.age} <span className="text-xs text-ink-faint">বছর</span>
+              {form.age} <span className="text-xs text-ink-faint">{isBn ? 'বছর' : 'years'}</span>
             </div>
             <input
               type="range" min="15" max="100"
@@ -276,7 +339,9 @@ export const ProfileWizard = () => {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-sm mx-auto">
             <div className="bg-white p-3.5 rounded-xl border border-ink/5 shadow-sm">
-              <label className="block font-bn text-[0.62rem] font-bold text-ink-faint mb-2 uppercase tracking-wider">উচ্চতা (সেমি)</label>
+              <label className={`block ${isBn ? 'font-bn' : ''} text-[0.62rem] font-bold text-ink-faint mb-2 uppercase tracking-wider`}>
+                {isBn ? 'উচ্চতা (সেমি)' : 'Height (cm)'}
+              </label>
               <input
                 type="number"
                 value={form.heightCm}
@@ -285,7 +350,9 @@ export const ProfileWizard = () => {
               />
             </div>
             <div className="bg-white p-3.5 rounded-xl border border-ink/5 shadow-sm">
-              <label className="block font-bn text-[0.62rem] font-bold text-ink-faint mb-2 uppercase tracking-wider">ওজন (কেজি)</label>
+              <label className={`block ${isBn ? 'font-bn' : ''} text-[0.62rem] font-bold text-ink-faint mb-2 uppercase tracking-wider`}>
+                {isBn ? 'ওজন (কেজি)' : 'Weight (kg)'}
+              </label>
               <input
                 type="number"
                 value={form.weightKg}
@@ -300,10 +367,10 @@ export const ProfileWizard = () => {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-md mx-auto">
             {[
-              { id: 'sedentary', label: 'বসে কাজ', sub: 'ব্যায়াম কম করা হয়' },
-              { id: 'light', label: 'হালকা পরিশ্রম', sub: 'সপ্তাহে ১-২ দিন' },
-              { id: 'moderate', label: 'মাঝারি পরিশ্রম', sub: 'সপ্তাহে ৩-৫ দিন ব্যায়াম' },
-              { id: 'active', label: 'খুব পরিশ্রমী', sub: 'প্রতিদিন ভারী কাজ বা ব্যায়াম' },
+              { id: 'sedentary', label: isBn ? 'বসে কাজ' : 'Sedentary', sub: isBn ? 'ব্যায়াম কম করা হয়' : 'Desk job, little or no exercise' },
+              { id: 'light', label: isBn ? 'হালকা পরিশ্রম' : 'Lightly Active', sub: isBn ? 'সপ্তাহে ১-২ দিন' : 'Exercise 1-2 days/week' },
+              { id: 'moderate', label: isBn ? 'মাঝারি পরিশ্রম' : 'Moderately Active', sub: isBn ? 'সপ্তাহে ৩-৫ দিন ব্যায়াম' : 'Exercise 3-5 days/week' },
+              { id: 'active', label: isBn ? 'খুব পরিশ্রমী' : 'Very Active', sub: isBn ? 'প্রতিদিন ভারী কাজ বা ব্যায়াম' : 'Heavy workout or physical job' },
             ].map((a) => (
               <button
                 key={a.id}
@@ -314,8 +381,8 @@ export const ProfileWizard = () => {
                     : 'border-ink/5 bg-white hover:border-accent/20 shadow-sm'
                 }`}
               >
-                <div className="font-bn font-bold text-xs text-ink mb-0.5">{a.label}</div>
-                <div className="font-bn text-[0.58rem] text-ink-muted opacity-60 leading-none">{a.sub}</div>
+                <div className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink mb-0.5`}>{a.label}</div>
+                <div className={`${isBn ? 'font-bn' : ''} text-[0.58rem] text-ink-muted opacity-60 leading-none`}>{a.sub}</div>
               </button>
             ))}
           </div>
@@ -325,9 +392,9 @@ export const ProfileWizard = () => {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full max-w-md mx-auto">
             {[
-              { id: 'weight_loss', label: 'ওজন কমানো', icon: <TrendingDown className="w-5 h-5" />, sub: '-৫০০ kcal/দিন' },
-              { id: 'maintain', label: 'ওজন ধরে রাখা', icon: <Scale className="w-5 h-5" />, sub: 'বর্তমান ক্যালোরি' },
-              { id: 'weight_gain', label: 'ওজন বাড়ানো', icon: <TrendingUp className="w-5 h-5" />, sub: '+৫০০ kcal/দিন' },
+              { id: 'weight_loss', label: isBn ? 'ওজন কমানো' : 'Weight Loss', icon: <TrendingDown className="w-5 h-5" />, sub: isBn ? '-৫০০ kcal/দিন' : '-500 kcal/day' },
+              { id: 'maintain', label: isBn ? 'ওজন ধরে রাখা' : 'Maintain Weight', icon: <Scale className="w-5 h-5" />, sub: isBn ? 'বর্তমান ক্যালোরি' : 'Baseline calories' },
+              { id: 'weight_gain', label: isBn ? 'ওজন বাড়ানো' : 'Weight Gain', icon: <TrendingUp className="w-5 h-5" />, sub: isBn ? '+৫০০ kcal/দিন' : '+500 kcal/day' },
             ].map((g) => (
               <button
                 key={g.id}
@@ -343,8 +410,8 @@ export const ProfileWizard = () => {
                 }`}>
                   {g.icon}
                 </div>
-                <div className="font-bn font-bold text-xs text-ink mb-0.5">{g.label}</div>
-                <div className="font-bn text-[0.58rem] text-ink-muted opacity-60 leading-none">{g.sub}</div>
+                <div className={`${isBn ? 'font-bn' : ''} font-bold text-xs text-ink mb-0.5`}>{g.label}</div>
+                <div className={`${isBn ? 'font-bn' : ''} text-[0.58rem] text-ink-muted opacity-60 leading-none`}>{g.sub}</div>
               </button>
             ))}
           </div>
@@ -352,12 +419,12 @@ export const ProfileWizard = () => {
 
       case 'conditions': {
         const popularDiseases = [
-          { id: 'Diabetes', labelBn: 'ডায়াবেটিস' },
-          { id: 'Hypertension', labelBn: 'উচ্চ রক্তচাপ' },
-          { id: 'Obesity', labelBn: 'স্থূলতা' },
-          { id: 'Gastric', labelBn: 'গ্যাস্ট্রিক' },
-          { id: 'Thyroid Disorders', labelBn: 'থাইরয়েড' },
-          { id: 'Anemia', labelBn: 'রক্তশূন্যতা' },
+          { id: 'Diabetes', labelBn: 'ডায়াবেটিস', labelEn: 'Diabetes' },
+          { id: 'Hypertension', labelBn: 'উচ্চ রক্তচাপ', labelEn: 'Hypertension' },
+          { id: 'Obesity', labelBn: 'স্থূলতা', labelEn: 'Obesity' },
+          { id: 'Gastric', labelBn: 'গ্যাস্ট্রিক', labelEn: 'Gastric' },
+          { id: 'Thyroid Disorders', labelBn: 'থাইরয়েড', labelEn: 'Thyroid' },
+          { id: 'Anemia', labelBn: 'রক্তশূন্যতা', labelEn: 'Anemia' },
         ];
 
         const filteredDiseases = ALL_DISEASES.filter(
@@ -367,11 +434,13 @@ export const ProfileWizard = () => {
         );
 
         return (
-          <div className="w-full max-w-md mx-auto space-y-4 font-bn">
+          <div className="w-full max-w-md mx-auto space-y-4">
             {/* Selected Conditions Tags */}
             <div className="flex flex-wrap gap-1.5 min-h-[42px] p-2.5 bg-white/70 rounded-xl border border-ink/5">
               {form.conditions.length === 0 ? (
-                <span className="text-ink-faint text-xs py-1 px-1">কোনো সমস্যা নির্বাচিত করা হয়নি</span>
+                <span className={`text-ink-faint text-xs py-1 px-1 ${isBn ? 'font-bn' : ''}`}>
+                  {isBn ? 'কোনো সমস্যা নির্বাচিত করা হয়নি' : 'No conditions selected'}
+                </span>
               ) : (
                 form.conditions.map((condId) => {
                   const cond = ALL_DISEASES.find((d) => d.id === condId) || {
@@ -381,9 +450,9 @@ export const ProfileWizard = () => {
                   return (
                     <span
                       key={condId}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent text-cream rounded-full text-xs font-bold shadow-sm"
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 bg-accent text-cream rounded-full text-xs font-bold shadow-sm ${isBn ? 'font-bn' : ''}`}
                     >
-                      {cond.labelBn}
+                      {isBn ? cond.labelBn : cond.labelEn}
                       <button
                         type="button"
                         onClick={() => {
@@ -404,7 +473,7 @@ export const ProfileWizard = () => {
             <div className="relative">
               <input
                 type="text"
-                placeholder="সমস্যা খুঁজুন (যেমন: মাইগ্রেন, হাঁপানি)..."
+                placeholder={isBn ? "সমস্যা খুঁজুন (যেমন: মাইগ্রেন, হাঁপানি)..." : "Search health condition (e.g. Migraine, Asthma)..."}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -412,13 +481,15 @@ export const ProfileWizard = () => {
                 }}
                 onFocus={() => setIsDropdownOpen(true)}
                 onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-                className="w-full bg-white border border-ink/10 focus:border-accent/40 rounded-xl p-2.5 text-center font-bn text-xs outline-none shadow-sm transition-all"
+                className={`w-full bg-white border border-ink/10 focus:border-accent/40 rounded-xl p-2.5 text-center ${isBn ? 'font-bn' : ''} text-xs outline-none shadow-sm transition-all`}
               />
 
               {isDropdownOpen && searchQuery.trim() !== '' && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-ink/10 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                   {filteredDiseases.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-ink-faint">কোনো রোগ খুঁজে পাওয়া যায়নি</div>
+                    <div className={`p-3 text-center text-xs text-ink-faint ${isBn ? 'font-bn' : ''}`}>
+                      {isBn ? 'কোনো রোগ খুঁজে পাওয়া যায়নি' : 'No health condition found'}
+                    </div>
                   ) : (
                     filteredDiseases.map((d) => {
                       const isSelected = form.conditions.includes(d.id);
@@ -438,8 +509,8 @@ export const ProfileWizard = () => {
                           }`}
                         >
                           <div>
-                            <span className="font-bn font-bold">{d.labelBn}</span>
-                            <span className="text-[0.65rem] text-ink-faint ml-2">({d.labelEn})</span>
+                            <span className={`${isBn ? 'font-bn' : ''} font-bold`}>{isBn ? d.labelBn : d.labelEn}</span>
+                            <span className="text-[0.65rem] text-ink-faint ml-2">({isBn ? d.labelEn : d.labelBn})</span>
                           </div>
                           {isSelected && <span className="text-[10px] text-accent font-sans">✓</span>}
                         </button>
@@ -452,7 +523,9 @@ export const ProfileWizard = () => {
 
             {/* Quick Suggestions */}
             <div className="space-y-1.5">
-              <label className="block text-[0.62rem] font-bold text-ink-faint uppercase tracking-wider">জনপ্রিয় রোগসমূহ (Quick Select)</label>
+              <label className={`block text-[0.62rem] font-bold text-ink-faint uppercase tracking-wider ${isBn ? 'font-bn' : ''}`}>
+                {isBn ? 'জনপ্রিয় রোগসমূহ (Quick Select)' : 'Popular Conditions (Quick Select)'}
+              </label>
               <div className="grid grid-cols-3 gap-1.5">
                 {popularDiseases.map((c) => {
                   const isSelected = form.conditions.includes(c.id);
@@ -466,13 +539,13 @@ export const ProfileWizard = () => {
                           : [...form.conditions, c.id];
                         update({ conditions: newConditions });
                       }}
-                      className={`p-2 rounded-lg border text-center transition-all font-bn text-[11px] font-bold ${
+                      className={`p-2 rounded-lg border text-center transition-all text-[11px] font-bold ${isBn ? 'font-bn' : ''} ${
                         isSelected
                           ? 'border-accent bg-accent text-cream shadow-sm'
                           : 'border-ink/5 bg-white text-ink-muted hover:border-accent/20'
                       }`}
                     >
-                      {c.labelBn}
+                      {isBn ? c.labelBn : c.labelEn}
                     </button>
                   );
                 })}
@@ -482,9 +555,9 @@ export const ProfileWizard = () => {
                     update({ conditions: [] });
                     next();
                   }}
-                  className="p-2 rounded-lg border text-center transition-all font-bn text-[11px] font-bold border-ink/10 bg-cream text-ink-muted hover:border-ink/20"
+                  className={`p-2 rounded-lg border text-center transition-all text-[11px] font-bold border-ink/10 bg-cream text-ink-muted hover:border-ink/20 ${isBn ? 'font-bn' : ''}`}
                 >
-                  কিছুই নেই (None)
+                  {isBn ? 'কিছুই নেই (None)' : 'None'}
                 </button>
               </div>
             </div>
@@ -502,27 +575,37 @@ export const ProfileWizard = () => {
               {saving ? (
                 <>
                   <Loader2 className="w-10 h-10 animate-spin text-accent mx-auto mb-3" />
-                  <div className="font-bn text-base font-bold text-ink mb-1">সংরক্ষণ হচ্ছে...</div>
-                  <div className="font-bn text-xs text-ink-muted">AI আপনার পুষ্টি লক্ষ্যমাত্রা গণনা করছে</div>
+                  <div className={`${isBn ? 'font-bn' : ''} text-base font-bold text-ink mb-1`}>
+                    {isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving profile...'}
+                  </div>
+                  <div className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted`}>
+                    {isBn ? 'AI আপনার পুষ্টি লক্ষ্যমাত্রা গণনা করছে' : 'AI is tailoring your personalized nutrition targets'}
+                  </div>
                 </>
               ) : error ? (
                 <>
                   <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-                  <div className="font-bn text-sm font-bold text-red-500 mb-2.5">{error}</div>
+                  <div className={`${isBn ? 'font-bn' : ''} text-sm font-bold text-red-500 mb-2.5`}>{error}</div>
                   <button onClick={() => { setCurrentStep(steps.length - 2); setError(null); }}
-                    className="mt-2 px-4 py-2 bg-ink text-cream rounded-lg font-bold font-bn text-xs hover:bg-accent transition-all"
+                    className={`mt-2 px-4 py-2 bg-ink text-cream rounded-lg font-bold ${isBn ? 'font-bn' : ''} text-xs hover:bg-accent transition-all`}
                   >
-                    পুনরায় চেষ্টা করুন
+                    {isBn ? 'পুনরায় চেষ্টা করুন' : 'Try Again'}
                   </button>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
-                  <div className="font-bn text-base font-bold text-ink mb-1">প্রোফাইল সংরক্ষিত!</div>
-                  <div className="font-bn text-xs text-ink-muted mb-4">আপনার ব্যক্তিগতকৃত ডায়েট প্ল্যান প্রস্তুত</div>
+                  <div className={`${isBn ? 'font-bn' : ''} text-base font-bold text-ink mb-1`}>
+                    {isBn ? 'প্রোফাইল সংরক্ষিত!' : 'Profile Saved!'}
+                  </div>
+                  <div className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted mb-4`}>
+                    {isBn ? 'আপনার ব্যক্তিগতকৃত ডায়েট প্ল্যান প্রস্তুত' : 'Your personalized diet plan is ready'}
+                  </div>
                   <div className="mt-4 flex items-center justify-center gap-2 bg-cream/40 p-2.5 rounded-lg border border-ink/5">
                     <CheckCircle2 size={14} className="text-forest" />
-                    <span className="font-bn text-xs text-ink-muted font-medium">আপনার জন্য ডায়েট প্ল্যান তৈরি করা হয়েছে</span>
+                    <span className={`${isBn ? 'font-bn' : ''} text-xs text-ink-muted font-medium`}>
+                      {isBn ? 'আপনার জন্য ডায়েট প্ল্যান তৈরি করা হয়েছে' : 'Diet plan calibrated for your profile'}
+                    </span>
                   </div>
                 </>
               )}
@@ -536,7 +619,7 @@ export const ProfileWizard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col relative overflow-hidden font-bn">
+    <div className={`min-h-screen bg-cream flex flex-col relative overflow-hidden ${isBn ? 'font-bn' : ''}`}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
 
       {/* Progress Bar */}
@@ -563,10 +646,10 @@ export const ProfileWizard = () => {
                   Step {currentStep + 1} of {steps.length}
                 </div>
                 <h2 className="text-xl md:text-2xl font-bold text-ink mb-1.5 tracking-tight">
-                  {steps[currentStep].q}
+                  {isBn ? steps[currentStep].qBn : steps[currentStep].qEn}
                 </h2>
                 <p className="text-ink-muted opacity-70 text-xs">
-                  {steps[currentStep].sub}
+                  {isBn ? steps[currentStep].subBn : steps[currentStep].subEn}
                 </p>
               </div>
 
@@ -588,7 +671,7 @@ export const ProfileWizard = () => {
                     onClick={next}
                     className="px-6 py-2.5 bg-ink text-cream hover:bg-accent text-xs font-bold shadow-md flex items-center gap-2 group interactive min-w-[120px]"
                   >
-                    পরবর্তী ধাপ
+                    {isBn ? 'পরবর্তী ধাপ' : 'Next Step'}
                     <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </Button>
                 </div>

@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError } from '../lib/api';
 
 type Tab = 'login' | 'register';
 
 export const AuthPage = () => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+
   const [tab, setTab] = useState<Tab>('login');
   const [identifier, setIdentifier] = useState('');
   const [phone, setPhone] = useState('');
@@ -27,7 +31,7 @@ export const AuthPage = () => {
       await login(identifier, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Login failed');
+      setError(err instanceof ApiError ? err.message : (isBn ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed'));
     } finally {
       setLoading(false);
     }
@@ -36,20 +40,23 @@ export const AuthPage = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!phone && !email) { setError('Phone or email is required'); return; }
+    if (!phone && !email) {
+      setError(isBn ? 'ফোন নম্বর অথবা ইমেইল ঠিকানা প্রয়োজন' : 'Phone or email is required');
+      return;
+    }
     setLoading(true);
     try {
       await register({ phone: phone || undefined, email: email || undefined, password });
       navigate('/profile');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Registration failed');
+      setError(err instanceof ApiError ? err.message : (isBn ? 'নিবন্ধন ব্যর্থ হয়েছে' : 'Registration failed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center p-4 relative overflow-hidden font-bn">
+    <div className={`min-h-screen bg-cream flex items-center justify-center p-4 relative overflow-hidden ${isBn ? 'font-bn' : ''}`}>
       {/* Background blobs */}
       <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-forest/5 rounded-full blur-[100px] pointer-events-none" />
@@ -67,7 +74,9 @@ export const AuthPage = () => {
           <h1 className="font-display font-black text-2xl text-ink tracking-tight">
             Desi<span className="text-accent">Diet</span>
           </h1>
-          <p className="text-[0.68rem] text-ink-muted mt-1 font-bn">আপনার ব্যক্তিগত পুষ্টি সহায়ক</p>
+          <p className={`text-[0.68rem] text-ink-muted mt-1 ${isBn ? 'font-bn' : ''}`}>
+            {isBn ? 'আপনার ব্যক্তিগত পুষ্টি সহায়ক' : 'Your Personal Nutrition Companion'}
+          </p>
         </div>
 
         {/* Tab Selector */}
@@ -80,7 +89,7 @@ export const AuthPage = () => {
                 tab === t ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
               }`}
             >
-              {t === 'login' ? 'লগইন' : 'নিবন্ধন'}
+              {t === 'login' ? (isBn ? 'লগইন' : 'Sign In') : (isBn ? 'নিবন্ধন' : 'Register')}
             </button>
           ))}
         </div>
@@ -89,9 +98,13 @@ export const AuthPage = () => {
         <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2.5 text-amber-900 shadow-sm">
           <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-[0.68rem] leading-relaxed">
-            <p className="font-bold font-bn text-amber-950">প্রথমবার লগইন/নিবন্ধনে সময় লাগতে পারে</p>
-            <p className="text-amber-800 font-bn mt-0.5">
-              ফ্রি সার্ভার (Render) ব্যবহারের কারণে প্রথম রিকোয়েস্টে ব্যাকএন্ড চালু হতে <strong>প্রায় ১ মিনিট</strong> পর্যন্ত সময় লাগতে পারে।
+            <p className={`font-bold ${isBn ? 'font-bn' : ''} text-amber-950`}>
+              {isBn ? 'প্রথমবার লগইন/নিবন্ধনে সময় লাগতে পারে' : 'Initial login may take a moment to wake server'}
+            </p>
+            <p className={`text-amber-800 ${isBn ? 'font-bn' : ''} mt-0.5`}>
+              {isBn
+                ? 'ফ্রি সার্ভার (Render) ব্যবহারের কারণে প্রথম রিকোয়েস্টে ব্যাকএন্ড চালু হতে প্রায় ১ মিনিট পর্যন্ত সময় লাগতে পারে।'
+                : 'Free tier backend hosting spins down when idle and may take up to ~1 min to wake up on the first attempt.'}
             </p>
           </div>
         </div>
@@ -108,7 +121,9 @@ export const AuthPage = () => {
                 className="space-y-3.5"
               >
                 <div>
-                  <label className="block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1">ফোন বা ইমেইল</label>
+                  <label className={`block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1 ${isBn ? 'font-bn' : ''}`}>
+                    {isBn ? 'ফোন বা ইমেইল' : 'Phone or Email'}
+                  </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
                     <input
@@ -116,15 +131,17 @@ export const AuthPage = () => {
                       type="text"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="01XXXXXXXXX বা email@example.com"
-                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-3 font-bn outline-none transition-all text-xs"
+                      placeholder={isBn ? '01XXXXXXXXX বা email@example.com' : '01XXXXXXXXX or email@example.com'}
+                      className={`w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-3 ${isBn ? 'font-bn' : ''} outline-none transition-all text-xs`}
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1">পাসওয়ার্ড</label>
+                  <label className={`block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1 ${isBn ? 'font-bn' : ''}`}>
+                    {isBn ? 'পাসওয়ার্ড' : 'Password'}
+                  </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
                     <input
@@ -132,8 +149,8 @@ export const AuthPage = () => {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="পাসওয়ার্ড"
-                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-12 font-bn outline-none transition-all text-xs"
+                      placeholder={isBn ? 'পাসওয়ার্ড' : 'Password'}
+                      className={`w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-12 ${isBn ? 'font-bn' : ''} outline-none transition-all text-xs`}
                       required
                     />
                     <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink">
@@ -145,7 +162,7 @@ export const AuthPage = () => {
                 {error && (
                   <div className="flex items-center gap-1.5 text-red-500 text-xs bg-red-50 p-2 rounded-lg border border-red-100">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span className="font-bn">{error}</span>
+                    <span className={`${isBn ? 'font-bn' : ''}`}>{error}</span>
                   </div>
                 )}
 
@@ -153,16 +170,16 @@ export const AuthPage = () => {
                   id="login-submit"
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2 bg-ink text-cream rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-md disabled:opacity-60"
+                  className={`w-full py-2 bg-ink text-cream rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-md disabled:opacity-60 ${isBn ? 'font-bn' : ''}`}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      সার্ভার কানেক্ট হচ্ছে... (১ মি. লাগতে পারে)
+                      {isBn ? 'সার্ভার কানেক্ট হচ্ছে... (১ মি. লাগতে পারে)' : 'Connecting to server... (~1 min)'}
                     </>
                   ) : (
                     <>
-                      লগইন করুন <ArrowRight className="w-3 h-3" />
+                      {isBn ? 'লগইন করুন' : 'Sign In'} <ArrowRight className="w-3 h-3" />
                     </>
                   )}
                 </button>
@@ -177,7 +194,9 @@ export const AuthPage = () => {
                 className="space-y-3.5"
               >
                 <div>
-                  <label className="block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1">ফোন নম্বর</label>
+                  <label className={`block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1 ${isBn ? 'font-bn' : ''}`}>
+                    {isBn ? 'ফোন নম্বর' : 'Phone Number'}
+                  </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
                     <input
@@ -186,13 +205,15 @@ export const AuthPage = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="01XXXXXXXXX"
-                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-3 font-bn outline-none transition-all text-xs"
+                      className={`w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-3 ${isBn ? 'font-bn' : ''} outline-none transition-all text-xs`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1">ইমেইল (ঐচ্ছিক)</label>
+                  <label className={`block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1 ${isBn ? 'font-bn' : ''}`}>
+                    {isBn ? 'ইমেইল (ঐচ্ছিক)' : 'Email (Optional)'}
+                  </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
                     <input
@@ -201,13 +222,15 @@ export const AuthPage = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="email@example.com"
-                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-3 font-bn outline-none transition-all text-xs"
+                      className={`w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-3 ${isBn ? 'font-bn' : ''} outline-none transition-all text-xs`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1">পাসওয়ার্ড (ন্যূনতম ৬ অক্ষর)</label>
+                  <label className={`block text-[0.62rem] font-bold uppercase tracking-wider text-ink-faint mb-1 ${isBn ? 'font-bn' : ''}`}>
+                    {isBn ? 'পাসওয়ার্ড (ন্যূনতম ৬ অক্ষর)' : 'Password (min. 6 characters)'}
+                  </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
                     <input
@@ -215,9 +238,9 @@ export const AuthPage = () => {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="শক্তিশালী পাসওয়ার্ড"
+                      placeholder={isBn ? 'শক্তিশালী পাসওয়ার্ড' : 'Enter password'}
                       minLength={6}
-                      className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-12 font-bn outline-none transition-all text-xs"
+                      className={`w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 pl-9 pr-12 ${isBn ? 'font-bn' : ''} outline-none transition-all text-xs`}
                       required
                     />
                     <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink">
@@ -229,7 +252,7 @@ export const AuthPage = () => {
                 {error && (
                   <div className="flex items-center gap-1.5 text-red-500 text-xs bg-red-50 p-2 rounded-lg border border-red-100">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span className="font-bn">{error}</span>
+                    <span className={`${isBn ? 'font-bn' : ''}`}>{error}</span>
                   </div>
                 )}
 
@@ -237,16 +260,16 @@ export const AuthPage = () => {
                   id="register-submit"
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2 bg-ink text-cream rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-md disabled:opacity-60"
+                  className={`w-full py-2 bg-ink text-cream rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-md disabled:opacity-60 ${isBn ? 'font-bn' : ''}`}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      সার্ভার কানেক্ট হচ্ছে... (১ মি. লাগতে পারে)
+                      {isBn ? 'সার্ভার কানেক্ট হচ্ছে... (১ মি. লাগতে পারে)' : 'Connecting to server... (~1 min)'}
                     </>
                   ) : (
                     <>
-                      অ্যাকাউন্ট তৈরি করুন <ArrowRight className="w-3 h-3" />
+                      {isBn ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account'} <ArrowRight className="w-3 h-3" />
                     </>
                   )}
                 </button>
@@ -255,10 +278,11 @@ export const AuthPage = () => {
           </AnimatePresence>
         </div>
 
-        <p className="text-center text-[0.58rem] text-ink-faint mt-4 font-bn">
-          আপনার তথ্য সম্পূর্ণ নিরাপদ এবং গোপনীয়
+        <p className={`text-center text-[0.58rem] text-ink-faint mt-4 ${isBn ? 'font-bn' : ''}`}>
+          {isBn ? 'আপনার তথ্য সম্পূর্ণ নিরাপদ এবং গোপনীয়' : 'Your personal health data is safe, private, and encrypted'}
         </p>
       </motion.div>
     </div>
   );
 };
+

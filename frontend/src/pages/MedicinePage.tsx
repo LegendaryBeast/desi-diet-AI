@@ -13,10 +13,14 @@ import {
   List,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { medicineApi, type MedicineReminderListItem, type MedicineReminderResponse } from '../lib/api';
 
 export const MedicinePage = () => {
+  const { i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+
   const [tab, setTab] = useState<'add' | 'list'>('list');
   const [reminders, setReminders] = useState<MedicineReminderListItem[]>([]);
   const [input, setInput] = useState('');
@@ -33,11 +37,11 @@ export const MedicinePage = () => {
       const data = await medicineApi.list();
       setReminders(data);
     } catch {
-      setError('রিমাইন্ডার লোড করতে সমস্যা হয়েছে');
+      setError(isBn ? 'রিমাইন্ডার লোড করতে সমস্যা হয়েছে' : 'Failed to load reminders');
     } finally {
       setListLoading(false);
     }
-  }, []);
+  }, [isBn]);
 
   useEffect(() => {
     fetchReminders();
@@ -51,14 +55,14 @@ export const MedicinePage = () => {
     setSuccess(null);
     setLastAdded(null);
     try {
-      const result = await medicineApi.add({ input, language: 'bn' });
+      const result = await medicineApi.add({ input, language: isBn ? 'bn' : 'en' });
       setLastAdded(result);
       setSuccess(result.confirmation);
       setInput('');
       fetchReminders();
       window.dispatchEvent(new Event('data:refresh'));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'ওষুধ যোগ করতে সমস্যা হয়েছে');
+      setError(err instanceof Error ? err.message : (isBn ? 'ওষুধ যোগ করতে সমস্যা হয়েছে' : 'Failed to add medicine reminder'));
     } finally {
       setLoading(false);
     }
@@ -70,30 +74,37 @@ export const MedicinePage = () => {
       setReminders((prev) => prev.filter((r) => r.id !== id));
       window.dispatchEvent(new Event('data:refresh'));
     } catch {
-      setError('মুছতে সমস্যা হয়েছে');
+      setError(isBn ? 'মুছতে সমস্যা হয়েছে' : 'Failed to delete reminder');
     }
   };
 
-  const EXAMPLES = [
+  const EXAMPLES = isBn ? [
     'সকালে ও রাতে মেটফরমিন ৫০০ mg খাবারের পরে নিতে হবে',
     'রাতে ঘুমানোর আগে ইনসুলিন নিতে হবে',
     'সকালে ৮টায় আমলোডিপিন ৫mg এবং বিকেলে ৪টায় লিসিনোপ্রিল ১০mg',
+  ] : [
+    'Take Metformin 500mg morning and night after meals',
+    'Take Insulin before sleeping at night',
+    'Take Amlodipine 5mg at 8 AM and Lisinopril 10mg at 4 PM',
   ];
 
   return (
-    <DashboardLayout title="ওষুধের রিমাইন্ডার" subtitle="Medicine Reminders">
+    <DashboardLayout
+      title={isBn ? 'ওষুধের রিমাইন্ডার' : 'Medicine Reminders'}
+      subtitle={isBn ? 'দৈনিক ওষুধ গ্রহণের সময়সূচি' : 'Daily medication schedule & reminders'}
+    >
       <div className="max-w-3xl w-full mx-auto pb-6 space-y-4">
         {/* Tab */}
         <div className="flex justify-center">
           <div className="flex bg-white p-1 rounded-xl border border-ink/5 shadow-sm gap-0.5">
             {[
-              { id: 'list' as const, label: 'রিমাইন্ডার সমূহ', icon: List },
-              { id: 'add' as const, label: 'নতুন যোগ করুন', icon: Plus },
+              { id: 'list' as const, label: isBn ? 'রিমাইন্ডার সমূহ' : 'Reminders', icon: List },
+              { id: 'add' as const, label: isBn ? 'নতুন যোগ করুন' : 'Add New', icon: Plus },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bn text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${isBn ? 'font-bn' : ''} text-xs font-bold transition-all ${
                   tab === id ? 'bg-ink text-cream shadow-md' : 'text-ink-muted hover:text-ink'
                 }`}
               >
@@ -112,8 +123,14 @@ export const MedicinePage = () => {
             >
               <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
               <div className="pr-6">
-                <p className="font-bn font-bold text-amber-800 text-[0.68rem] leading-none">নোট: নোটিফিকেশন ফিচার</p>
-                <p className="font-bn text-amber-700 text-[0.62rem] mt-1 leading-normal">ওষুধের রিমাইন্ডার পুশ-নোটিফিকেশন শুধুমাত্র আমাদের মোবাইল অ্যাপ্লিকেশনে ব্যবহার করা যাবে। ওয়েবসাইটে আপনি শুধু তালিকা দেখতে ও যোগ করতে পারবেন।</p>
+                <p className={`${isBn ? 'font-bn' : ''} font-bold text-amber-800 text-[0.68rem] leading-none`}>
+                  {isBn ? 'নোট: নোটিফিকেশন ফিচার' : 'Note: Mobile Push Notifications'}
+                </p>
+                <p className={`${isBn ? 'font-bn' : ''} text-amber-700 text-[0.62rem] mt-1 leading-normal`}>
+                  {isBn
+                    ? 'ওষুধের রিমাইন্ডার পুশ-নোটিফিকেশন শুধুমাত্র আমাদের মোবাইল অ্যাপ্লিকেশনে ব্যবহার করা যাবে। ওয়েবসাইটে আপনি শুধু তালিকা দেখতে ও যোগ করতে পারবেন।'
+                    : 'Push notifications for medicine reminders are available on our mobile app. On the web dashboard, you can track and manage your medications.'}
+                </p>
               </div>
               <button 
                 onClick={() => { setShowAlert(false); localStorage.setItem('desidiet_hide_med_alert', 'true'); }}
@@ -128,7 +145,7 @@ export const MedicinePage = () => {
         {/* Error / Success */}
         {error && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-100 rounded-lg text-red-500 font-bn text-xs"
+            className={`flex items-center gap-2 p-2.5 bg-red-50 border border-red-100 rounded-lg text-red-500 ${isBn ? 'font-bn' : ''} text-xs`}
           >
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
@@ -136,7 +153,7 @@ export const MedicinePage = () => {
         )}
         {success && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-100 rounded-lg text-green-600 font-bn text-xs"
+            className={`flex items-center gap-2 p-2.5 bg-green-50 border border-green-100 rounded-lg text-green-600 ${isBn ? 'font-bn' : ''} text-xs`}
           >
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{success}</span>
@@ -155,8 +172,12 @@ export const MedicinePage = () => {
                     <Mic className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="font-bn text-xs font-bold text-ink">AI দিয়ে ওষুধ যোগ করুন</h2>
-                    <p className="font-bn text-[0.62rem] text-ink-muted">বাংলায় বলুন বা লিখুন কোন ওষুধ কখন নিতে হবে</p>
+                    <h2 className={`${isBn ? 'font-bn' : ''} text-xs font-bold text-ink`}>
+                      {isBn ? 'AI দিয়ে ওষুধ যোগ করুন' : 'Add Medication with AI'}
+                    </h2>
+                    <p className={`${isBn ? 'font-bn' : ''} text-[0.62rem] text-ink-muted`}>
+                      {isBn ? 'বাংলায় বলুন বা লিখুন কোন ওষুধ কখন নিতে হবে' : 'Describe your medications and schedules in natural language'}
+                    </p>
                   </div>
                 </div>
 
@@ -164,30 +185,32 @@ export const MedicinePage = () => {
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="যেমন: সকালে মেটফরমিন ৫০০ mg খাবারের পরে এবং রাতে গ্লিমেপিরাইড ২mg..."
+                    placeholder={isBn ? 'যেমন: সকালে মেটফরমিন ৫০০ mg খাবারের পরে এবং রাতে গ্লিমেপিরাইড ২mg...' : 'e.g., Take Metformin 500mg morning after meal and Glimepiride 2mg at night...'}
                     rows={3}
-                    className="w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 px-2.5 font-bn outline-none transition-all text-xs"
+                    className={`w-full bg-cream/40 border border-ink/10 focus:border-accent/30 rounded-lg py-2 px-2.5 ${isBn ? 'font-bn' : ''} outline-none transition-all text-xs`}
                     required
                   />
 
                   <button type="submit" disabled={loading || !input.trim()}
-                    className="w-full py-2 bg-ink text-cream rounded-lg font-bold font-bn text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-sm disabled:opacity-60"
+                    className={`w-full py-2 bg-ink text-cream rounded-lg font-bold ${isBn ? 'font-bn' : ''} text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition-all shadow-sm disabled:opacity-60`}
                   >
                     {loading ? (
-                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> AI বিশ্লেষণ করছে...</>
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {isBn ? 'AI বিশ্লেষণ করছে...' : 'AI Analyzing...'}</>
                     ) : (
-                      <><Pill className="w-3.5 h-3.5" /> রিমাইন্ডার যোগ করুন</>
+                      <><Pill className="w-3.5 h-3.5" /> {isBn ? 'রিমাইন্ডার যোগ করুন' : 'Add Medicine Reminder'}</>
                     )}
                   </button>
                 </form>
 
                 {/* Examples */}
                 <div className="mt-4">
-                  <p className="font-bn text-[0.62rem] text-ink-faint mb-2 uppercase tracking-wider font-bold">উদাহরণ:</p>
+                  <p className={`${isBn ? 'font-bn' : ''} text-[0.62rem] text-ink-faint mb-2 uppercase tracking-wider font-bold`}>
+                    {isBn ? 'উদাহরণ:' : 'Examples:'}
+                  </p>
                   <div className="grid grid-cols-1 gap-1.5">
                     {EXAMPLES.map((ex, i) => (
                       <button key={i} onClick={() => setInput(ex)}
-                        className="w-full text-left p-2 rounded-lg bg-cream/30 hover:bg-cream text-ink-muted hover:text-ink transition-colors font-bn text-xs border border-ink/5"
+                        className={`w-full text-left p-2 rounded-lg bg-cream/30 hover:bg-cream text-ink-muted hover:text-ink transition-colors ${isBn ? 'font-bn' : ''} text-xs border border-ink/5`}
                       >
                         "{ex}"
                       </button>
@@ -201,18 +224,18 @@ export const MedicinePage = () => {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   className="bg-white p-3.5 rounded-xl shadow-sm border border-green-100"
                 >
-                  <h3 className="font-bn text-xs font-bold text-ink mb-2.5 flex items-center gap-1.5">
+                  <h3 className={`${isBn ? 'font-bn' : ''} text-xs font-bold text-ink mb-2.5 flex items-center gap-1.5`}>
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    যোগ করা হয়েছে
+                    {isBn ? 'যোগ করা হয়েছে' : 'Added successfully'}
                   </h3>
                   <div className="space-y-2">
                     {lastAdded.medicines.map((med, i) => (
                       <div key={i} className="bg-cream/40 p-2 rounded-lg border border-ink/5">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-ink font-bn text-xs">{med.name} — {med.dose}</span>
+                          <span className={`font-bold text-ink ${isBn ? 'font-bn' : ''} text-xs`}>{med.name} — {med.dose}</span>
                           <span className={`inline-flex items-center gap-1 text-[0.55rem] font-bold px-1.5 py-0.5 rounded ${med.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                             {med.with_food ? <Utensils size={10} /> : <Pill size={10} />}
-                            <span>{med.with_food ? 'খাবারের সাথে' : 'খালি পেটে'}</span>
+                            <span>{med.with_food ? (isBn ? 'খাবারের সাথে' : 'With Food') : (isBn ? 'খালি পেটে' : 'Empty Stomach')}</span>
                           </span>
                         </div>
                         <div className="flex gap-1.5 flex-wrap">
@@ -222,7 +245,7 @@ export const MedicinePage = () => {
                             </span>
                           ))}
                         </div>
-                        {med.notes && <p className="text-[0.62rem] text-ink-faint font-bn mt-1">{med.notes}</p>}
+                        {med.notes && <p className={`text-[0.62rem] text-ink-faint ${isBn ? 'font-bn' : ''} mt-1`}>{med.notes}</p>}
                       </div>
                     ))}
                   </div>
@@ -236,14 +259,14 @@ export const MedicinePage = () => {
               {listLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
               ) : reminders.length === 0 ? (
-                <div className="text-center py-12 font-bn text-ink-muted">
+                <div className={`text-center py-12 ${isBn ? 'font-bn' : ''} text-ink-muted`}>
                   <Pill className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                  <p className="font-bold mb-1 text-xs">কোনো রিমাইন্ডার নেই</p>
-                  <p className="text-[0.68rem] opacity-60">নতুন ওষুধ যোগ করুন</p>
+                  <p className="font-bold mb-1 text-xs">{isBn ? 'কোনো রিমাইন্ডার নেই' : 'No reminders found'}</p>
+                  <p className="text-[0.68rem] opacity-60">{isBn ? 'নতুন ওষুধ যোগ করুন' : 'Add your medications to get started'}</p>
                   <button onClick={() => setTab('add')}
-                    className="mt-3 px-4 py-2 bg-ink text-cream rounded-lg font-bold font-bn text-xs hover:bg-accent transition-all"
+                    className={`mt-3 px-4 py-2 bg-ink text-cream rounded-lg font-bold ${isBn ? 'font-bn' : ''} text-xs hover:bg-accent transition-all`}
                   >
-                    ওষুধ যোগ করুন
+                    {isBn ? 'ওষুধ যোগ করুন' : 'Add Medicine'}
                   </button>
                 </div>
               ) : (
@@ -262,7 +285,7 @@ export const MedicinePage = () => {
                           <Pill className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bn font-bold text-ink text-xs truncate">{r.name} — {r.dose}</h3>
+                          <h3 className={`${isBn ? 'font-bn' : ''} font-bold text-ink text-xs truncate`}>{r.name} — {r.dose}</h3>
                           <div className="flex gap-1.5 mt-1.5 flex-wrap">
                             {r.times.map((t, i) => (
                               <span key={i} className="flex items-center gap-1 text-[0.62rem] bg-cream border border-ink/5 px-2 py-0.5 rounded font-mono font-bold text-ink-muted">
@@ -273,14 +296,15 @@ export const MedicinePage = () => {
                           <div className="mt-1.5 flex items-center gap-1.5">
                             <span className={`inline-flex items-center gap-1 text-[0.55rem] font-bold px-1.5 py-0.5 rounded ${r.with_food ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                               {r.with_food ? <Utensils size={10} /> : <Pill size={10} />}
-                              <span>{r.with_food ? 'খাবারের সাথে' : 'খালি পেটে'}</span>
+                              <span>{r.with_food ? (isBn ? 'খাবারের সাথে' : 'With Food') : (isBn ? 'খালি পেটে' : 'Empty Stomach')}</span>
                             </span>
-                            {r.notes && <span className="text-[0.62rem] text-ink-faint font-bn truncate">{r.notes}</span>}
+                            {r.notes && <span className={`text-[0.62rem] text-ink-faint ${isBn ? 'font-bn' : ''} truncate`}>{r.notes}</span>}
                           </div>
                         </div>
                       </div>
                       <button onClick={() => handleDelete(r.id)}
                         className="p-1.5 rounded hover:text-red-500 hover:bg-red-50 transition-all shrink-0 text-ink-faint"
+                        title={isBn ? 'মুছুন' : 'Delete'}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -295,3 +319,4 @@ export const MedicinePage = () => {
     </DashboardLayout>
   );
 };
+
