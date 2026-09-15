@@ -153,3 +153,34 @@ class TestCleanMathAndLatex:
         raw = r"Formula: $\frac{A}{B}$ and \(\text{Result} = 10 \pm 2\)"
         cleaned = clean_math_and_latex(raw)
         assert cleaned == "Formula: (A / B) and Result = 10 ± 2"
+
+
+class TestPromptTemplateFormatting:
+    """Ensure all agent prompt templates can be formatted without IndexError or KeyError."""
+
+    def test_pusti_system_prompt_format(self):
+        from app.agents.pusti_ai_node import _PUSTI_SYSTEM
+
+        formatted = _PUSTI_SYSTEM.format(
+            early_summary_context="Prev summary",
+            user_context="User context",
+            rag_food_context="Food context",
+        )
+        assert "Prev summary" in formatted
+        assert "User context" in formatted
+        assert "Food context" in formatted
+        assert r"\text{...}" in formatted
+
+    def test_nutrisaathi_system_prompt_format(self):
+        from app.personal_cooker.service import _NUTRISAATHI_SYSTEM_PROMPT
+
+        formatted = _NUTRISAATHI_SYSTEM_PROMPT.format(
+            condition="Diabetes",
+            context="RAG context",
+            meal_plan_context="Plan context",
+        )
+        assert "Diabetes" in formatted
+        assert "RAG context" in formatted
+        assert "Plan context" in formatted
+        assert r"\text{...}" in formatted
+

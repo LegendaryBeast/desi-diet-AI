@@ -57,4 +57,5 @@ paper/
 *.spl
 Materials/test_fig1.*
 Materials/page_*.png
-Materials/fig1_*.png
+Materials/fig*.png
+Materials/full_page_*.png
